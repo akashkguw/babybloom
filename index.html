@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="BabyBloom"/>
+<meta name="theme-color" content="#FFF8F0"/>
+<title>BabyBloom</title>
+<link rel="manifest" href="./manifest.json"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body,#root{height:100%;width:100%;overflow-x:hidden}
+body{background:#FFF8F0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:#2D2D3A}
+::-webkit-scrollbar{display:none}
+input,select,textarea{font-family:inherit}
+input[type="date"],input[type="time"],input[type="number"],input[type="text"],select,textarea{-webkit-appearance:none;appearance:none;font-size:16px}
+button{-webkit-appearance:none;appearance:none;font-family:inherit}
+@supports(padding:env(safe-area-inset-bottom)){
+.tab-bar{padding-bottom:calc(8px + env(safe-area-inset-bottom))!important}
+.ca{padding-bottom:calc(90px + env(safe-area-inset-bottom))!important}
+}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.toast.show{opacity:1}
+.mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.ms{background:var(--modal-bg,#fff);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:430px;max-height:85vh;overflow-y:auto}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+"use strict";
+if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})});
+
+// ═══ DB ═══
+var DB='BabyBloomDB',DV=2,ST='appdata';
+function odb(){return new Promise(function(r,j){var q=indexedDB.open(DB,DV);q.onupgradeneeded=function(e){var d=e.target.result;if(!d.objectStoreNames.contains(ST))d.createObjectStore(ST,{keyPath:'key'})};q.onsuccess=function(e){r(e.target.result)};q.onerror=function(e){j(e.target.error)}})}
+function dg(k){return odb().then(function(d){return new Promise(function(r){var t=d.transaction(ST,'readonly');var q=t.objectStore(ST).get(k);q.onsuccess=function(){r(q.result?q.result.value:undefined)};q.onerror=function(){r(undefined)}})}).catch(function(){return undefined})}
+function ds(k,v){return odb().then(function(d){return new Promise(function(r,j){var t=d.transaction(ST,'readwrite');t.objectStore(ST).put({key:k,value:v});t.oncomplete=function(){r()};t.onerror=function(){j()}})}).catch(function(){})}
+function dga(){return odb().then(function(d){return new Promise(function(r){var t=d.transaction(ST,'readonly');var q=t.objectStore(ST).getAll();q.onsuccess=function(){var o={};(q.result||[]).forEach(function(x){o[x.key]=x.value});r(o)};q.onerror=function(){r({})}})}).catch(function(){return{}})}
+function dcl(){return odb().then(function(d){return new Promise(function(r){var t=d.transaction(ST,'readwrite');t.objectStore(ST).clear();t.oncomplete=function(){r()}})}).catch(function(){})}
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000)}
+
+var R=React,h=R.createElement,F=R.Fragment,us=R.useState,ue=R.useEffect,um=R.useMemo,ur=R.useRef,uc=R.useCallback;
+
+// ═══ COLORS ═══
+var C_LIGHT={bg:"#FFF8F0",cd:"#FFFFFF",p:"#FF6B8A",pl:"#FFE0E8",s:"#6C63FF",sl:"#E8E6FF",a:"#00C9A7",al:"#E0FFF8",w:"#FFB347",wl:"#FFF3E0",t:"#2D2D3A",tl:"#8E8E9A",b:"#F0EBE3",ok:"#4CAF50",bl:"#42A5F5",bll:"#E3F2FD",pu:"#AB47BC",pul:"#F3E5F5"};
+var C_DARK={bg:"#1A1A2E",cd:"#16213E",p:"#FF6B8A",pl:"#3D1F2E",s:"#8B83FF",sl:"#2A2654",a:"#00C9A7",al:"#1A3330",w:"#FFB347",wl:"#3D2E1A",t:"#E8E8F0",tl:"#7A7A8E",b:"#2A2A4A",ok:"#4CAF50",bl:"#42A5F5",bll:"#1A2A3E",pu:"#CE93D8",pul:"#2E1F3E"};
+var C=Object.assign({},C_LIGHT);
+function applyTheme(dark){Object.assign(C,dark?C_DARK:C_LIGHT);document.body.style.background=C.bg;document.querySelector('meta[name="theme-color"]').content=C.bg;document.documentElement.style.setProperty('--modal-bg',dark?'#16213E':'#fff');}
+
+// ═══ SVG ICONS ═══
+var IP={home:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z|M9 22V12h6v10",star:"M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z",heart:"M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z",shield:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",check:"M20 6L9 17l-5-5","chevron-right":"M9 18l6-6-6-6","alert-triangle":"M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z|M12 9v4|M12 17h.01",plus:"M12 5v14|M5 12h14",minus:"M5 12h14",x:"M18 6L6 18|M6 6l12 12",edit:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7|M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z",clock:"M12 2a10 10 0 100 20 10 10 0 000-20z|M12 6v6l4 2",moon:"M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",sun:"M12 7a5 5 0 100 10 5 5 0 000-10z|M12 1v2|M12 21v2|M4.22 4.22l1.42 1.42|M18.36 18.36l1.42 1.42|M1 12h2|M21 12h2|M4.22 19.78l1.42-1.42|M18.36 5.64l1.42-1.42",droplets:"M12 2.69l5.66 5.66a8 8 0 11-11.31 0z",thermometer:"M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z",activity:"M22 12h-4l-3 9L9 3l-3 9H2",brain:"M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z|M12 6v6|M8 14h8",syringe:"M18 2l4 4|M7 17L17 7|M14 12L3 21|M3 21l3-3",calendar:"M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2z|M16 2v4|M8 2v4|M3 10h18",settings:"M12 15a3 3 0 100-6 3 3 0 000 6z",book:"M4 19.5A2.5 2.5 0 016.5 17H20|M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z",camera:"M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z|M12 13a4 4 0 100-8 4 4 0 000 8z",smile:"M12 2a10 10 0 100 20 10 10 0 000-20z|M8 14s1.5 2 4 2 4-2 4-2|M9 9h.01|M15 9h.01","trending-up":"M23 6l-9.5 9.5-5-5L1 18|M17 6h6v6",tablet:"M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z",users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2|M9 7a4 4 0 100 8 4 4 0 000-8z|M23 21v-2a4 4 0 00-3-3.87|M16 3.13a4 4 0 010 7.75",search:"M11 2a9 9 0 100 18 9 9 0 000-18z|M21 21l-4.35-4.35"};
+function Ic({n,s:sz,c,st}){var ps=(IP[n]||"").split("|");return h("svg",{xmlns:"http://www.w3.org/2000/svg",width:sz||20,height:sz||20,viewBox:"0 0 24 24",fill:"none",stroke:c||"#333",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:Object.assign({display:"inline-block",verticalAlign:"middle",flexShrink:0},st||{})},ps.map(function(d,i){return h("path",{key:i,d:d})}))}
+
+// ═══ SHARED UI ═══
+function Cd({children,style,onClick}){return h("div",{onClick:onClick,style:Object.assign({background:C.cd,borderRadius:20,padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.04)",border:"1px solid "+C.b,cursor:onClick?"pointer":"default"},style||{})},children)}
+function SH({icon,title,color,sub}){return h("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:16}},h("div",{style:{width:44,height:44,borderRadius:14,background:color+"15",display:"flex",alignItems:"center",justifyContent:"center"}},h(Ic,{n:icon,s:22,c:color})),h("div",null,h("h2",{style:{fontSize:20,fontWeight:700,color:C.t,margin:0}},title),sub?h("p",{style:{fontSize:13,color:C.tl,margin:0}},sub):null))}
+function PR({pct,sz,sw,color}){var r=((sz||60)-(sw||5))/2,ci=r*2*Math.PI,of=ci-(pct/100)*ci;return h("svg",{width:sz||60,height:sz||60,style:{transform:"rotate(-90deg)"}},h("circle",{cx:(sz||60)/2,cy:(sz||60)/2,r:r,fill:"none",stroke:C.b,strokeWidth:sw||5}),h("circle",{cx:(sz||60)/2,cy:(sz||60)/2,r:r,fill:"none",stroke:color||C.p,strokeWidth:sw||5,strokeDasharray:ci,strokeDashoffset:of,strokeLinecap:"round",style:{transition:"stroke-dashoffset 0.5s"}}))}
+function CB({ck,color}){return h("div",{style:{width:22,height:22,borderRadius:6,border:ck?"none":"2px solid "+C.b,background:ck?(color||C.ok):"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},ck?h(Ic,{n:"check",s:14,c:"#fff"}):null)}
+function Dot({items,color}){return items.map(function(t,i){return h("div",{key:i,style:{fontSize:13,color:C.t,display:"flex",gap:6,marginBottom:3}},h("span",{style:{color:color||C.a}},"•"),t)})}
+function Pill({label,active,onClick,color}){return h("button",{onClick:onClick,style:{flexShrink:0,padding:"8px 14px",borderRadius:16,border:active?"none":"1px solid "+C.b,background:active?(color||C.p):C.cd,color:active?"white":C.t,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},label)}
+function Input({value,onChange,type,placeholder,style}){return h("input",{type:type||"text",value:value,onChange:function(e){onChange(e.target.value)},placeholder:placeholder,style:Object.assign({width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+C.b,fontSize:16,color:C.t,background:C.bg,outline:"none",boxSizing:"border-box"},style||{})})}
+function Btn({label,onClick,color,outline,full,small}){return h("button",{onClick:onClick,style:{width:full?"100%":"auto",padding:small?"8px 16px":"14px 20px",borderRadius:14,border:outline?"2px solid "+(color||C.s):"none",background:outline?"transparent":(color||C.s),color:outline?(color||C.s):"white",fontSize:small?13:15,fontWeight:600,cursor:"pointer"}},label)}
+
+// ═══ CHART HELPERS ═══
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+function weekLabel(dateStr){var d=new Date(dateStr+'T00:00:00');return(d.getMonth()+1)+'/'+d.getDate()}
+function monthLabel(dateStr){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(dateStr.slice(5,7))-1]}
+function getWeekStart(dateStr){var d=new Date(dateStr+'T00:00:00');var day=d.getDay();var diff=d.getDate()-day+(day===0?-6:1);var m=new Date(d.getFullYear(),d.getMonth(),diff);return m.toISOString().slice(0,10)}
+
+function aggregateLogs(entries,period){
+  var buckets={},labels={},order=[];
+  if(period==='daily'){
+    for(var i=6;i>=0;i--){var dk=daysAgo(i);buckets[dk]=0;labels[dk]=weekLabel(dk);order.push(dk)}
+  }else if(period==='weekly'){
+    for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=0;labels[dk]='W'+(4-i);order.push(dk)}}
+  }else{
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
+  }
+  (entries||[]).forEach(function(e){
+    if(!e.date)return;
+    var k=period==='daily'?e.date:period==='weekly'?getWeekStart(e.date):e.date.slice(0,7);
+    if(buckets[k]!==undefined)buckets[k]++
+  });
+  return order.map(function(k){return{label:labels[k],value:buckets[k],key:k}})
+}
+
+function aggregateValues(entries,field,period){
+  var buckets={},labels={},order=[];
+  if(period==='daily'){
+    for(var i=6;i>=0;i--){var dk=daysAgo(i);buckets[dk]=[];labels[dk]=weekLabel(dk);order.push(dk)}
+  }else if(period==='weekly'){
+    for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=[];labels[dk]='W'+(4-i);order.push(dk)}}
+  }else{
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=[];labels[mk]=monthLabel(mk);order.push(mk)}
+  }
+  (entries||[]).forEach(function(e){
+    if(!e.date||!e[field])return;var v=parseFloat(e[field]);if(isNaN(v))return;
+    var k=period==='daily'?e.date:period==='weekly'?getWeekStart(e.date):e.date.slice(0,7);
+    if(buckets[k]!==undefined)buckets[k].push(v)
+  });
+  return order.map(function(k){var arr=buckets[k];var avg=arr.length?Math.round(arr.reduce(function(s,v){return s+v},0)/arr.length*10)/10:0;return{label:labels[k],value:avg,key:k}})
+}
+
+function aggregateSum(entries,field,period,divisor){
+  var buckets={},labels={},order=[];
+  if(period==='daily'){
+    for(var i=6;i>=0;i--){var dk=daysAgo(i);buckets[dk]=0;labels[dk]=weekLabel(dk);order.push(dk)}
+  }else if(period==='weekly'){
+    for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=0;labels[dk]='W'+(4-i);order.push(dk)}}
+  }else{
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
+  }
+  var div=divisor||1;
+  (entries||[]).forEach(function(e){
+    if(!e.date)return;var v=parseFloat(e[field]);if(isNaN(v))return;
+    var k=period==='daily'?e.date:period==='weekly'?getWeekStart(e.date):e.date.slice(0,7);
+    if(buckets[k]!==undefined)buckets[k]+=v/div
+  });
+  return order.map(function(k){return{label:labels[k],value:Math.round(buckets[k]*10)/10,key:k}})
+}
+
+function BarChart({data,color,height}){
+  var maxVal=Math.max.apply(null,data.map(function(d){return d.value}))||1;
+  var chartH=height||140;var w=300;var pad=10;var gap=4;
+  var barW=Math.floor((w-pad*2)/data.length)-gap;
+  return h("svg",{width:"100%",height:chartH+32,viewBox:"0 0 "+w+" "+(chartH+32),style:{display:"block"}},
+    h("line",{x1:pad,y1:chartH,x2:w-pad,y2:chartH,stroke:C.b,strokeWidth:1}),
+    data.map(function(d,i){
+      var barH=maxVal>0?(d.value/maxVal)*chartH*0.85:0;
+      var x=pad+i*(barW+gap)+gap/2;
+      return h("g",{key:i},
+        h("rect",{x:x,y:chartH-barH,width:barW,height:Math.max(barH,2),rx:4,fill:d.value>0?(color||C.p):C.b,opacity:d.value>0?1:0.3}),
+        d.value>0?h("text",{x:x+barW/2,y:chartH-barH-5,textAnchor:"middle",fontSize:10,fill:C.t,fontWeight:700},d.value):null,
+        h("text",{x:x+barW/2,y:chartH+14,textAnchor:"middle",fontSize:9,fill:C.tl},d.label))}))}
+
+function StatsSummary({entries,label}){
+  var td=today();
+  var todayC=(entries||[]).filter(function(e){return e.date===td}).length;
+  var weekC=0;for(var i=0;i<7;i++){var dk=daysAgo(i);weekC+=(entries||[]).filter(function(e){return e.date===dk}).length}
+  var avg=Math.round(weekC/7*10)/10;
+  return h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}},
+    [{l:"Today",v:todayC},{l:"This Week",v:weekC},{l:"Daily Avg",v:avg}].map(function(s){
+      return h(Cd,{key:s.l,style:{padding:12,textAlign:"center"}},
+        h("div",{style:{fontSize:20,fontWeight:700,color:C.t}},s.v),
+        h("div",{style:{fontSize:11,color:C.tl}},s.l))}))}
+
+// ═══ STATS VIEW (consolidated charts with metric selectors) ═══
+function StatsView({logs,period,setPeriod,logColors}){
+  var _sm=us({}),statMet=_sm[0],setStatMet=_sm[1];
+  function getMet(cat,def){return statMet[cat]||def}
+  function setMet(cat,v){setStatMet(function(p){var n=Object.assign({},p);n[cat]=v;return n})}
+
+  function MetPill(cat,id,label){return h("div",{onClick:function(){setMet(cat,id)},style:{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",background:getMet(cat,null)===id?logColors[cat]||C.s:"transparent",color:getMet(cat,null)===id?"white":C.tl,border:"1px solid "+(getMet(cat,null)===id?"transparent":C.b)}},label)}
+
+  function ChartCard(cat,emoji,title,metrics){
+    var entries=logs[cat]||[];
+    var activeMet=getMet(cat,metrics[0].id);
+    var met=metrics.find(function(m){return m.id===activeMet})||metrics[0];
+    var data=met.getData(entries,period);
+    var total=data.reduce(function(s,d){return s+d.value},0);
+    var totalLabel=met.unit?Math.round(total*10)/10+" "+met.unit:total;
+    if(entries.length===0&&cat!=="feed"&&cat!=="diaper"&&cat!=="sleep")return null;
+    return h(Cd,{key:cat,style:{marginBottom:12}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+        h("div",{style:{fontSize:15,fontWeight:700,color:C.t}},emoji+" "+title),
+        h("div",{style:{fontSize:12,color:C.tl}},totalLabel)),
+      metrics.length>1?h("div",{style:{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}},
+        metrics.map(function(m){return h("div",{key:m.id},MetPill(cat,m.id,m.label))})):null,
+      h(BarChart,{data:data,color:met.color||logColors[cat]||C.s}),
+      met.id==="count"?h(StatsSummary,{entries:entries}):null)
+  }
+
+  // Determine available feed metrics
+  var feedMetrics=[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.a}];
+  if((logs.feed||[]).some(function(e){return e.mins&&!e.oz}))feedMetrics.push({id:"breast_min",label:"Breast Min",unit:"min",getData:function(e,p){return aggregateSum(e.filter(function(x){return x.mins&&!x.oz}),"mins",p,1)},color:C.a});
+  if((logs.feed||[]).some(function(e){return e.oz}))feedMetrics.push({id:"bottle_oz",label:"Bottle Oz",unit:"oz",getData:function(e,p){return aggregateSum(e.filter(function(x){return x.oz}),"oz",p,1)},color:C.bl});
+
+  var sleepMetrics=[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.pu}];
+  if((logs.sleep||[]).some(function(e){return e.mins}))sleepMetrics.push({id:"hours",label:"Total Hrs",unit:"hrs",getData:function(e,p){return aggregateSum(e,"mins",p,60)},color:C.pu});
+
+  // Set defaults to the most useful metric
+  if(!statMet.feed&&feedMetrics.length>1)setMet("feed",feedMetrics.length>2?"bottle_oz":"breast_min");
+  if(!statMet.sleep&&sleepMetrics.length>1)setMet("sleep","hours");
+
+  return h(F,null,
+    h("div",{style:{display:"flex",gap:6,marginBottom:16}},
+      ["daily","weekly","monthly"].map(function(p){return h(Pill,{key:p,label:p.charAt(0).toUpperCase()+p.slice(1),active:period===p,onClick:function(){setPeriod(p)},color:C.s})})),
+
+    // Feed
+    ChartCard("feed","🍼","Feeding",feedMetrics),
+    // Sleep
+    ChartCard("sleep","😴","Sleep",sleepMetrics),
+    // Diaper
+    ChartCard("diaper","💧","Diapers",[
+      {id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.bl},
+      {id:"wet",label:"Wet Only",getData:function(e,p){return aggregateLogs(e.filter(function(x){return x.type==="Wet"||x.type==="Both"}),p)},color:C.bl},
+      {id:"dirty",label:"Dirty Only",getData:function(e,p){return aggregateLogs(e.filter(function(x){return x.type==="Dirty"||x.type==="Both"}),p)},color:C.w}
+    ]),
+    // Pump
+    (logs.pump||[]).length>0?ChartCard("pump","🫙","Pump",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.a}]):null,
+    // Bath
+    (logs.bath||[]).length>0?ChartCard("bath","🛁","Bath",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.bl}]):null,
+    // Meds
+    (logs.meds||[]).length>0?ChartCard("meds","💊","Medications",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.s}]):null,
+    // Allergy
+    (logs.allergy||[]).length>0?ChartCard("allergy","⚠️","Allergy Tracking",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.p}]):null,
+    // Growth (weight & height as metric toggle)
+    (logs.growth||[]).length>0?ChartCard("growth","📏","Growth",[
+      {id:"weight",label:"Weight (lbs)",getData:function(e,p){return aggregateValues(e,"weight",p)},color:C.p},
+      {id:"height",label:"Height (in)",getData:function(e,p){return aggregateValues(e,"height",p)},color:C.s}
+    ]):null,
+    // Temperature
+    (logs.temp||[]).length>0?ChartCard("temp","🌡️","Temperature",[
+      {id:"avg",label:"Avg °F",getData:function(e,p){return aggregateValues(e,"temp",p)},color:C.w}
+    ]):null,
+    // Empty state
+    Object.keys(logs).every(function(k){return(logs[k]||[]).length===0})?
+      h(Cd,{style:{textAlign:"center",padding:30,color:C.tl}},
+        h("div",{style:{fontSize:32,marginBottom:8}},"📊"),
+        h("div",null,"Start logging to see your stats!")):null
+  )
+}
+
+// ═══ SEARCH ═══
+function SearchModal({onClose,logs,firsts,checked}){
+  var _q=us(""),query=_q[0],setQuery=_q[1];
+  var results=um(function(){
+    if(!query||query.length<2)return[];
+    var q=query.toLowerCase(),res=[];
+    // Search logs
+    var logTypes=["feed","pump","diaper","sleep","bath","growth","temp","meds","allergy"];
+    logTypes.forEach(function(type){
+      (logs[type]||[]).forEach(function(e){
+        var text=[e.type,e.amount,e.notes,e.food,e.reaction,e.med,e.dose,e.weight,e.height,e.temp,e.duration,e.waterTemp,e.color,e.consistency,e.peeAmount].filter(Boolean).join(" ");
+        if(text.toLowerCase().indexOf(q)>=0)res.push({cat:"Log: "+type,text:text,date:e.date,time:e.time})
+      })
+    });
+    // Search firsts
+    (firsts||[]).forEach(function(f){
+      var text=[f.title,f.notes].filter(Boolean).join(" ");
+      if(text.toLowerCase().indexOf(q)>=0)res.push({cat:"First",text:f.title+(f.notes?" — "+f.notes:""),date:f.date})
+    });
+    // Search milestones
+    Object.keys(MILESTONES).forEach(function(m){
+      var ms=MILESTONES[m];
+      ["motor","cog","soc","lang"].forEach(function(cat){
+        (ms[cat]||[]).forEach(function(item){
+          if(item.toLowerCase().indexOf(q)>=0)res.push({cat:"Milestone: "+ms.l,text:item})
+        })
+      });
+      if(ms.tips&&ms.tips.toLowerCase().indexOf(q)>=0)res.push({cat:"Tip: "+ms.l,text:ms.tips});
+      (ms.red||[]).forEach(function(r){if(r.toLowerCase().indexOf(q)>=0)res.push({cat:"Red Flag: "+ms.l,text:r})})
+    });
+    // Search vaccines
+    VACCINES.forEach(function(g){g.v.forEach(function(v){if(v.n.toLowerCase().indexOf(q)>=0||v.d.toLowerCase().indexOf(q)>=0)res.push({cat:"Vaccine: "+g.age,text:v.n+" — "+v.d})})});
+    // Search safety
+    SAFETY.forEach(function(s){s.items.forEach(function(item){if(item.toLowerCase().indexOf(q)>=0)res.push({cat:"Safety: "+s.t,text:item})})});
+    // Search feeding
+    FEEDING.forEach(function(f){
+      f.foods.forEach(function(food){if(food.toLowerCase().indexOf(q)>=0)res.push({cat:"Feeding: "+f.age,text:food})});
+      f.tips.forEach(function(tip){if(tip.toLowerCase().indexOf(q)>=0)res.push({cat:"Feeding: "+f.age,text:tip})})
+    });
+    // Search sleep
+    SLEEP.forEach(function(s){s.tips.forEach(function(t){if(t.toLowerCase().indexOf(q)>=0)res.push({cat:"Sleep: "+s.age,text:t})})});
+    // Search activities
+    Object.keys(ACTIVITIES).forEach(function(m){ACTIVITIES[m].forEach(function(a){if(a.toLowerCase().indexOf(q)>=0)res.push({cat:"Activity: "+(m==0?"Newborn":m+" mo"),text:a})})});
+    return res.slice(0,50)
+  },[query,logs,firsts]);
+
+  return h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)onClose()},style:{alignItems:"flex-start",paddingTop:40}},
+    h("div",{className:"ms",style:{borderRadius:20,maxHeight:"85vh"}},
+      h("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:16}},
+        h(Ic,{n:"search",s:20,c:C.s}),
+        h("input",{type:"text",value:query,onChange:function(e){setQuery(e.target.value)},placeholder:"Search everything...",autoFocus:true,style:{flex:1,padding:"12px 14px",borderRadius:12,border:"1.5px solid "+C.b,fontSize:16,color:C.t,background:C.bg,outline:"none"}}),
+        h("button",{onClick:onClose,style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:22,c:C.tl}))),
+      query.length<2?h("div",{style:{textAlign:"center",padding:30,color:C.tl}},
+        h("div",{style:{fontSize:32,marginBottom:8}},"🔍"),
+        h("div",null,"Type at least 2 characters to search")):
+      results.length===0?h("div",{style:{textAlign:"center",padding:30,color:C.tl}},
+        h("div",{style:{fontSize:32,marginBottom:8}},"😕"),
+        h("div",null,"No results found")):
+      h("div",{style:{maxHeight:"60vh",overflowY:"auto"}},
+        h("div",{style:{fontSize:12,color:C.tl,marginBottom:8}},results.length+" result"+(results.length!==1?"s":"")),
+        results.map(function(r,i){
+          return h("div",{key:i,style:{padding:"10px 12px",borderBottom:"1px solid "+C.b,marginBottom:2}},
+            h("div",{style:{fontSize:11,fontWeight:600,color:C.s,marginBottom:2}},r.cat),
+            h("div",{style:{fontSize:13,color:C.t,lineHeight:1.4}},r.text),
+            r.date?h("div",{style:{fontSize:11,color:C.tl,marginTop:2}},fmtDate(r.date)+(r.time?" "+fmtTime(r.time):"")):null)}))))}
+
+function TabBar({active,set}){
+  var tabs=[{id:"home",icon:"home",l:"Home"},{id:"log",icon:"edit",l:"Log"},{id:"miles",icon:"star",l:"Milestones"},{id:"guide",icon:"book",l:"Guide"},{id:"safety",icon:"shield",l:"Safety"}];
+  return h("div",{className:"tab-bar",style:{position:"fixed",bottom:0,left:0,right:0,background:C.bg==="#1A1A2E"?"rgba(26,26,46,0.95)":"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderTop:"1px solid "+C.b,display:"flex",justifyContent:"space-around",paddingBottom:20,paddingTop:8,zIndex:100}},
+    tabs.map(function(t){return h("button",{key:t.id,onClick:function(){set(t.id)},style:{background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",padding:"4px 8px",opacity:active===t.id?1:0.45}},h(Ic,{n:t.icon,s:22,c:active===t.id?C.p:C.tl}),h("span",{style:{fontSize:10,fontWeight:active===t.id?700:500,color:active===t.id?C.p:C.tl}},t.l))}))}
+
+// ═══ DATE HELPERS ═══
+function today(){return new Date().toISOString().slice(0,10)}
+function now(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
+function fmtTime(t){if(!t)return'';var p=t.split(':'),h=parseInt(p[0]),m=p[1],ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap}
+function fmtDate(d){if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+
+// ═══ ALL DATA (abbreviated for space — same as before plus new) ═══
+
+var MILESTONES={
+0:{l:"Newborn",r:"0–1 Mo",e:"👶",motor:["Reflexive arm/leg movements","Brief head lift on tummy","Grasp reflex","Moro reflex (startle)"],cog:["Prefers faces","Recognizes parent voice","Follows objects briefly"],soc:["Calms when held","Looks at face during feeding"],lang:["Cries to communicate","Small throaty sounds"],tips:"Skin-to-skin contact is crucial. Talk and sing often.",red:["Not responding to loud sounds","Not looking at faces or bright objects","Body seems very stiff or very floppy"]},
+1:{l:"1 Month",r:"1–2 Mo",e:"🌙",motor:["Lifts head briefly on tummy","Smoother arm movements","Opens/closes hands"],cog:["Focuses 8-12 inches","Follows moving objects","Prefers high contrast"],soc:["First social smile","Calms when rocked"],lang:["Cooing begins","Vowel sounds (ah, oh)"],tips:"Daily tummy time 3-5 min. Always supervise.",red:["No smile by 2 months","Doesn't bring hands to mouth","Can't hold head up when pushing up on tummy"]},
+2:{l:"2 Months",r:"2–3 Mo",e:"😊",motor:["Steadier head on tummy","Pushes up on arms","Smoother movements"],cog:["Follows wider arc","Recognizes people at distance"],soc:["True social smile!","Self-calms (sucking hand)"],lang:["Coos and gurgles","Turns toward sounds"],tips:"First vaccinations now. Social smiles are wonderful!",red:["Doesn't respond to loud sounds","Doesn't watch things as they move","Doesn't smile at people"]},
+4:{l:"4 Months",r:"4–5 Mo",e:"🎯",motor:["Head steady without support","May roll tummy to back","Reaches for toys"],cog:["Follows smoothly","Explores by mouthing"],soc:["Smiles spontaneously","Copies expressions"],lang:["Babbles with expression","Copies sounds"],tips:"Exclusive breastfeeding/formula until 6 months recommended.",red:["Doesn't watch things as they move","Doesn't bring things to mouth","Can't hold head steady","Doesn't coo or make sounds"]},
+6:{l:"6 Months",r:"6–7 Mo",e:"🥄",motor:["Rolls both ways","Begins sitting alone","Passes hand to hand"],cog:["Curious explorer","Cause and effect"],soc:["Knows strangers vs familiar","Enjoys mirror"],lang:["Responds to name","Babbles: ba-ba, da-da"],tips:"Start solid foods! One new food every 3-5 days.",red:["Doesn't reach for things","Shows no affection for caregivers","Doesn't respond to sounds","Doesn't make vowel sounds","Doesn't roll"]},
+9:{l:"9 Months",r:"9–10 Mo",e:"👋",motor:["Stands holding furniture","Pulls to stand","Crawls","Pincer grasp"],cog:["Object permanence!","Plays peek-a-boo"],soc:["Separation anxiety","Has favorite toys"],lang:["Understands 'no'","Points at things"],tips:"Baby-proof everything! Developmental screening recommended.",red:["Doesn't bear weight on legs with support","Doesn't sit with help","Doesn't babble (mama, baba)","Doesn't play games like peek-a-boo","Doesn't respond to own name"]},
+12:{l:"12 Months",r:"12–13 Mo",e:"🎂",motor:["Cruises furniture","May take steps","Pokes with finger"],cog:["Uses cup, brush","Finds hidden objects"],soc:["Plays pat-a-cake","Cries when parent leaves"],lang:["1-3 words","Waves, shakes head 'no'"],tips:"Switch to whole milk. Happy 1st birthday!",red:["Doesn't point to things","Doesn't learn gestures (waving)","Doesn't stand when supported","Doesn't search for hidden objects","Loses skills they once had"]},
+15:{l:"15 Months",r:"15–16 Mo",e:"🚶",motor:["Walks alone","Stacks 2 blocks","Scribbles"],cog:["Follows 1-step commands","Explores near parent"],soc:["Shows affection","Points to show you things"],lang:["3-5+ words","Says 'no'"],tips:"Let them self-feed — messy but important!",red:["Doesn't point to show you things","Doesn't walk","Doesn't have at least 3 words","Doesn't notice when caregiver leaves/returns"]},
+18:{l:"18 Months",r:"18–19 Mo",e:"🗣️",motor:["Walks well","Eats with spoon","Stacks 3-4 blocks"],cog:["Knows what things are for","Scribbles alone"],soc:["Simple pretend play","Checks for parent"],lang:["10-25 words","Understands more than says"],tips:"AAP autism screening at 18 months. Read daily!",red:["Doesn't point to show others","Doesn't walk steadily","Doesn't know what familiar things are for","Doesn't copy others","Doesn't gain new words","Doesn't have at least 6 words"]},
+24:{l:"24 Months",r:"23–24 Mo",e:"🎉",motor:["Runs well","Kicks ball","Walks stairs","Stacks 6+ blocks"],cog:["Sorts shapes/colors","Follow 2-step instructions","Make-believe play"],soc:["Parallel play","Increasing independence"],lang:["50+ words","2-4 word sentences","Names body parts"],tips:"2nd birthday! Autism screening again.",red:["Doesn't use 2-word phrases","Doesn't know what to do with common things","Doesn't copy actions/words","Doesn't walk steadily","Loses skills previously had"]}
+};
+
+var VACCINES=[
+{age:"Birth",v:[{n:"Hepatitis B",d:"1st dose"}]},
+{age:"1 Month",v:[{n:"Hepatitis B",d:"2nd dose"}]},
+{age:"2 Months",v:[{n:"DTaP",d:"1st dose"},{n:"IPV (Polio)",d:"1st dose"},{n:"Hib",d:"1st dose"},{n:"PCV15",d:"1st dose"},{n:"Rotavirus",d:"1st dose"}]},
+{age:"4 Months",v:[{n:"DTaP",d:"2nd dose"},{n:"IPV",d:"2nd dose"},{n:"Hib",d:"2nd dose"},{n:"PCV15",d:"2nd dose"},{n:"Rotavirus",d:"2nd dose"}]},
+{age:"6 Months",v:[{n:"DTaP",d:"3rd dose"},{n:"IPV",d:"3rd dose"},{n:"Hib",d:"3rd dose"},{n:"PCV15",d:"3rd dose"},{n:"Hep B",d:"3rd dose"},{n:"Flu",d:"Annual (6+ mo)"}]},
+{age:"9 Months",v:[{n:"Hep B",d:"3rd (if not given)"},{n:"Flu",d:"2nd dose (1st season)"}]},
+{age:"12 Months",v:[{n:"MMR",d:"1st dose"},{n:"Varicella",d:"1st dose"},{n:"Hep A",d:"1st dose"},{n:"PCV15",d:"Booster"},{n:"Hib",d:"Booster"}]},
+{age:"15 Months",v:[{n:"DTaP",d:"4th dose"}]},
+{age:"18 Months",v:[{n:"Hep A",d:"2nd dose"}]}
+];
+
+var SLEEP=[
+{age:"0–3 Mo",total:"14–17 hrs",pat:"Short bursts 2-4 hrs",naps:"Multiple",tips:["Back to sleep ALWAYS (ABC rule)","Firm flat mattress only","Room-share 6+ months","No blankets/pillows/toys","Temp 68-72°F","Swaddling OK until rolling","White noise helps"]},
+{age:"4–6 Mo",total:"12–16 hrs",pat:"Longer night stretches 4-6 hrs",naps:"3/day",tips:["Start bedtime routine","Put down drowsy but awake","Stop swaddle when rolling","Dark room + white noise"]},
+{age:"6–9 Mo",total:"12–15 hrs",pat:"May sleep 6-8 hr stretches",naps:"2-3/day",tips:["Consistent routine","Sleep regression at 8-9 mo","No screens 1 hr before bed"]},
+{age:"9–12 Mo",total:"12–15 hrs",pat:"10-12 hrs night",naps:"2/day",tips:["Most sleep through night","Predictable schedule","Lovey OK after 12 mo"]},
+{age:"12–18 Mo",total:"11–14 hrs",pat:"11-12 hrs night",naps:"Transition to 1",tips:["1-nap transition 14-18 mo","Keep bedtime consistent"]},
+{age:"18–24 Mo",total:"11–14 hrs",pat:"11-12 hrs night",naps:"1 nap 1-3 hrs",tips:["Toddler bed only if climbing out","Night terrors may start","Routine: bath→teeth→books→bed"]}
+];
+
+var FEEDING=[
+{age:"0–4 Mo",t:"Exclusive Milk",e:"🍼",foods:["Breast milk or formula ONLY"],amt:"8-12x/day breast or 2-4 oz/3-4 hrs formula",tips:["Vitamin D 400 IU/day (breastfed)","No honey until 12 mo","No cow's milk until 12 mo"]},
+{age:"4–6 Mo",t:"Ready for Solids?",e:"👀",foods:["Continue milk as primary","Watch readiness signs"],amt:"Milk still primary",tips:["AAP: solids around 6 mo","Never cereal in bottle"]},
+{age:"6–8 Mo",t:"Starting Solids!",e:"🥄",foods:["Iron-fortified cereal","Pureed veggies and fruits","Pureed meats/beans","Allergens: peanut butter, egg, dairy"],amt:"1-4 tbsp/meal, 2-3x/day + milk",tips:["One new food every 3-5 days","Early allergens reduce allergy risk","No honey, whole nuts, grapes"]},
+{age:"8–10 Mo",t:"Finger Foods",e:"🫐",foods:["Mashed foods with lumps","Soft finger foods","Scrambled eggs","Yogurt"],amt:"3 meals + 1-2 snacks + milk",tips:["Practice cup drinking","Pea-sized pieces","Always supervise"]},
+{age:"10–12 Mo",t:"Table Foods",e:"🍝",foods:["Most family foods (small, soft)","All food groups"],amt:"3 meals + 2 snacks + milk",tips:["No added salt or sugar","Eat together as family"]},
+{age:"12–24 Mo",t:"Toddler Nutrition",e:"🥗",foods:["Whole milk at 12 mo","All food groups daily","Healthy fats"],amt:"3 meals + 2 snacks, 16-24 oz milk",tips:["Picky eating is NORMAL","Juice max 4 oz/day","Wean bottle by 15 mo"]}
+];
+
+var SAFETY=[
+{t:"Safe Sleep (ABCs)",icon:"shield",c:C.p,items:["Alone, Back, Crib","No bumpers/blankets/toys","Room-share 6+ months","Pacifier reduces SIDS","Temp 68-72°F"]},
+{t:"Baby-Proofing",icon:"home",c:C.s,items:["Cover outlets","Anchor furniture","Gates at stairs","Lock cabinets","Small objects off floor","Blind cords up high"]},
+{t:"Car Safety",icon:"shield",c:C.a,items:["Rear-facing until age 2+","Back seat always","Never alone in car","Snug harness","Register for recalls"]},
+{t:"Choking Prevention",icon:"alert-triangle",c:C.w,items:["Quarter grapes/tomatoes","No whole nuts/popcorn","No raw carrots/hot dogs","Pea-sized pieces","Supervise all meals","Learn infant CPR!"]},
+{t:"Water Safety",icon:"droplets",c:C.bl,items:["Never unattended near water","1 inch can drown","Empty buckets","Fence pools","Designate water watcher"]},
+{t:"Sun & Heat",icon:"sun",c:C.w,items:["Under 6 mo: shade only","6+ mo: SPF 30+","Long sleeves, hat","Avoid 10AM-4PM","Never in parked car"]}
+];
+
+var VISITS=[
+{a:"3-5 Days",f:"Weight, jaundice, feeding"},
+{a:"1 Month",f:"Growth, feeding, development"},
+{a:"2 Months",f:"Vaccinations, tummy time"},
+{a:"4 Months",f:"Vaccinations, solids readiness"},
+{a:"6 Months",f:"Vaccinations, starting solids"},
+{a:"9 Months",f:"Developmental screening"},
+{a:"12 Months",f:"Vaccinations, whole milk, lead"},
+{a:"15 Months",f:"Vaccinations, language"},
+{a:"18 Months",f:"Autism screening (M-CHAT)"},
+{a:"24 Months",f:"Autism screening, dental"}
+];
+
+var TEETH_ORDER=[
+{name:"Lower Central Incisors",age:"6-10 mo",pos:"bottom-center"},
+{name:"Upper Central Incisors",age:"8-12 mo",pos:"top-center"},
+{name:"Upper Lateral Incisors",age:"9-13 mo",pos:"top-side"},
+{name:"Lower Lateral Incisors",age:"10-16 mo",pos:"bottom-side"},
+{name:"First Molars (upper)",age:"13-19 mo",pos:"top-molar"},
+{name:"First Molars (lower)",age:"14-18 mo",pos:"bottom-molar"},
+{name:"Canines (upper)",age:"16-22 mo",pos:"top-canine"},
+{name:"Canines (lower)",age:"17-23 mo",pos:"bottom-canine"},
+{name:"Second Molars (lower)",age:"23-31 mo",pos:"bottom-back"},
+{name:"Second Molars (upper)",age:"25-33 mo",pos:"top-back"}
+];
+
+var SCREEN_TIME=[
+{age:"0–18 Months",rule:"No screens",detail:"Except video chatting with family. Babies learn from live interaction, not screens."},
+{age:"18–24 Months",rule:"Limited, with parent",detail:"Only high-quality programming (like Sesame Street). Watch TOGETHER and talk about what you see."},
+{age:"2+ Years",rule:"Max 1 hour/day",detail:"High-quality programs only. No screens during meals or 1 hour before bed. No screens in bedroom."}
+];
+
+var ACTIVITIES={
+0:["Black and white contrast cards","Gentle music and singing","Tummy time on your chest","Talk narrate everything you do"],
+1:["Colorful mobile above crib","Gentle rattles","Sing nursery rhymes","Tummy time 5 min"],
+2:["Reach for dangling toys","Read simple board books","Make funny faces","Play mat with toys"],
+4:["Peek-a-boo","Textured toys to explore","Play airplane","Read books with big pictures","Sing with hand motions"],
+6:["Stacking cups","Cause-effect toys (push button)","Read lift-the-flap books","Clapping games","Bang pots and spoons","Play in front of mirror"],
+9:["Ball rolling back and forth","Shape sorters","Finger foods practice","Pat-a-cake, Itsy Bitsy Spider","Simple puzzles","Hide and seek with toy"],
+12:["Push/pull toys","Crayons and paper","Stacking blocks","Simple pretend play (phone)","Dancing to music","Water play (supervised)"],
+18:["Play-dough","Simple puzzles 3-4 pieces","Pretend cooking/cleaning","Playground climbing","Read and name objects","Drawing and scribbling"],
+24:["Dress-up and pretend play","Simple board games","Tricycle or ride-on toys","Painting","Play dates with peers","Imaginative storytelling"]
+};
+
+var PPD_QUESTIONS=[
+"I have been able to laugh and see the funny side of things",
+"I have looked forward with enjoyment to things",
+"I have blamed myself unnecessarily when things went wrong",
+"I have been anxious or worried for no good reason",
+"I have felt scared or panicky for no very good reason",
+"Things have been getting on top of me",
+"I have been so unhappy that I have had difficulty sleeping",
+"I have felt sad or miserable",
+"I have been so unhappy that I have been crying",
+"The thought of harming myself has occurred to me"
+];
+
+var FEVER_GUIDE=[
+{age:"0–3 months",temp:"100.4°F+ (38°C+)",action:"CALL DOCTOR IMMEDIATELY or go to ER",urgent:true,detail:"Any fever in a newborn is a medical emergency. Do not give medication without doctor's instruction."},
+{age:"3–6 months",temp:"101°F+ (38.3°C+)",action:"Call doctor",urgent:true,detail:"Call if fever lasts more than 1 day or baby seems very uncomfortable."},
+{age:"6–24 months",temp:"102°F+ (38.9°C+)",action:"Call doctor if lasts 1+ day",urgent:false,detail:"Give infant acetaminophen (Tylenol) or ibuprofen (Advil, 6+ mo). Push fluids. Call if fever persists 24+ hrs."},
+{age:"Any age",temp:"104°F+ (40°C+)",action:"SEEK IMMEDIATE CARE",urgent:true,detail:"Very high fever needs medical evaluation regardless of age."},
+{age:"Any age",temp:"Febrile seizure",action:"CALL 911",urgent:true,detail:"Lay child on side, don't put anything in mouth, time the seizure. Call 911 if it lasts more than 5 minutes."}
+];
+
+var CPR_STEPS=[
+{step:1,title:"Check Responsiveness",detail:"Tap the baby's foot and shout. If no response, call 911 (or have someone call). Put phone on speaker."},
+{step:2,title:"Open Airway",detail:"Place baby on firm flat surface. Tilt head back slightly with one hand on forehead, lift chin with other hand."},
+{step:3,title:"Check Breathing",detail:"Look, listen, and feel for breathing for no more than 10 seconds. If not breathing normally, begin CPR."},
+{step:4,title:"Give 30 Compressions",detail:"Place 2 fingers on breastbone just below nipple line. Push down 1.5 inches (4 cm), fast — 100-120/min. Let chest fully recoil."},
+{step:5,title:"Give 2 Rescue Breaths",detail:"Cover baby's mouth AND nose with your mouth. Give 2 gentle puffs (1 second each). Watch for chest rise."},
+{step:6,title:"Continue 30:2 Cycle",detail:"Repeat 30 compressions + 2 breaths. Continue until baby responds, EMS arrives, or you're too exhausted."}
+];
+
+var CHOKING_STEPS=[
+{step:1,title:"Assess the Situation",detail:"If baby can cough or cry, let them try to clear it. If baby cannot breathe, cry, or cough — act NOW."},
+{step:2,title:"5 Back Blows",detail:"Hold baby face-down on your forearm, head lower than body. Support head with your hand. Give 5 firm back blows between shoulder blades with heel of your hand."},
+{step:3,title:"5 Chest Thrusts",detail:"Turn baby face-up on your forearm. Place 2 fingers on breastbone just below nipple line. Give 5 quick chest thrusts (push down 1.5 inches)."},
+{step:4,title:"Check Mouth",detail:"Look in baby's mouth. If you SEE the object, sweep it out with a finger. Do NOT do blind finger sweeps."},
+{step:5,title:"Repeat Until Clear",detail:"Alternate 5 back blows and 5 chest thrusts until object comes out, baby can breathe, or baby becomes unconscious."},
+{step:6,title:"If Unconscious",detail:"Call 911 if not done already. Begin infant CPR (30 compressions, 2 breaths). Check mouth before each set of breaths."}
+];
+
+var GROWTH={
+w:[{m:0,p5:5.5,p50:7.5,p95:9.5},{m:3,p5:9.5,p50:12.5,p95:16},{m:6,p5:13,p50:16.5,p95:21},{m:9,p5:15.5,p50:19.5,p95:24.5},{m:12,p5:17,p50:21,p95:27},{m:18,p5:19,p50:24,p95:30.5},{m:24,p5:21.5,p50:27,p95:34}],
+h:[{m:0,p5:18,p50:19.5,p95:21},{m:3,p5:22,p50:24,p95:25.5},{m:6,p5:24.5,p50:26.5,p95:28},{m:9,p5:26.5,p50:28.5,p95:30},{m:12,p5:28,p50:30,p95:32},{m:18,p5:30,p50:32.5,p95:34.5},{m:24,p5:32,p50:34.5,p95:37}]
+};
+
+// ═══ TIMER VIEW ═══
+function TimerView({logs,setLogs,age,timerState,setTimerState}){
+  var _el=us(0),elapsed=_el[0],setElapsed=_el[1];
+  var _ty=us(timerState.type||"Breast L"),timerType=_ty[0],setTimerType=_ty[1];
+  var intRef=ur(null);
+  var running=timerState.running;
+  var startTime=timerState.startTime;
+
+  ue(function(){
+    if(running&&startTime){
+      var diff=Math.floor((Date.now()-startTime)/1000);
+      if(diff>14400){resetTimer();toast("Timer auto-reset (exceeded 4 hrs)");return}
+      setElapsed(diff);
+      intRef.current=setInterval(function(){
+        setElapsed(Math.floor((Date.now()-startTime)/1000))
+      },1000);
+    }
+    return function(){if(intRef.current)clearInterval(intRef.current)}
+  },[running,startTime]);
+
+  function startTimer(){
+    var st=Date.now();
+    setTimerState({running:true,type:timerType,startTime:st});
+    setElapsed(0);
+  }
+  function stopTimer(){
+    if(intRef.current)clearInterval(intRef.current);
+    setTimerState({running:false,type:timerType,startTime:startTime});
+  }
+  function resetTimer(){
+    if(intRef.current)clearInterval(intRef.current);
+    setElapsed(0);
+    setTimerState({running:false,type:null,startTime:null});
+  }
+  function saveToLog(){
+    var mins=Math.floor(elapsed/60),secs=elapsed%60;
+    var dur=mins+"m "+secs+"s";
+    var totalMins=Math.round(elapsed/6)/10;
+    var isSleep=["Nap","Night Sleep","Tummy Time"].indexOf(timerType)>=0;
+    var entry={date:today(),time:now(),id:Date.now(),type:timerType,amount:dur,mins:totalMins,notes:"Timed"};
+    var logKey=isSleep?"sleep":"feed";
+    var next=Object.assign({},logs);
+    next[logKey]=[entry].concat(next[logKey]||[]);
+    setLogs(next);
+    resetTimer();
+    toast("Saved "+dur+"!");
+  }
+
+  var mm=Math.floor(elapsed/60).toString().padStart(2,'0');
+  var ss=(elapsed%60).toString().padStart(2,'0');
+  var ttToday=0;
+  (logs.sleep||[]).filter(function(e){return e.date===today()&&e.type==="Tummy Time"}).forEach(function(e){
+    if(!e.amount)return;var a=e.amount,m=0;var mm=/(\d+)\s*m/.exec(a);var sm=/(\d+)\s*s/.exec(a);if(mm)m+=parseInt(mm[1]);if(sm)m+=parseInt(sm[1])/60;if(m===0)m=parseInt(a)||0;ttToday+=m
+  });
+  var ttGoal=age<3?15:age<6?30:45;
+  var types=["Breast L","Breast R","Bottle","Nap","Night Sleep","Tummy Time"];
+
+  return h("div",null,
+    h("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}},
+      types.map(function(t){return h(Pill,{key:t,label:t,active:timerType===t,onClick:function(){if(!running)setTimerType(t)},color:C.s})})),
+    h("div",{style:{textAlign:"center",marginBottom:20}},
+      h("div",{style:{width:180,height:180,borderRadius:90,border:"6px solid "+(running?C.p:C.b),display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",background:C.cd}},
+        h("div",null,
+          h("div",{style:{fontSize:48,fontWeight:800,color:C.t,fontVariantNumeric:"tabular-nums"}},mm+":"+ss),
+          h("div",{style:{fontSize:13,color:C.tl}},timerType||"Select type")))),
+    h("div",{style:{display:"flex",gap:8,justifyContent:"center",marginBottom:20}},
+      !running?h(Btn,{label:"Start",onClick:startTimer,color:C.ok}):h(Btn,{label:"Stop",onClick:stopTimer,color:C.p}),
+      elapsed>0&&!running?h(Btn,{label:"Save to Log",onClick:saveToLog,color:C.s}):null,
+      elapsed>0?h(Btn,{label:"Reset",onClick:resetTimer,color:C.tl,outline:true}):null),
+    h(Cd,{style:{marginBottom:12}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},"Tummy Time Today"),
+        h("div",{style:{fontSize:13,color:C.tl}},ttToday+" / "+ttGoal+" min")),
+      h("div",{style:{background:C.b,borderRadius:6,height:8,overflow:"hidden"}},
+        h("div",{style:{background:C.a,height:"100%",borderRadius:6,width:Math.min(ttToday/ttGoal*100,100)+"%",transition:"width 0.3s"}})))
+  );
+}
+
+var SOLIDS_GUIDE={
+  veg:{label:"Vegetarian",foods:{
+    6:[{f:"Iron-fortified rice cereal",n:"Start with 1-2 tbsp"},{f:"Pureed sweet potato, carrot, peas",n:"One new food every 3-5 days"},{f:"Pureed banana, avocado, apple",n:"Mash soft"},{f:"Pureed lentils, dal",n:"Great iron source"},{f:"Yogurt (full fat)",n:"Excellent protein"},{f:"Mashed tofu",n:"Soft, iron-rich"}],
+    8:[{f:"Mashed paneer / cottage cheese",n:"Protein + calcium"},{f:"Soft cooked pasta, rice",n:"Finger food size"},{f:"Scrambled eggs",n:"Whole egg OK now"},{f:"Hummus with soft pita",n:"Iron + protein"},{f:"Oatmeal with fruit",n:"Iron-fortified"},{f:"Soft cheese cubes",n:"Calcium"}],
+    10:[{f:"Mixed veggie curry (mild)",n:"Family meals adapted"},{f:"Chapati/roti torn small",n:"Soft bread"},{f:"Khichdi / rice-lentil",n:"Complete protein"},{f:"Idli / dosa pieces",n:"Soft, fermented"},{f:"Nut butters (thin spread)",n:"Allergen intro"},{f:"All fruits diced small",n:"Variety"}],
+    12:[{f:"Family foods (mild spice OK)",n:"All textures"},{f:"Whole milk, yogurt, cheese",n:"16-24 oz milk/day"},{f:"Beans, lentils, eggs daily",n:"Protein at each meal"},{f:"All vegetables cooked soft",n:"Variety of colors"},{f:"Whole grain bread, cereal",n:"Fiber"},{f:"Healthy fats: ghee, olive oil",n:"Brain development"}]
+  }},
+  nonveg:{label:"Non-Vegetarian",foods:{
+    6:[{f:"Iron-fortified cereal + pureed veggies",n:"Same as veg start"},{f:"Pureed chicken or turkey",n:"Excellent iron + zinc"},{f:"Pureed fish (salmon, cod)",n:"DHA for brain"},{f:"Pureed lentils + veggies",n:"Iron-rich"},{f:"Egg yolk (well cooked)",n:"6 mo+ whole egg OK"},{f:"Yogurt",n:"Probiotics"}],
+    8:[{f:"Flaked fish (salmon, tilapia)",n:"Soft, boneless pieces"},{f:"Shredded chicken",n:"Small, soft pieces"},{f:"Scrambled eggs",n:"Easy protein"},{f:"Soft cooked shrimp (diced)",n:"Allergen intro"},{f:"Lamb/mutton pureed or minced",n:"Iron + B12"},{f:"Bone broth with rice",n:"Nutrients + minerals"}],
+    10:[{f:"Fish cakes (soft)",n:"Easy finger food"},{f:"Mini meatballs",n:"Soft, small pieces"},{f:"Chicken soup with rice",n:"Complete meal"},{f:"Fish curry (mild, boneless)",n:"Family meal adapted"},{f:"Egg bhurji / omelette strips",n:"Quick protein"},{f:"Turkey/chicken strips (soft)",n:"Self-feeding"}],
+    12:[{f:"Family meals with protein",n:"All safe meats"},{f:"Fish 2-3x/week (low mercury)",n:"Salmon, sardines, cod"},{f:"Avoid: shark, swordfish, king mackerel",n:"High mercury"},{f:"Chicken, lamb, beef all OK",n:"Well cooked"},{f:"Shellfish if no allergy",n:"Watch for reactions"},{f:"Organ meats occasionally",n:"Very nutrient dense"}]
+  }},
+  vegan:{label:"Vegan",foods:{
+    6:[{f:"Iron-fortified cereal",n:"Essential first food"},{f:"Pureed tofu",n:"Iron + protein"},{f:"Mashed avocado + banana",n:"Healthy fats"},{f:"Pureed lentils, chickpeas",n:"Iron + protein"},{f:"Sweet potato, butternut squash",n:"Beta-carotene"},{f:"Pea puree",n:"Protein-rich veg"}],
+    8:[{f:"Nut butter (thin on toast)",n:"Peanut, almond — allergens"},{f:"Tahini with banana",n:"Calcium + iron"},{f:"Soft cooked quinoa",n:"Complete protein"},{f:"Edamame (mashed)",n:"Protein"},{f:"Fortified oat cereal",n:"Iron + B12"},{f:"Tofu strips (soft)",n:"Self-feeding"}],
+    10:[{f:"Bean patties (soft)",n:"Iron + fiber"},{f:"Tempeh (soft cubes)",n:"Fermented soy, B12"},{f:"Pasta with lentil sauce",n:"Complete meal"},{f:"Seaweed strips",n:"Iodine"},{f:"Nutritional yeast on foods",n:"B12 source"},{f:"Coconut yogurt + fruit",n:"Calcium fortified"}],
+    12:[{f:"Fortified plant milk (soy preferred)",n:"Closest to whole milk nutrients"},{f:"Tofu, tempeh, legumes daily",n:"Protein at every meal"},{f:"B12 supplement REQUIRED",n:"No plant sources"},{f:"Iron-rich foods + vitamin C together",n:"Absorption boost"},{f:"Chia/flax seeds",n:"Omega-3 (ALA)"},{f:"Algae-based DHA supplement",n:"Brain development"}]
+  }},
+  allergens:{title:"Top Allergens — Introduce 6-12 mo",items:["Peanut (thin butter)","Egg (well-cooked)","Cow's milk (in food, not drink)","Tree nuts (butters)","Wheat","Soy","Fish","Shellfish","Sesame"],tip:"Early introduction (6-12 mo) REDUCES allergy risk. Give 2-3x/week once introduced. Watch for: hives, swelling, vomiting, difficulty breathing within 2 hours."}
+};
+
+var MILK_GUIDE=[
+  {age:"0-1 Mo",breast:"8-12 feeds/day, on demand",formula:"2-3 oz per feed, 8-12x/day",total:"16-24 oz/day",notes:"Cluster feeding is normal. Feed on demand, not by clock."},
+  {age:"1-2 Mo",breast:"8-10 feeds/day",formula:"3-4 oz per feed, 7-8x/day",total:"20-28 oz/day",notes:"Baby finding rhythm. One longer sleep stretch at night."},
+  {age:"2-4 Mo",breast:"7-9 feeds/day",formula:"4-5 oz per feed, 6-7x/day",total:"24-32 oz/day",notes:"Max 32 oz formula/day. Breastfed babies self-regulate."},
+  {age:"4-6 Mo",breast:"6-8 feeds/day",formula:"5-6 oz per feed, 5-6x/day",total:"24-32 oz/day",notes:"Milk is still primary nutrition. Solids are practice."},
+  {age:"6-9 Mo",breast:"5-7 feeds/day + solids",formula:"6-8 oz per feed, 4-5x/day",total:"24-32 oz/day",notes:"Solids 2-3x/day but milk first. Water in open cup OK."},
+  {age:"9-12 Mo",breast:"4-6 feeds/day + solids",formula:"6-8 oz per feed, 3-4x/day",total:"24-30 oz/day",notes:"3 meals + 2 snacks + milk. Solids becoming more important."},
+  {age:"12-18 Mo",breast:"3-4 feeds/day",formula:"Transition to whole milk",total:"16-24 oz whole milk/day",notes:"Wean bottle by 15 mo. Use open cup or straw cup."},
+  {age:"18-24 Mo",breast:"2-3 feeds/day (if continuing)",formula:"N/A",total:"16-20 oz whole milk/day",notes:"Milk is supplement to balanced diet. Max 24 oz to not displace food."}
+];
+
+var NAP_GUIDE=[
+  {age:"0-6 Weeks",naps:"4-8 naps",wake:"45-60 min",total:"15-18 hrs total sleep",tips:["Naps are irregular — that's normal","Nap anywhere safe: crib, bassinet, arms","Don't try to force a schedule yet","Watch for sleepy cues: yawning, fussing, eye rubbing"]},
+  {age:"2-3 Months",naps:"4-5 naps",wake:"60-90 min",total:"14-17 hrs total",tips:["Start noticing patterns","Last nap before 5pm ideal","Drowsy but awake practice","Dark room + white noise helps"]},
+  {age:"4-5 Months",naps:"3-4 naps",wake:"1.5-2.5 hrs",total:"12-16 hrs total",tips:["Sleep regression common at 4 mo","Try consistent nap routine (mini bedtime)","Naps in crib when possible","Morning nap usually consolidates first"]},
+  {age:"6-8 Months",naps:"2-3 naps",wake:"2-3 hrs",total:"12-15 hrs total",tips:["Transition to 2 naps around 7-8 mo","Morning nap ~9-10am, afternoon ~1-2pm","Drop the late afternoon catnap","Consistent timing helps"]},
+  {age:"9-12 Months",naps:"2 naps",wake:"2.5-3.5 hrs",total:"12-15 hrs total",tips:["Solid 2-nap schedule","Nap 1: ~9:30am (1-1.5 hrs)","Nap 2: ~1:30pm (1-2 hrs)","Sleep regression at 8-10 mo common"]},
+  {age:"12-15 Months",naps:"1-2 naps",wake:"3-4 hrs",total:"11-14 hrs total",tips:["Most still need 2 naps","Don't rush to 1 nap","Signs ready for 1 nap: fighting second nap consistently","Transition takes 2-4 weeks"]},
+  {age:"15-18 Months",naps:"1 nap",wake:"4-5.5 hrs",total:"11-14 hrs total",tips:["One midday nap (12-2pm)","Nap 1.5-3 hours","Move bedtime earlier during transition","Quiet time if nap is skipped"]},
+  {age:"18-24 Months",naps:"1 nap",wake:"5-6 hrs",total:"11-14 hrs total",tips:["Nap around 12:30-1pm","1.5-2.5 hours ideal","Bedtime 7-8pm","Resist dropping the nap too early"]}
+];
+
+var REMEDIES={
+  gas:{title:"Gas & Colic Relief",icon:"💨",items:[
+    {r:"Bicycle legs",d:"Gently move baby's legs in cycling motion for 1-2 min. Helps move trapped gas."},
+    {r:"Tummy massage",d:"Clockwise circles on belly with warm hands. Use coconut oil. Do between feeds."},
+    {r:"Burp thoroughly",d:"Burp after every 2-3 oz (bottle) or when switching breasts. Try upright, over shoulder, or sitting positions."},
+    {r:"Warm compress",d:"Warm (not hot) washcloth on tummy. Test on your wrist first."},
+    {r:"Tummy time",d:"Pressure on belly during supervised tummy time can help release gas."},
+    {r:"Gas drops (simethicone)",d:"Mylicon/Little Remedies — safe, ask pediatrician for dosing."},
+    {r:"Check bottle flow",d:"Slow-flow nipple prevents swallowing air. Tilt bottle to fill nipple completely."},
+    {r:"Dietary check (breastfeeding)",d:"Common triggers: dairy, caffeine, broccoli, onions, beans. Eliminate one at a time for 2 weeks."}
+  ]},
+  reflux:{title:"Acid Reflux / Spit-Up",icon:"🤢",items:[
+    {r:"Keep upright 20-30 min after feeds",d:"Don't lay flat right after eating. Hold upright or use bouncer at slight incline."},
+    {r:"Smaller, more frequent feeds",d:"Overfull stomach worsens reflux. Feed less, more often."},
+    {r:"Burp frequently during feeds",d:"Every 1-2 oz for bottle, each time baby pauses for breast."},
+    {r:"Slightly elevate crib head",d:"Place a towel under the mattress (not under baby). Only slight angle."},
+    {r:"Avoid tight diapers/clothes",d:"Pressure on tummy worsens reflux."},
+    {r:"Pace bottle feeding",d:"Hold bottle horizontal, let baby control flow. Pause every few sips."},
+    {r:"Check for milk allergy",d:"If excessive spit-up + fussiness, discuss CMPA with doctor. May need hydrolyzed formula."},
+    {r:"When to call doctor",d:"Projectile vomiting, green/bloody vomit, refusing feeds, poor weight gain, arching back in pain."}
+  ]},
+  lowMilk:{title:"Low Milk Supply",icon:"🍼",items:[
+    {r:"Feed/pump more often",d:"Supply = demand. Nurse or pump 8-12x/day. Add a nighttime session."},
+    {r:"Power pumping",d:"Pump 20 min, rest 10, pump 10, rest 10, pump 10. Once daily for 3-5 days."},
+    {r:"Skin-to-skin contact",d:"Increases oxytocin and prolactin. Hold baby against bare chest."},
+    {r:"Check latch",d:"Poor latch = inefficient removal = less production. See a lactation consultant."},
+    {r:"Stay hydrated",d:"Drink to thirst + extra 16 oz. Keep water bottle at nursing station."},
+    {r:"Eat enough calories",d:"Need 400-500 extra cal/day while nursing. Don't diet aggressively."},
+    {r:"Oatmeal & lactation foods",d:"Oats, brewer's yeast, flaxseed, fenugreek may help (evidence varies)."},
+    {r:"How to measure: is baby getting enough?",d:"6+ wet diapers/day, steady weight gain, content between feeds, 3+ dirty diapers/day (first month)."}
+  ]},
+  general:{title:"Everyday Questions",icon:"❓",items:[
+    {r:"Hiccups",d:"Normal! Feed a little, change position, or wait. Will stop on their own. Don't startle baby."},
+    {r:"Cradle cap",d:"Apply coconut/olive oil, wait 15 min, gently brush with soft brush. Shampoo. Repeat daily."},
+    {r:"Baby acne",d:"Normal at 2-4 weeks. Don't pick or scrub. Wash with water. Clears by 3-4 months."},
+    {r:"Blocked tear duct",d:"Gently massage inner corner of eye downward. Warm compress. Usually resolves by 12 months."},
+    {r:"Diaper rash",d:"Barrier cream (Aquaphor/Desitin) every change. Air dry when possible. Oatmeal bath. Call doctor if yeasty (bright red with dots)."},
+    {r:"Congestion",d:"Saline drops + bulb suction. Run humidifier. Elevate mattress slightly. Steam from shower."},
+    {r:"Constipation (solids)",d:"P foods: prunes, pears, peaches, plums. Tummy massage. Bicycle legs. Call doctor if no poop 5+ days."},
+    {r:"Teething pain",d:"Cold washcloth to chew. Refrigerated teething ring. Gum massage. Tylenol if needed (6mo+)."}
+  ]}
+};
+
+var MOM_NUTRITION={
+  general:{title:"Daily Nutrition Goals",items:[
+    "2,300-2,500 calories/day while breastfeeding",
+    "Protein: 65g/day (lean meat, eggs, beans, tofu, dairy)",
+    "Calcium: 1,000mg/day (dairy, fortified foods, leafy greens)",
+    "Iron: 9-10mg/day (red meat, lentils, spinach, fortified cereals)",
+    "DHA/Omega-3: 200-300mg/day (fatty fish 2-3x/week, or supplement)",
+    "Vitamin D: 600 IU/day (supplement recommended)",
+    "Water: 128+ oz/day (drink at every nursing session)",
+    "Continue prenatal vitamin while breastfeeding"
+  ]},
+  eat:{title:"Best Foods to Eat",items:[
+    "Salmon, sardines (omega-3, protein, vitamin D)",
+    "Eggs (protein, choline, B12)",
+    "Oats, oatmeal (may boost milk supply, iron, fiber)",
+    "Leafy greens: spinach, kale (iron, calcium, folate)",
+    "Lean meats: chicken, turkey, lean beef (iron, B12, zinc)",
+    "Legumes: lentils, chickpeas, beans (iron, protein, fiber)",
+    "Nuts & seeds: almonds, flax, chia (healthy fats, calcium)",
+    "Sweet potatoes (vitamin A, energy)",
+    "Berries (antioxidants, vitamin C)",
+    "Whole grains (sustained energy, fiber)"
+  ]},
+  avoid:{title:"Foods to Limit or Avoid",items:[
+    "High-mercury fish: shark, swordfish, king mackerel, tilefish",
+    "Caffeine: max 200-300mg/day (2-3 cups coffee)",
+    "Alcohol: avoid or wait 2+ hours per drink before nursing",
+    "Excessive dairy (if baby shows sensitivity: eczema, fussiness, bloody stool)",
+    "Spicy foods may change milk taste (baby may fuss, usually harmless)",
+    "Peppermint & sage in large amounts (may reduce supply)",
+    "Processed/junk food (empty calories, less nutrition)"
+  ]},
+  byMonth:[
+    {period:"Weeks 1-6 (Recovery)",focus:"Healing & establishing supply",tips:["Eat warm, nourishing foods (soups, stews)","Don't restrict calories — you need 500 extra/day","Iron-rich foods (you lost blood during delivery)","Hydrate: drink water every time you nurse","Collagen-rich bone broth for recovery"]},
+    {period:"Months 2-3",focus:"Supply stabilization",tips:["Include galactagogues: oats, brewer's yeast, fenugreek","Healthy snacks ready: trail mix, hard-boiled eggs, fruit","Omega-3 focus: salmon, walnuts, flax seeds","Don't skip meals — set reminders if needed"]},
+    {period:"Months 4-6",focus:"Pre-solids preparation",tips:["Diverse diet = diverse breastmilk flavors","Baby tastes what you eat via milk","Introduce variety of spices in your food","Stay hydrated as baby feeds more","Iron stores may deplete — check with doctor"]},
+    {period:"Months 6-12",focus:"Balanced with baby's solids",tips:["Continue eating well even as baby eats more","Calcium important: dairy or fortified alternatives","If pumping at work: pack protein-rich lunch","May gradually reduce to maintenance calories","Vitamin D supplement year-round"]},
+    {period:"Months 12-24 (if continuing)",focus:"Sustained nutrition",tips:["Can slowly reduce extra calories if weaning","Keep taking multivitamin","Calcium and vitamin D remain important","Replenish iron stores","Self-care: eat for YOUR health now too"]}
+  ]
+};
+
+// ═══ LOG TAB ═══
+function LogTab({logs,setLogs,age,subNavRef,timerState,setTimerState}){
+  var _st=us(subNavRef&&subNavRef.current||"feed"),sub=_st[0],setSub=_st[1];
+  ue(function(){if(subNavRef&&subNavRef.current){setSub(subNavRef.current);subNavRef.current=null}},[]);
+  var _show=us(false),showAdd=_show[0],setShowAdd=_show[1];
+  var _form=us({}),form=_form[0],setForm=_form[1];
+  var _editId=us(null),editId=_editId[0],setEditId=_editId[1];
+  var td=today();
+
+  var _period=us("daily"),period=_period[0],setPeriod=_period[1];
+  var subs=[{id:"timer",l:"Timer",e:"⏱️"},{id:"feed",l:"Feed",e:"🍼"},{id:"pump",l:"Pump",e:"🫙"},{id:"diaper",l:"Diaper",e:"💧"},{id:"sleep",l:"Sleep",e:"😴"},{id:"bath",l:"Bath",e:"🛁"},{id:"growth",l:"Growth",e:"📏"},{id:"temp",l:"Temp",e:"🌡️"},{id:"meds",l:"Meds",e:"💊"},{id:"allergy",l:"Allergy",e:"⚠️"},{id:"stats",l:"Stats",e:"📊"}];
+  var items=(logs[sub]||[]).filter(function(x){return x.date===td});
+  var allItems=logs[sub]||[];
+
+  function addEntry(){
+    var entry=Object.assign({date:td,time:now(),id:editId||Date.now()},form);
+    var cur=logs[sub]||[];
+    var next=Object.assign({},logs);
+    if(editId){
+      next[sub]=cur.map(function(x){return x.id===editId?entry:x});
+      setEditId(null);
+    }else{
+      next[sub]=[entry].concat(cur);
+    }
+    setLogs(next);
+    setShowAdd(false);setForm({});
+    toast(editId?"Updated!":"Logged!");
+  }
+  function removeEntry(id){
+    var next=Object.assign({},logs);
+    next[sub]=(logs[sub]||[]).filter(function(x){return x.id!==id});
+    setLogs(next);toast("Removed");
+  }
+
+  var logColors={feed:C.a,pump:C.a,diaper:C.bl,sleep:C.pu,bath:C.bl,growth:C.p,temp:C.w,meds:C.s,allergy:C.p};
+
+  return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
+    h(SH,{icon:"edit",title:"Daily Log",color:C.s,sub:"Track feeding, diapers, sleep & more"}),
+    // sub tabs
+    h("div",{style:{display:"flex",gap:6,overflowX:"auto",paddingBottom:12,marginBottom:12}},
+      subs.map(function(s){return h(Pill,{key:s.id,label:s.e+" "+s.l,active:sub===s.id,onClick:function(){setSub(s.id)},color:C.s})})),
+
+    // ═══ TIMER VIEW ═══
+    sub==="timer"?h(TimerView,{logs:logs,setLogs:setLogs,age:age,timerState:timerState,setTimerState:setTimerState}):null,
+
+    // ═══ STATS VIEW ═══
+    sub==="stats"?h(StatsView,{logs:logs,period:period,setPeriod:setPeriod,logColors:logColors}):null,
+
+    // add button (hidden in stats and timer view)
+    sub!=="stats"&&sub!=="timer"?h(Btn,{label:"+ Add Entry",onClick:function(){setForm({});setShowAdd(true)},color:C.s,full:true}):null,
+    // today's entries (hidden in stats and timer view)
+    sub!=="stats"&&sub!=="timer"?h(F,null,
+      h("div",{style:{marginTop:16,marginBottom:8,fontSize:13,fontWeight:600,color:C.tl}},"Today — "+fmtDate(td)+" ("+items.length+" entries)"),
+      items.length===0?h(Cd,{style:{textAlign:"center",padding:30,color:C.tl}},h("div",{style:{fontSize:32,marginBottom:8}},(subs.find(function(s){return s.id===sub})||{e:"📝"}).e),h("div",null,"No entries yet today")):
+      items.map(function(entry){
+        return h(Cd,{key:entry.id,style:{marginBottom:8,padding:14}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+            h("div",null,
+              h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},fmtTime(entry.time)+(entry.type?" — "+entry.type:"")+(entry.amount?" — "+entry.amount:"")),
+              entry.notes?h("div",{style:{fontSize:12,color:C.tl,marginTop:2}},entry.notes):null,
+              entry.weight?h("div",{style:{fontSize:13,color:C.t}},"Weight: "+entry.weight+" lbs"):null,
+              entry.height?h("div",{style:{fontSize:13,color:C.t}},"Height: "+entry.height+" in"):null,
+              entry.temp?h("div",{style:{fontSize:13,color:parseFloat(entry.temp)>=100.4?C.p:C.t}},"Temp: "+entry.temp+"°F"):null,
+              entry.food?h("div",{style:{fontSize:13,color:C.t}},"Food: "+entry.food):null,
+              entry.reaction?h("div",{style:{fontSize:13,color:C.p}},"Reaction: "+entry.reaction):null,
+              entry.med?h("div",{style:{fontSize:13,color:C.t}},entry.med+(entry.dose?" "+entry.dose:"")):null,
+              entry.color?h("div",{style:{fontSize:13,color:C.t}},"Color: "+entry.color):null,
+              entry.consistency?h("div",{style:{fontSize:13,color:C.t}},"Consistency: "+entry.consistency):null,
+              entry.peeAmount?h("div",{style:{fontSize:13,color:C.t}},"Pee: "+entry.peeAmount):null,
+              entry.duration?h("div",{style:{fontSize:13,color:C.t}},"Duration: "+entry.duration+" min"):null,
+              entry.waterTemp?h("div",{style:{fontSize:13,color:C.t}},"Water: "+entry.waterTemp):null),
+            h("div",{style:{display:"flex",gap:4}},
+              h("button",{onClick:function(){var e=Object.assign({},entry);if(sub==='sleep'&&typeof e.mins==='number'){e.sleepHrs=String(Math.floor(e.mins/60));e.sleepMins=String(Math.round(e.mins%60))}if(sub==='feed'){if(e.mins&&!e.oz)e.feedMins=String(e.mins);if(e.oz)e.feedOz=String(e.oz)}setForm(e);setEditId(e.id);setShowAdd(true)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"edit",s:14,c:C.bl})),
+              h("button",{onClick:function(){removeEntry(entry.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:16,c:C.tl})))))}),
+      allItems.length>items.length?h("div",{style:{textAlign:"center",padding:12,fontSize:12,color:C.tl}},allItems.length+" total entries"):null
+    ):null,
+
+    // ═══ ADD MODAL ═══
+    showAdd?h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget){setShowAdd(false);setEditId(null)}}},
+      h("div",{className:"ms"},
+        h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+          h("h3",{style:{fontSize:18,fontWeight:700,color:C.t}},(editId?"Edit":"Log")+" "+(subs.find(function(s){return s.id===sub})||{l:sub}).l),
+          h("button",{onClick:function(){setShowAdd(false);setEditId(null)},style:{background:"none",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:22,c:C.tl}))),
+        // Time
+        h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Time"),h(Input,{type:"time",value:form.time||now(),onChange:function(v){setForm(Object.assign({},form,{time:v}))}})),
+
+        // Feed specific
+        sub==="feed"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
+            h("div",{style:{display:"flex",gap:8}},["Breast L","Breast R","Bottle","Solids"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
+          form.type==="Breast L"||form.type==="Breast R"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (minutes)"),
+            h(Input,{type:"number",value:form.feedMins||"",onChange:function(v){var m=parseInt(v)||0;setForm(Object.assign({},form,{feedMins:v,amount:m+" min",mins:m}))},placeholder:"e.g. 15"})):
+          form.type==="Bottle"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount (oz)"),
+            h(Input,{type:"number",value:form.feedOz||"",onChange:function(v){var o=parseFloat(v)||0;setForm(Object.assign({},form,{feedOz:v,amount:v+" oz",oz:o}))},placeholder:"e.g. 4"})):
+          form.type==="Solids"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Food / Description"),
+            h(Input,{value:form.amount||"",onChange:function(v){setForm(Object.assign({},form,{amount:v}))},placeholder:"e.g. Sweet potato puree, 2 tbsp"})):
+          null
+        ):null,
+
+        // Pump specific
+        sub==="pump"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Side"),
+            h("div",{style:{display:"flex",gap:8}},["Left","Right","Both"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount (oz)"),h(Input,{type:"number",value:form.amount||"",onChange:function(v){setForm(Object.assign({},form,{amount:v+" oz"}))},placeholder:"e.g. 4"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (min)"),h(Input,{type:"number",value:form.duration||"",onChange:function(v){setForm(Object.assign({},form,{duration:v}))},placeholder:"e.g. 20"}))
+        ):null,
+
+        // Diaper specific
+        sub==="diaper"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
+            h("div",{style:{display:"flex",gap:8}},["Wet","Dirty","Both"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.bl})}))),
+          form.type&&form.type!=="Wet"?h(F,null,
+            h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Color"),
+              h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},["Yellow","Green","Brown","Black","Red/Blood"].map(function(t){return h(Pill,{key:t,label:t,active:form.color===t,onClick:function(){setForm(Object.assign({},form,{color:t}))},color:t==="Red/Blood"?C.p:C.w})}))),
+            h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Consistency"),
+              h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},["Runny","Soft","Formed","Hard","Mucousy"].map(function(t){return h(Pill,{key:t,label:t,active:form.consistency===t,onClick:function(){setForm(Object.assign({},form,{consistency:t}))},color:C.bl})})))
+          ):null,
+          form.type==="Wet"||form.type==="Both"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Pee Amount"),
+            h("div",{style:{display:"flex",gap:8}},["Light","Normal","Heavy"].map(function(t){return h(Pill,{key:t,label:t,active:form.peeAmount===t,onClick:function(){setForm(Object.assign({},form,{peeAmount:t}))},color:C.bl})}))):null
+        ):null,
+
+        // Sleep specific
+        sub==="sleep"?(function(){
+          // Find last sleep entry for auto-calc on Wake Up
+          var lastSleep=null;
+          if(form.type==="Wake Up"){
+            var sleepEntries=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
+            if(sleepEntries.length>0){lastSleep=sleepEntries[0]}// most recent (entries prepended)
+          }
+          var autoMins=null,autoLabel="";
+          if(lastSleep&&lastSleep.time&&(form.time||now())){
+            var wt=form.time||now();var st=lastSleep.time;
+            var wParts=wt.split(":"),sParts=st.split(":");
+            var wMin=parseInt(wParts[0])*60+parseInt(wParts[1]),sMin=parseInt(sParts[0])*60+parseInt(sParts[1]);
+            var diff=wMin-sMin;if(diff<0)diff+=1440;// crossed midnight
+            if(diff>0&&diff<1440){autoMins=diff;var ah=Math.floor(diff/60),am=diff%60;autoLabel=ah+"h "+am+"m"}
+          }
+          return h(F,null,
+            h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
+              h("div",{style:{display:"flex",gap:8}},["Nap","Night Sleep","Wake Up"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){
+                if(t==="Wake Up"){
+                  // Auto-calc from last sleep entry
+                  var sl=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
+                  if(sl.length>0&&sl[0].time){
+                    var wt2=form.time||now();var st2=sl[0].time;
+                    var wP=wt2.split(":"),sP=st2.split(":");
+                    var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
+                    var df=wM-sM;if(df<0)df+=1440;
+                    if(df>0&&df<1440){var hrs2=Math.floor(df/60),mins2=df%60;setForm(Object.assign({},form,{type:t,sleepHrs:String(hrs2),sleepMins:String(mins2),amount:(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m"),mins:df,autoSleep:sl[0].type+" at "+sl[0].time}));return}
+                  }
+                  setForm(Object.assign({},form,{type:t}))
+                }else{setForm(Object.assign({},form,{type:t}))}
+              },color:C.pu})}))),
+            // Show auto-calc info for Wake Up
+            form.type==="Wake Up"&&form.autoSleep?h("div",{style:{marginBottom:12,padding:10,background:C.pul,borderRadius:10,fontSize:12,color:C.pu}},
+              h("div",{style:{fontWeight:600,marginBottom:2}},"Auto-calculated from: "+form.autoSleep),
+              h("div",{style:{fontSize:16,fontWeight:700}},"Slept: "+(form.sleepHrs||"0")+"h "+(form.sleepMins||"0")+"m")):null,
+            // Duration inputs (always shown so user can override or manually enter)
+            h("div",{style:{display:"flex",gap:8,marginBottom:12}},
+              h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},form.type==="Wake Up"?"Slept Hours":"Hours"),
+                h(Input,{type:"number",value:form.sleepHrs||"",onChange:function(v){var hrs=parseInt(v)||0;var m2=parseInt(form.sleepMins)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepHrs:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})),
+              h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},form.type==="Wake Up"?"Slept Mins":"Minutes"),
+                h(Input,{type:"number",value:form.sleepMins||"",onChange:function(v){var hrs=parseInt(form.sleepHrs)||0;var m2=parseInt(v)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepMins:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})))
+          )
+        })():null,
+
+        // Growth specific
+        sub==="growth"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Weight (lbs)"),h(Input,{type:"number",value:form.weight||"",onChange:function(v){setForm(Object.assign({},form,{weight:v}))},placeholder:"e.g. 14.5"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Height (inches)"),h(Input,{type:"number",value:form.height||"",onChange:function(v){setForm(Object.assign({},form,{height:v}))},placeholder:"e.g. 26"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Head Circ. (inches)"),h(Input,{type:"number",value:form.head||"",onChange:function(v){setForm(Object.assign({},form,{head:v}))},placeholder:"e.g. 16"}))
+        ):null,
+
+        // Temp specific
+        sub==="temp"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Temperature (°F)"),h(Input,{type:"number",value:form.temp||"",onChange:function(v){setForm(Object.assign({},form,{temp:v}))},placeholder:"e.g. 99.5"})):null,
+
+        // Meds specific
+        sub==="meds"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Medication"),h(Input,{value:form.med||"",onChange:function(v){setForm(Object.assign({},form,{med:v}))},placeholder:"e.g. Infant Tylenol"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Dose"),h(Input,{value:form.dose||"",onChange:function(v){setForm(Object.assign({},form,{dose:v}))},placeholder:"e.g. 2.5 mL"}))
+        ):null,
+
+        // Allergy specific
+        sub==="allergy"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Food Introduced"),h(Input,{value:form.food||"",onChange:function(v){setForm(Object.assign({},form,{food:v}))},placeholder:"e.g. Peanut butter"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Reaction (if any)"),h(Input,{value:form.reaction||"",onChange:function(v){setForm(Object.assign({},form,{reaction:v}))},placeholder:"e.g. None / Rash on face"}))
+        ):null,
+
+        // Bath specific
+        sub==="bath"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
+            h("div",{style:{display:"flex",gap:8}},["Full Bath","Sponge Bath","Hair Wash"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Water Temp"),
+            h("div",{style:{display:"flex",gap:8}},["Warm","Lukewarm","Cool"].map(function(t){return h(Pill,{key:t,label:t,active:form.waterTemp===t,onClick:function(){setForm(Object.assign({},form,{waterTemp:t}))},color:C.bl})})))
+        ):null,
+
+        // Notes (all)
+        h("div",{style:{marginBottom:16}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Notes"),h(Input,{value:form.notes||"",onChange:function(v){setForm(Object.assign({},form,{notes:v}))},placeholder:"Optional notes"})),
+        h(Btn,{label:editId?"Update Entry":"Save Entry",onClick:addEntry,color:C.s,full:true})
+      )):null
+  );
+}
+
+// ═══ MILESTONES TAB (enhanced) ═══
+function MilestonesTab({age,selMo,setSelMo,checked,setChecked,teeth,setTeeth,firsts,setFirsts,subNavRef}){
+  var initExp=subNavRef&&subNavRef.current?function(){var o={};o[subNavRef.current]=true;return o}():{};
+  var _ex=us(initExp),expanded=_ex[0],setEx=_ex[1];
+  ue(function(){if(subNavRef&&subNavRef.current){var tgt=subNavRef.current;setEx(function(p){var n=Object.assign({},p);n[tgt]=true;return n});subNavRef.current=null;setTimeout(function(){var el=document.getElementById('ml-'+tgt);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},200)}},[]);
+  var _showFirst=us(false),showFirst=_showFirst[0],setShowFirst=_showFirst[1];
+  var _ff=us({}),ff=_ff[0],setFF=_ff[1];
+  var months=Object.keys(MILESTONES).map(Number);var ms=MILESTONES[selMo];
+  var cats=[{k:"motor",l:"Motor Skills",icon:"activity",c:C.p},{k:"cog",l:"Cognitive",icon:"brain",c:C.s},{k:"soc",l:"Social & Emotional",icon:"heart",c:C.a},{k:"lang",l:"Language",icon:"smile",c:C.w}];
+  function toggle(cat,i){setChecked(function(prev){var n=Object.assign({},prev);var md=Object.assign({},n[selMo]||{});md[cat+"_"+i]=!md[cat+"_"+i];n[selMo]=md;return n})}
+  function toggleTooth(i){setTeeth(function(prev){var n=Object.assign({},prev);n[i]=n[i]?null:today();return n})}
+  function addFirst(){var e=Object.assign({id:Date.now(),date:today()},ff);setFirsts(function(p){return[e].concat(p)});setShowFirst(false);setFF({});toast("Memory saved!")}
+
+  var totalAll=0,doneAll=0;months.forEach(function(m){var msd=MILESTONES[m];var items=[].concat(msd.motor||[],msd.cog||[],msd.soc||[],msd.lang||[]);totalAll+=items.length;if(checked[m])doneAll+=Object.values(checked[m]).filter(Boolean).length});
+  var teethDone=Object.values(teeth).filter(Boolean).length;
+  var firstsDone=firsts.length;
+
+  function tg(id){setEx(function(p){var n=Object.assign({},p);n[id]=!n[id];return n})}
+  function Sec(id,emoji,title,desc,color){return h("div",{id:'ml-'+id,style:{marginBottom:expanded[id]?4:0}},h("div",{onClick:function(){tg(id)},style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:C.cd,borderRadius:expanded[id]?"16px 16px 0 0":16,border:"1px solid "+C.b,marginBottom:expanded[id]?0:8}},h("span",{style:{fontSize:24,flexShrink:0}},emoji),h("div",{style:{flex:1,minWidth:0}},h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},title),desc?h("div",{style:{fontSize:11,color:C.tl,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},desc):null),h(Ic,{n:"chevron-right",s:16,c:C.tl,st:{transform:expanded[id]?"rotate(90deg)":"none",transition:"transform 0.2s",flexShrink:0}})))}
+  function SecBody(children){return h("div",{style:{background:C.cd,borderRadius:"0 0 16px 16px",border:"1px solid "+C.b,borderTop:"none",padding:"12px 16px 16px",marginBottom:10}},children)}
+
+  return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
+    h(SH,{icon:"star",title:"Milestones",color:C.p,sub:"Tap any section to explore"}),
+
+    // ═══ DEVELOPMENT ═══
+    Sec("dev","⭐","Development",doneAll+"/"+totalAll+" milestones checked",C.p),
+    expanded.dev?SecBody(h(F,null,
+      h("div",{style:{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:12}},
+        months.map(function(m){return h(Pill,{key:m,label:MILESTONES[m].e+" "+MILESTONES[m].l,active:m===selMo,onClick:function(){setSelMo(m)},color:C.p})})),
+      ms?h(F,null,
+        h(Cd,{style:{marginBottom:12,textAlign:"center",padding:16}},h("div",{style:{fontSize:36}},ms.e),h("h3",{style:{fontSize:20,fontWeight:700,color:C.t,margin:"4px 0"}},ms.l),h("p",{style:{fontSize:13,color:C.tl,margin:0}},ms.r)),
+        cats.map(function(cat){var items=ms[cat.k]||[];if(!items.length)return null;var dn=items.filter(function(_,i){return checked[selMo]&&checked[selMo][cat.k+"_"+i]}).length;
+          return h(Cd,{key:cat.k,style:{marginBottom:10}},
+            h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},h("div",{style:{width:32,height:32,borderRadius:8,background:cat.c+"15",display:"flex",alignItems:"center",justifyContent:"center"}},h(Ic,{n:cat.icon,s:16,c:cat.c})),h("div",{style:{flex:1,fontSize:14,fontWeight:600,color:C.t}},cat.l),h("div",{style:{fontSize:12,color:C.tl}},dn+"/"+items.length)),
+            items.map(function(item,i){var isC=checked[selMo]&&checked[selMo][cat.k+"_"+i];return h("div",{key:i,onClick:function(){toggle(cat.k,i)},style:{display:"flex",gap:8,alignItems:"flex-start",padding:"8px 0",borderTop:i?"1px solid "+C.b:"none",cursor:"pointer"}},h(CB,{ck:isC,color:cat.c}),h("span",{style:{fontSize:13,color:isC?C.tl:C.t,textDecoration:isC?"line-through":"none",lineHeight:1.4}},item))}))}),
+        h(Cd,{style:{borderLeft:"4px solid "+C.a,marginBottom:10}},h("div",{style:{fontSize:12,fontWeight:600,color:C.a,marginBottom:4}},"Tip"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},ms.tips))
+      ):null
+    )):null,
+
+    // ═══ TEETH ═══
+    Sec("teeth","🦷","Teeth Tracker",teethDone+"/20 erupted",C.p),
+    expanded.teeth?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,textAlign:"center"}},h("div",{style:{fontSize:24,fontWeight:800,color:C.p}},teethDone+" / 20"),h("div",{style:{fontSize:12,color:C.tl}},"teeth erupted — tap to toggle")),
+      TEETH_ORDER.map(function(tooth,i){var date=teeth[i];return h(Cd,{key:i,onClick:function(){toggleTooth(i)},style:{marginBottom:8,padding:14,cursor:"pointer",borderLeft:date?"4px solid "+C.ok:"4px solid "+C.b}},
+        h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},tooth.name),h("div",{style:{fontSize:12,color:C.tl}},"Expected: "+tooth.age)),
+          date?h("div",{style:{fontSize:12,fontWeight:600,color:C.ok}},fmtDate(date)+" ✓"):h("div",{style:{fontSize:12,color:C.tl}},"Tap when erupted")))})
+    )):null,
+
+    // ═══ FIRSTS / MEMORY BOOK ═══
+    Sec("firsts","📸","Baby Firsts",firstsDone+" memories recorded",C.s),
+    expanded.firsts?SecBody(h(F,null,
+      h(Btn,{label:"+ Record a First",onClick:function(){setFF({});setShowFirst(true)},color:C.s,full:true}),
+      h("div",{style:{marginTop:12}},
+        ["First Smile","First Laugh","First Roll Over","First Solid Food","First Tooth","First Word","First Steps","First Haircut","First Trip","First Birthday"].map(function(milestone){
+          var existing=firsts.find(function(f){return f.title===milestone});
+          return h(Cd,{key:milestone,style:{marginBottom:8,padding:14,opacity:existing?1:0.6,borderLeft:existing?"4px solid "+C.ok:"none"},onClick:function(){if(!existing){setFF({title:milestone});setShowFirst(true)}}},
+            h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},milestone),existing?h("div",{style:{fontSize:12,color:C.tl}},fmtDate(existing.date)+(existing.notes?" — "+existing.notes:"")):h("div",{style:{fontSize:12,color:C.tl}},"Tap to record")),
+              existing?h("div",{style:{color:C.ok,fontSize:20}},"✓"):null))}),
+        firsts.filter(function(f){return!["First Smile","First Laugh","First Roll Over","First Solid Food","First Tooth","First Word","First Steps","First Haircut","First Trip","First Birthday"].includes(f.title)}).map(function(f){
+          return h(Cd,{key:f.id,style:{marginBottom:8,padding:14,borderLeft:"4px solid "+C.s}},
+            h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},f.title),
+            h("div",{style:{fontSize:12,color:C.tl}},fmtDate(f.date)+(f.notes?" — "+f.notes:"")))})),
+      showFirst?h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)setShowFirst(false)}},
+        h("div",{className:"ms"},
+          h("h3",{style:{fontSize:18,fontWeight:700,color:C.t,marginBottom:16}},"Record a First"),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"What happened?"),h(Input,{value:ff.title||"",onChange:function(v){setFF(Object.assign({},ff,{title:v}))},placeholder:"e.g. First Laugh"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Date"),h(Input,{type:"date",value:ff.date||today(),onChange:function(v){setFF(Object.assign({},ff,{date:v}))}})),
+          h("div",{style:{marginBottom:16}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Notes"),h(Input,{value:ff.notes||"",onChange:function(v){setFF(Object.assign({},ff,{notes:v}))},placeholder:"How it happened..."})),
+          h(Btn,{label:"Save Memory",onClick:addFirst,color:C.s,full:true}))):null
+    )):null,
+
+    // ═══ RED FLAGS ═══
+    Sec("red","⚠️","Red Flags","When to talk to your doctor",C.p),
+    expanded.red?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"66"}},h("div",{style:{fontSize:14,fontWeight:700,color:C.p,marginBottom:4}},"Important"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},"These are signs that warrant a conversation with your pediatrician. Every child develops differently, but early intervention can make a huge difference.")),
+      months.map(function(m){var ms2=MILESTONES[m];if(!ms2.red||!ms2.red.length)return null;
+        return h(Cd,{key:m,style:{marginBottom:10,borderLeft:m<=age?"4px solid "+C.w:"none",opacity:m<=age?1:0.5}},
+          h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:8}},ms2.e+" "+ms2.l),
+          h("div",{style:{fontSize:12,fontWeight:600,color:C.p,marginBottom:6}},"Talk to your doctor if baby:"),
+          h(Dot,{items:ms2.red,color:C.p}))})
+    )):null
+  );
+}
+
+// ═══ MEDICINE DOSAGE CALCULATOR ═══
+function MedCalc(){
+  var _w=us(""),wt=_w[0],setWt=_w[1];
+  var kg=wt?parseFloat(wt)/2.205:0;
+  var tylenolLow=Math.round(kg*10*10)/10,tylenolHigh=Math.round(kg*15*10)/10;
+  var tylenolMlLow=Math.round(tylenolLow/160*5*10)/10,tylenolMlHigh=Math.round(tylenolHigh/160*5*10)/10;
+  var ibuprofenLow=Math.round(kg*5*10)/10,ibuprofenHigh=Math.round(kg*10*10)/10;
+  var ibuprofenMlLow=Math.round(ibuprofenLow/100*5*10)/10,ibuprofenMlHigh=Math.round(ibuprofenHigh/100*5*10)/10;
+
+  return h(F,null,
+    h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"44"}},
+      h("div",{style:{fontSize:14,fontWeight:700,color:C.p,marginBottom:4}},"Important Disclaimer"),
+      h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},"Always confirm dosages with your pediatrician. This calculator is for reference only. Never give ibuprofen to babies under 6 months.")),
+    h(Cd,{style:{marginBottom:12}},
+      h("div",{style:{fontSize:14,fontWeight:600,color:C.t,marginBottom:8}},"Enter Baby's Weight"),
+      h(Input,{type:"number",value:wt,onChange:setWt,placeholder:"Weight in lbs"}),
+      wt?h("div",{style:{fontSize:12,color:C.tl,marginTop:4}},parseFloat(wt).toFixed(1)+" lbs = "+kg.toFixed(1)+" kg"):null),
+    wt&&parseFloat(wt)>0?h(F,null,
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.bl}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+          h("div",{style:{fontSize:20}},"🟣"),
+          h("div",null,
+            h("div",{style:{fontSize:15,fontWeight:700,color:C.t}},"Infant Acetaminophen (Tylenol)"),
+            h("div",{style:{fontSize:12,color:C.tl}},"Concentration: 160 mg / 5 mL"))),
+        h("div",{style:{fontSize:13,color:C.t,marginBottom:4}},"Dose: "+tylenolLow+" – "+tylenolHigh+" mg"),
+        h("div",{style:{fontSize:22,fontWeight:800,color:C.bl}},tylenolMlLow+" – "+tylenolMlHigh+" mL"),
+        h("div",{style:{fontSize:11,color:C.tl,marginTop:4}},"Every 4-6 hours as needed. Max 5 doses in 24 hrs.")),
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+          h("div",{style:{fontSize:20}},"🟠"),
+          h("div",null,
+            h("div",{style:{fontSize:15,fontWeight:700,color:C.t}},"Infant Ibuprofen (Advil/Motrin)"),
+            h("div",{style:{fontSize:12,color:C.tl}},"Concentration: 100 mg / 5 mL"),
+            h("div",{style:{fontSize:11,fontWeight:600,color:C.p}},"6+ months only!"))),
+        h("div",{style:{fontSize:13,color:C.t,marginBottom:4}},"Dose: "+ibuprofenLow+" – "+ibuprofenHigh+" mg"),
+        h("div",{style:{fontSize:22,fontWeight:800,color:C.w}},ibuprofenMlLow+" – "+ibuprofenMlHigh+" mL"),
+        h("div",{style:{fontSize:11,color:C.tl,marginTop:4}},"Every 6-8 hours as needed. Max 4 doses in 24 hrs."))
+    ):null,
+    h(Cd,{style:{marginBottom:12}},
+      h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},"Quick Reference"),
+      h(Dot,{items:["Never alternate Tylenol & Motrin without doctor's OK","Use the syringe that comes with the medicine","Don't use adult formulations","Fever reducers treat discomfort, not the infection","Call doctor before giving meds to babies under 3 months"],color:C.bl}))
+  );
+}
+
+// ═══ GROWTH CHART ═══
+function GrowthChart({data,babyData,label,color,unit}){
+  var pad={t:20,r:20,b:30,l:40},w=300,ht=200;
+  var cw=w-pad.l-pad.r,ch=ht-pad.t-pad.b;
+  var allVals=[];data.forEach(function(d){allVals.push(d.p5,d.p50,d.p95)});
+  babyData.forEach(function(d){allVals.push(d.value)});
+  var minV=Math.floor(Math.min.apply(null,allVals))-1;
+  var maxV=Math.ceil(Math.max.apply(null,allVals))+1;
+  var xScale=function(m){return pad.l+(m/24)*cw};
+  var yScale=function(v){return pad.t+ch-(((v-minV)/(maxV-minV))*ch)};
+  function line(pts){return pts.map(function(p,i){return(i===0?"M":"L")+p[0]+","+p[1]}).join(" ")}
+  var p5Pts=data.map(function(d){return[xScale(d.m),yScale(d.p5)]});
+  var p50Pts=data.map(function(d){return[xScale(d.m),yScale(d.p50)]});
+  var p95Pts=data.map(function(d){return[xScale(d.m),yScale(d.p95)]});
+  var babyPts=babyData.map(function(d){return[xScale(d.month),yScale(d.value)]});
+  var yTicks=[];for(var v=Math.ceil(minV);v<=Math.floor(maxV);v+=Math.ceil((maxV-minV)/5))yTicks.push(v);
+
+  return h("svg",{width:"100%",height:ht+10,viewBox:"0 0 "+w+" "+(ht+10),style:{display:"block"}},
+    yTicks.map(function(v,i){return h("g",{key:"y"+i},
+      h("line",{x1:pad.l,y1:yScale(v),x2:w-pad.r,y2:yScale(v),stroke:C.b,strokeWidth:0.5}),
+      h("text",{x:pad.l-4,y:yScale(v)+3,textAnchor:"end",fontSize:9,fill:C.tl},v))}),
+    [0,3,6,9,12,18,24].map(function(m,i){return h("text",{key:"x"+i,x:xScale(m),y:ht-5,textAnchor:"middle",fontSize:9,fill:C.tl},m+"m")}),
+    h("path",{d:line(p5Pts)+line(p95Pts.slice().reverse()).replace("M","L")+"Z",fill:color,opacity:0.06}),
+    h("path",{d:line(p5Pts),fill:"none",stroke:C.b,strokeWidth:1,strokeDasharray:"4,3"}),
+    h("path",{d:line(p95Pts),fill:"none",stroke:C.b,strokeWidth:1,strokeDasharray:"4,3"}),
+    h("path",{d:line(p50Pts),fill:"none",stroke:color,strokeWidth:1.5,opacity:0.5}),
+    h("text",{x:w-pad.r+2,y:yScale(data[data.length-1].p5)+3,fontSize:8,fill:C.tl},"5th"),
+    h("text",{x:w-pad.r+2,y:yScale(data[data.length-1].p50)+3,fontSize:8,fill:color},"50th"),
+    h("text",{x:w-pad.r+2,y:yScale(data[data.length-1].p95)+3,fontSize:8,fill:C.tl},"95th"),
+    babyPts.length>1?h("path",{d:line(babyPts),fill:"none",stroke:C.p,strokeWidth:2.5}):null,
+    babyPts.map(function(p,i){return h("circle",{key:"bp"+i,cx:p[0],cy:p[1],r:4,fill:C.p,stroke:C.cd,strokeWidth:2})}),
+    h("text",{x:pad.l,y:14,fontSize:11,fontWeight:700,fill:C.t},label+" ("+unit+")")
+  );
+}
+
+// ═══ GUIDE TAB (Accordion) ═══
+function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
+  var initExp=subNavRef&&subNavRef.current?function(){var o={};o[subNavRef.current]=true;return o}():{};
+  var _ex=us(initExp),expanded=_ex[0],setEx=_ex[1];
+  ue(function(){if(subNavRef&&subNavRef.current){var tgt=subNavRef.current;setEx(function(p){var n=Object.assign({},p);n[tgt]=true;return n});subNavRef.current=null;setTimeout(function(){var el=document.getElementById('gs-'+tgt);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},200)}},[]);
+  var _diet=us("veg"),diet=_diet[0],setDiet=_diet[1];
+  var ageMap={Birth:0,"1 Month":1,"2 Months":2,"4 Months":4,"6 Months":6,"9 Months":9,"12 Months":12,"15 Months":15,"18 Months":18};
+  function toggleV(ai,vi){var k=ai+"_"+vi;setVDone(function(p){var n=Object.assign({},p);n[k]=!p[k];return n})}
+  var curSI=age<4?0:age<6?1:age<9?2:age<12?3:age<18?4:5;
+  var curFI=age<4?0:age<6?1:age<8?2:age<10?3:age<12?4:5;
+  var curAct=age<1?0:age<2?1:age<4?2:age<6?4:age<9?6:age<12?9:age<18?12:age<24?18:24;
+  var totalV=VACCINES.reduce(function(s,v){return s+v.v.length},0),doneC=Object.values(vDone).filter(Boolean).length;
+
+  function tg(id){setEx(function(p){var n=Object.assign({},p);n[id]=!n[id];return n})}
+  function Sec(id,emoji,title,desc,color,isNow){return h("div",{id:'gs-'+id,style:{marginBottom:expanded[id]?4:0}},h("div",{onClick:function(){tg(id)},style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:C.cd,borderRadius:expanded[id]?"16px 16px 0 0":16,border:"1px solid "+C.b,borderBottom:expanded[id]?"1px solid "+C.b:"1px solid "+C.b,marginBottom:expanded[id]?0:8}},h("span",{style:{fontSize:24,flexShrink:0}},emoji),h("div",{style:{flex:1,minWidth:0}},h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},title),desc?h("div",{style:{fontSize:11,color:C.tl,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},desc):null),isNow?h("span",{style:{fontSize:9,fontWeight:700,color:color,background:color+"22",padding:"2px 6px",borderRadius:6,flexShrink:0}},"NOW"):null,h(Ic,{n:"chevron-right",s:16,c:C.tl,st:{transform:expanded[id]?"rotate(90deg)":"none",transition:"transform 0.2s",flexShrink:0}})))}
+  function SecBody(children){return h("div",{style:{background:C.cd,borderRadius:"0 0 16px 16px",border:"1px solid "+C.b,borderTop:"none",padding:"12px 16px 16px",marginBottom:10}},children)}
+
+  return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
+    h(SH,{icon:"book",title:"Guide",color:C.a,sub:"Tap any section to explore"}),
+
+    // Vaccines
+    Sec("vaccines","💉","Vaccines",doneC+"/"+totalV+" recorded",C.bl,false),
+    expanded.vaccines?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,textAlign:"center",padding:16}},h(PR,{pct:Math.round(doneC/totalV*100),sz:70,sw:5,c:C.bl}),h("div",{style:{marginTop:6,fontSize:13,fontWeight:600,color:C.t}},doneC+"/"+totalV+" recorded")),
+      VACCINES.map(function(g,ai){var vA=ageMap[g.age]!=null?ageMap[g.age]:0,isPast=vA<age,isCur=vA>=age&&vA<age+3;
+        return h(Cd,{key:ai,style:{marginBottom:8,padding:14,borderLeft:isCur?"3px solid "+C.bl:isPast?"3px solid "+C.ok:"none"}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},h("div",{style:{fontSize:15,fontWeight:700,color:C.t}},g.age),isCur?h("span",{style:{fontSize:10,fontWeight:700,color:C.bl,background:C.bll,padding:"2px 8px",borderRadius:8}},"UPCOMING"):null),
+          g.v.map(function(v,vi){var isDone=vDone[ai+"_"+vi];return h("div",{key:vi,onClick:function(){toggleV(ai,vi)},style:{display:"flex",gap:8,alignItems:"center",padding:"6px 0",borderTop:vi?"1px solid "+C.b:"none",cursor:"pointer"}},h(CB,{ck:isDone}),h("div",{style:{flex:1}},h("div",{style:{fontSize:13,fontWeight:500,color:isDone?C.tl:C.t,textDecoration:isDone?"line-through":"none"}},v.n),h("div",{style:{fontSize:11,color:C.tl}},v.d)))}))}))):null,
+
+    // Sleep
+    Sec("sleep","😴","Sleep Guide",SLEEP[curSI].total+" — "+SLEEP[curSI].age,C.pu,true),
+    expanded.sleep?SecBody(SLEEP.map(function(st,i){return h(Cd,{key:i,style:{marginBottom:10,borderLeft:i===curSI?"3px solid "+C.pu:"none",opacity:i<curSI?0.5:1}},
+      i===curSI?h("span",{style:{fontSize:10,fontWeight:700,color:C.pu,background:C.pul,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT"):null,
+      h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,margin:0}},st.age),h("span",{style:{fontSize:12,fontWeight:600,color:C.pu}},st.total)),
+      h("div",{style:{fontSize:12,color:C.t,marginBottom:4}},h("b",null,"Pattern: "),st.pat),h("div",{style:{fontSize:12,color:C.t,marginBottom:6}},h("b",null,"Naps: "),st.naps),
+      h(Dot,{items:st.tips,color:C.pu}))})):null,
+
+    // Nap Guide
+    Sec("naps","💤","Nap Schedule",NAP_GUIDE[age<0.5?0:age<3?1:age<5?2:age<8?3:age<12?4:age<15?5:age<18?6:7].naps+" naps, wake "+NAP_GUIDE[age<0.5?0:age<3?1:age<5?2:age<8?3:age<12?4:age<15?5:age<18?6:7].wake,C.pu,true),
+    expanded.naps?SecBody(NAP_GUIDE.map(function(n,i){
+      var curN=age<0.5?0:age<3?1:age<5?2:age<8?3:age<12?4:age<15?5:age<18?6:7;
+      return h(Cd,{key:i,style:{marginBottom:10,borderLeft:i===curN?"3px solid "+C.pu:"none",opacity:i<curN?0.5:1}},
+        i===curN?h("span",{style:{fontSize:10,fontWeight:700,color:C.pu,background:C.pul,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT"):null,
+        h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},
+          h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,margin:0}},n.age),
+          h("span",{style:{fontSize:12,fontWeight:600,color:C.pu}},n.naps+" naps")),
+        h("div",{style:{fontSize:13,color:C.t,marginBottom:4}},h("b",null,"Wake window: "),n.wake),
+        h("div",{style:{fontSize:13,color:C.t,marginBottom:6}},h("b",null,"Total sleep: "),n.total),
+        h(Dot,{items:n.tips,color:C.pu}))})):null,
+
+    // Feeding
+    Sec("feeding","🍽️","Feeding Guide",FEEDING[curFI].amt,C.a,true),
+    expanded.feeding?SecBody(FEEDING.map(function(st,i){return h(Cd,{key:i,style:{marginBottom:10,borderLeft:i===curFI?"3px solid "+C.a:"none",opacity:i<curFI?0.5:1}},
+      i===curFI?h("span",{style:{fontSize:10,fontWeight:700,color:C.a,background:C.al,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT"):null,
+      h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,margin:"0 0 2px"}},st.e+" "+st.t),h("div",{style:{fontSize:12,color:C.tl,marginBottom:6}},st.age),
+      h("div",{style:{marginBottom:6}},h("div",{style:{fontSize:11,fontWeight:600,color:C.a,marginBottom:2}},"Foods"),h(Dot,{items:st.foods,color:C.a})),
+      h("div",{style:{fontSize:12,color:C.t,marginBottom:6}},h("b",null,"Amount: "),st.amt),
+      h(Dot,{items:st.tips,color:C.p}))})):null,
+
+    // Solids Guide
+    Sec("solids","🥄","Solid Foods",age<6?"Starting at 6 months":"WHO & AAP by diet",C.a,age>=6),
+    expanded.solids?SecBody(h(F,null,
+      h("div",{style:{display:"flex",gap:6,marginBottom:12}},
+        [{id:"veg",l:"Vegetarian 🥬"},{id:"nonveg",l:"Non-Veg 🍗"},{id:"vegan",l:"Vegan 🌱"}].map(function(d){
+          return h(Pill,{key:d.id,label:d.l,active:diet===d.id,onClick:function(){setDiet(d.id)},color:C.a})})),
+      Object.keys(SOLIDS_GUIDE[diet].foods).map(Number).sort(function(a,b){return a-b}).map(function(mo){
+        var isCur=mo<=age*1&&(!Object.keys(SOLIDS_GUIDE[diet].foods).map(Number).find(function(x){return x>mo&&x<=age}));
+        return h(Cd,{key:mo,style:{marginBottom:10,borderLeft:isCur?"3px solid "+C.a:"none"}},
+          h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:8}},mo+" Months"+((mo===6)?" — Starting Solids!":"")),
+          SOLIDS_GUIDE[diet].foods[mo].map(function(food,i){
+            return h("div",{key:i,style:{display:"flex",gap:8,padding:"6px 0",borderTop:i?"1px solid "+C.b:"none"}},
+              h("div",{style:{fontSize:13,fontWeight:600,color:C.t,flex:1}},food.f),
+              h("div",{style:{fontSize:11,color:C.tl,flexShrink:0,maxWidth:"40%",textAlign:"right"}},food.n))}))}),
+      h(Cd,{style:{marginBottom:10,borderLeft:"4px solid "+C.w,background:C.wl}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},SOLIDS_GUIDE.allergens.title),
+        h(Dot,{items:SOLIDS_GUIDE.allergens.items,color:C.w}),
+        h("div",{style:{fontSize:12,color:C.t,marginTop:6,fontStyle:"italic"}},SOLIDS_GUIDE.allergens.tip)),
+      h(Cd,{style:{borderLeft:"4px solid "+C.a}},
+        h("div",{style:{fontSize:12,fontWeight:600,color:C.a,marginBottom:4}},"Key Rules"),
+        h(Dot,{items:["One new food every 3-5 days","Offer before milk at 9+ months","No honey until 12 months","No cow's milk as drink until 12 months","No added salt or sugar under 12 months","Cut round foods (grapes, cherry tomatoes) lengthwise","Always supervise eating"],color:C.a}))
+    )):null,
+
+    // Milk Guide
+    Sec("milk","🍼","Milk Intake Guide",MILK_GUIDE[age<1?0:age<2?1:age<4?2:age<6?3:age<9?4:age<12?5:age<18?6:7].total,C.bl,true),
+    expanded.milk?SecBody(h(F,null,
+      MILK_GUIDE.map(function(m,i){
+        var curM=age<1?0:age<2?1:age<4?2:age<6?3:age<9?4:age<12?5:age<18?6:7;
+        return h(Cd,{key:i,style:{marginBottom:10,borderLeft:i===curM?"3px solid "+C.bl:"none",opacity:i<curM?0.5:1}},
+          i===curM?h("span",{style:{fontSize:10,fontWeight:700,color:C.bl,background:C.bll,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT"):null,
+          h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,margin:"0 0 6px"}},m.age),
+          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}},
+            h("div",{style:{background:C.bg,borderRadius:8,padding:8}},h("div",{style:{fontSize:10,fontWeight:600,color:C.tl}},"BREASTFED"),h("div",{style:{fontSize:12,color:C.t}},m.breast)),
+            h("div",{style:{background:C.bg,borderRadius:8,padding:8}},h("div",{style:{fontSize:10,fontWeight:600,color:C.tl}},"FORMULA"),h("div",{style:{fontSize:12,color:C.t}},m.formula))),
+          h("div",{style:{fontSize:13,fontWeight:600,color:C.bl,marginBottom:4}},"Total: "+m.total),
+          h("div",{style:{fontSize:12,color:C.tl,fontStyle:"italic"}},m.notes))}))):null,
+
+    // Growth
+    Sec("growth","📊","Growth Charts","WHO percentile curves",C.p,false),
+    expanded.growth?(function(){
+      var babyW=(logs&&logs.growth||[]).filter(function(e){return e.weight}).map(function(e){
+        var bd=new Date(birth+'T00:00:00'),ed=new Date(e.date+'T00:00:00');
+        var mo=(ed.getFullYear()-bd.getFullYear())*12+(ed.getMonth()-bd.getMonth())+(ed.getDate()-bd.getDate())/30;
+        return{month:Math.max(0,Math.min(24,mo)),value:parseFloat(e.weight)}
+      }).sort(function(a,b){return a.month-b.month});
+      var babyH=(logs&&logs.growth||[]).filter(function(e){return e.height}).map(function(e){
+        var bd=new Date(birth+'T00:00:00'),ed=new Date(e.date+'T00:00:00');
+        var mo=(ed.getFullYear()-bd.getFullYear())*12+(ed.getMonth()-bd.getMonth())+(ed.getDate()-bd.getDate())/30;
+        return{month:Math.max(0,Math.min(24,mo)),value:parseFloat(e.height)}
+      }).sort(function(a,b){return a.month-b.month});
+      return SecBody(h(F,null,
+        h(Cd,{style:{marginBottom:12}},h(GrowthChart,{data:GROWTH.w,babyData:babyW,label:"Weight",color:C.p,unit:"lbs"}),babyW.length===0?h("div",{style:{textAlign:"center",fontSize:12,color:C.tl,padding:8}},"Log growth data to see your baby's curve"):null),
+        h(Cd,{style:{marginBottom:12}},h(GrowthChart,{data:GROWTH.h,babyData:babyH,label:"Height",color:C.s,unit:"in"}),babyH.length===0?h("div",{style:{textAlign:"center",fontSize:12,color:C.tl,padding:8}},"Log growth data to see your baby's curve"):null),
+        h(Cd,{style:{marginBottom:12}},h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:8}},"Weight (lbs) — WHO"),h("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},h("thead",null,h("tr",{style:{borderBottom:"2px solid "+C.b}},["Age","5th","50th","95th"].map(function(hd,i){return h("th",{key:i,style:{textAlign:i?"center":"left",padding:6,color:i===2?C.p:C.tl,fontWeight:i===2?700:500}},hd)}))),h("tbody",null,GROWTH.w.map(function(r,i){var cur=r.m<=age&&(i===GROWTH.w.length-1||GROWTH.w[i+1].m>age);return h("tr",{key:i,style:{borderBottom:"1px solid "+C.b,background:cur?C.pl:"transparent"}},h("td",{style:{padding:6,fontWeight:600}},r.m===0?"Birth":r.m+"mo"),h("td",{style:{textAlign:"center",padding:6}},r.p5),h("td",{style:{textAlign:"center",padding:6,fontWeight:700,color:C.p}},r.p50),h("td",{style:{textAlign:"center",padding:6}},r.p95))})))),
+        h(Cd,{style:{marginBottom:12}},h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:8}},"Height (in) — WHO"),h("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},h("thead",null,h("tr",{style:{borderBottom:"2px solid "+C.b}},["Age","5th","50th","95th"].map(function(hd,i){return h("th",{key:i,style:{textAlign:i?"center":"left",padding:6,color:i===2?C.s:C.tl,fontWeight:i===2?700:500}},hd)}))),h("tbody",null,GROWTH.h.map(function(r,i){var cur=r.m<=age&&(i===GROWTH.h.length-1||GROWTH.h[i+1].m>age);return h("tr",{key:i,style:{borderBottom:"1px solid "+C.b,background:cur?C.sl:"transparent"}},h("td",{style:{padding:6,fontWeight:600}},r.m===0?"Birth":r.m+"mo"),h("td",{style:{textAlign:"center",padding:6}},r.p5),h("td",{style:{textAlign:"center",padding:6,fontWeight:700,color:C.s}},r.p50),h("td",{style:{textAlign:"center",padding:6}},r.p95))}))))
+      ))
+    })():null,
+
+    // Screen Time
+    Sec("screen","📱","Screen Time","AAP guidelines",C.s,false),
+    expanded.screen?SecBody(h(F,null,
+      SCREEN_TIME.map(function(s,i){return h(Cd,{key:i,style:{marginBottom:10}},h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:2}},s.age),h("div",{style:{fontSize:14,fontWeight:600,color:C.s,marginBottom:4}},s.rule),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},s.detail))}),
+      h(Cd,{style:{borderLeft:"4px solid "+C.a}},h("div",{style:{fontSize:12,fontWeight:600,color:C.a,marginBottom:4}},"Better Alternatives"),h(Dot,{items:["Read books together","Sing songs and nursery rhymes","Play outside","Floor time with toys","Art and sensory play","Talk and describe the world"],color:C.a}))
+    )):null,
+
+    // Activities
+    Sec("activities","🎨","Activities","Age-appropriate play ideas",C.w,true),
+    expanded.activities?SecBody(
+      Object.keys(ACTIVITIES).map(Number).sort(function(a,b){return a-b}).map(function(m){
+        var isCur=m<=age&&(m===24||Object.keys(ACTIVITIES).map(Number).sort(function(a,b){return a-b}).find(function(x){return x>m})>age);
+        return h(Cd,{key:m,style:{marginBottom:10,borderLeft:isCur?"3px solid "+C.w:"none",opacity:m>age+3?0.4:1}},
+          isCur?h("span",{style:{fontSize:10,fontWeight:700,color:C.w,background:C.wl,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT AGE"):null,
+          h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:6}},m===0?"Newborn":m+" Months"),
+          h(Dot,{items:ACTIVITIES[m],color:C.w}))})
+    ):null,
+
+    // Remedies
+    Sec("remedies","🩹","Common Remedies","Gas, reflux, low milk & more",C.p,false),
+    expanded.remedies?SecBody(
+      Object.keys(REMEDIES).map(function(key){var sec=REMEDIES[key];
+        return h(Cd,{key:key,style:{marginBottom:12}},
+          h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
+            h("div",{style:{fontSize:24}},sec.icon),
+            h("div",{style:{fontSize:16,fontWeight:700,color:C.t}},sec.title)),
+          sec.items.map(function(item,i){
+            return h("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid "+C.b:"none"}},
+              h("div",{style:{fontSize:13,fontWeight:600,color:C.s}},item.r),
+              h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5,marginTop:2}},item.d))}))})
+    ):null,
+
+    // Mom Nutrition
+    Sec("momfood","🤱","Mom Nutrition","What to eat while breastfeeding",C.pu,false),
+    expanded.momfood?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},MOM_NUTRITION.general.title),
+        h(Dot,{items:MOM_NUTRITION.general.items,color:C.a})),
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.ok}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},MOM_NUTRITION.eat.title),
+        h(Dot,{items:MOM_NUTRITION.eat.items,color:C.ok})),
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},MOM_NUTRITION.avoid.title),
+        h(Dot,{items:MOM_NUTRITION.avoid.items,color:C.p})),
+      h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"By Stage"),
+      MOM_NUTRITION.byMonth.map(function(stage,i){
+        return h(Cd,{key:i,style:{marginBottom:10}},
+          h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},stage.period),
+          h("div",{style:{fontSize:12,color:C.s,fontWeight:600,marginBottom:6}},stage.focus),
+          h(Dot,{items:stage.tips,color:C.pu}))})
+    )):null,
+
+    // Parent Wellness
+    Sec("wellness","💜","Parent Wellness","Your health matters too",C.pu,false),
+    expanded.wellness?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},"Postpartum Warning Signs"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5,marginBottom:6}},"Contact your doctor if you experience any of these for more than 2 weeks:"),h(Dot,{items:["Persistent sadness or hopelessness","Severe mood swings","Difficulty bonding with your baby","Withdrawing from family/friends","Loss of appetite or overeating","Inability to sleep (even when baby sleeps)","Overwhelming fatigue or loss of energy","Intense irritability or anger","Fear of not being a good parent","Thoughts of harming yourself or baby"],color:C.p})),
+      h(Cd,{style:{marginBottom:12}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},"Self-Care Checklist"),h(Dot,{items:["Sleep when baby sleeps","Accept help when offered","Stay hydrated (water bottle nearby)","Eat regular, nourishing meals","Gentle movement when cleared by doctor","Connect with other parents","Take breaks — even 10 minutes count","Limit visitors when overwhelmed","Talk about your feelings","Remember: perfect parenting doesn't exist"],color:C.a})),
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w,background:C.wl}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}},"Edinburgh Postnatal Depression Scale (EPDS)"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},"Ask your OB or midwife about the EPDS screening at your 6-week postpartum visit. It's a simple 10-question questionnaire that can help identify postpartum depression early. Don't hesitate — PPD affects up to 1 in 5 mothers and is very treatable.")),
+      h(Cd,{style:{background:C.al,border:"none"}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},"Resources"),h(Dot,{items:["Postpartum Support International: 1-800-944-4773","Crisis Text Line: Text HOME to 741741","National Suicide Prevention: 988","Your OB/GYN or midwife","Your pediatrician can help too"],color:C.a}))
+    )):null,
+
+    // Well-Child Visits
+    Sec("visits","📋","Well-Child Visits","Recommended check-up schedule",C.a,false),
+    expanded.visits?SecBody(VISITS.map(function(v,i){var vm=parseFloat(v.a)||0,isPast=vm<age,isCur=vm>=age&&(i===0||parseFloat(VISITS[i-1].a)<age);
+      return h(Cd,{key:i,style:{marginBottom:8,padding:14,opacity:isPast&&!isCur?0.5:1,borderLeft:isCur?"3px solid "+C.a:"none"}},
+        h("div",{style:{display:"flex",gap:10,alignItems:"center"}},
+          isPast&&!isCur?h(Ic,{n:"check",s:18,c:C.ok}):isCur?h("div",{style:{width:18,height:18,borderRadius:9,background:C.a}}):h("div",{style:{width:18,height:18,borderRadius:9,border:"2px solid "+C.b}}),
+          h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},v.a),h("div",{style:{fontSize:12,color:C.tl}},v.f))))})):null,
+
+    // Medicine Dosage Calculator
+    Sec("medcalc","💊","Meds Calculator","Tylenol & Motrin dosing by weight",C.bl,false),
+    expanded.medcalc?SecBody(h(MedCalc,{})):null
+  );
+}
+
+// ═══ ADD CONTACT FORM ═══
+function AddContactForm({onAdd}){
+  var _n=us(""),nm=_n[0],setNm=_n[1];
+  var _p=us(""),ph=_p[0],setPh=_p[1];
+  var _r=us(""),rl=_r[0],setRl=_r[1];
+  var _sh=us(false),show=_sh[0],setShow=_sh[1];
+  if(!show)return h(Btn,{label:"+ Add Contact",onClick:function(){setShow(true)},color:C.s,full:true});
+  return h(Cd,{style:{marginTop:12}},
+    h("h3",{style:{fontSize:16,fontWeight:700,color:C.t,marginBottom:12}},"Add Contact"),
+    h("div",{style:{marginBottom:8}},h(Input,{value:nm,onChange:setNm,placeholder:"Name (e.g. Dr. Smith)"})),
+    h("div",{style:{marginBottom:8}},h(Input,{value:ph,onChange:setPh,placeholder:"Phone number",type:"tel"})),
+    h("div",{style:{marginBottom:12}},h(Input,{value:rl,onChange:setRl,placeholder:"Role (e.g. Pediatrician)"})),
+    h("div",{style:{display:"flex",gap:8}},
+      h(Btn,{label:"Save",onClick:function(){if(nm&&ph){onAdd({id:Date.now(),name:nm,phone:ph,role:rl||"Other"});setNm("");setPh("");setRl("");setShow(false);toast("Contact saved!")}},color:C.s}),
+      h(Btn,{label:"Cancel",onClick:function(){setShow(false)},outline:true})));
+}
+
+// ═══ SAFETY TAB (enhanced) ═══
+function SafetyTab({subNavRef,emergencyContacts,setEmergencyContacts}){
+  var initExp=subNavRef&&subNavRef.current?function(){var o={};o[subNavRef.current]=true;return o}():{};
+  var _ex=us(initExp),expanded=_ex[0],setEx=_ex[1];
+  var _tipExp=us(-1),tipExp=_tipExp[0],setTipExp=_tipExp[1];
+  ue(function(){if(subNavRef&&subNavRef.current){var tgt=subNavRef.current;setEx(function(p){var n=Object.assign({},p);n[tgt]=true;return n});subNavRef.current=null;setTimeout(function(){var el=document.getElementById('sf-'+tgt);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},200)}},[]);
+
+  function tg(id){setEx(function(p){var n=Object.assign({},p);n[id]=!n[id];return n})}
+  function Sec(id,emoji,title,desc,color){return h("div",{id:'sf-'+id,style:{marginBottom:expanded[id]?4:0}},h("div",{onClick:function(){tg(id)},style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:C.cd,borderRadius:expanded[id]?"16px 16px 0 0":16,border:"1px solid "+C.b,marginBottom:expanded[id]?0:8}},h("span",{style:{fontSize:24,flexShrink:0}},emoji),h("div",{style:{flex:1,minWidth:0}},h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},title),desc?h("div",{style:{fontSize:11,color:C.tl,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},desc):null),h(Ic,{n:"chevron-right",s:16,c:C.tl,st:{transform:expanded[id]?"rotate(90deg)":"none",transition:"transform 0.2s",flexShrink:0}})))}
+  function SecBody(children){return h("div",{style:{background:C.cd,borderRadius:"0 0 16px 16px",border:"1px solid "+C.b,borderTop:"none",padding:"12px 16px 16px",marginBottom:10}},children)}
+
+  return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
+    h(SH,{icon:"shield",title:"Safety",color:C.p,sub:"Tap any section to explore"}),
+
+    // Emergency banner (always visible)
+    h(Cd,{style:{marginBottom:12,background:"linear-gradient(135deg,#FF5252,#FF1744)",border:"none",color:"white",textAlign:"center",padding:16}},h(Ic,{n:"alert-triangle",s:24,c:"white"}),h("div",{style:{fontSize:16,fontWeight:700,marginTop:6}},"Emergency: Call 911"),h("div",{style:{fontSize:12,opacity:0.9}},"Poison Control: 1-800-222-1222")),
+
+    // Safety Tips
+    Sec("tips","🛡️","Safety Tips",SAFETY.length+" categories",C.p),
+    expanded.tips?SecBody(SAFETY.map(function(sec,i){return h(Cd,{key:i,onClick:function(){setTipExp(tipExp===i?-1:i)},style:{marginBottom:10,cursor:"pointer"}},
+      h("div",{style:{display:"flex",alignItems:"center",gap:10}},h("div",{style:{width:36,height:36,borderRadius:10,background:sec.c+"15",display:"flex",alignItems:"center",justifyContent:"center"}},h(Ic,{n:sec.icon,s:18,c:sec.c})),h("div",{style:{flex:1,fontSize:14,fontWeight:600,color:C.t}},sec.t),h(Ic,{n:"chevron-right",s:16,c:C.tl,st:{transform:tipExp===i?"rotate(90deg)":"none",transition:"transform 0.2s"}})),
+      tipExp===i?h("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.b}},h(Dot,{items:sec.items,color:sec.c})):null)})):null,
+
+    // Infant CPR
+    Sec("cpr","🫀","Infant CPR","Step-by-step reference guide",C.p),
+    expanded.cpr?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"66"}},h("div",{style:{fontSize:14,fontWeight:700,color:C.p,marginBottom:4}},"Learn CPR In Person"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},"This guide is for reference only. Please take a certified infant CPR class through the American Red Cross or American Heart Association.")),
+      CPR_STEPS.map(function(s){return h(Cd,{key:s.step,style:{marginBottom:10}},
+        h("div",{style:{display:"flex",gap:10,alignItems:"flex-start"}},
+          h("div",{style:{width:32,height:32,borderRadius:16,background:C.p,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,flexShrink:0}},s.step),
+          h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}},s.title),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},s.detail))))})
+    )):null,
+
+    // Choking
+    Sec("choke","🚨","Choking Response","Infant back blows & chest thrusts",C.w),
+    expanded.choke?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w,background:C.wl}},h("div",{style:{fontSize:14,fontWeight:700,color:C.w}},"For infants under 12 months"),h("div",{style:{fontSize:13,color:C.t,marginTop:4}},"Different technique than for adults/older children.")),
+      CHOKING_STEPS.map(function(s){return h(Cd,{key:s.step,style:{marginBottom:10}},
+        h("div",{style:{display:"flex",gap:10,alignItems:"flex-start"}},
+          h("div",{style:{width:32,height:32,borderRadius:16,background:C.w,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,flexShrink:0}},s.step),
+          h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}},s.title),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},s.detail))))})
+    )):null,
+
+    // Fever Guide
+    Sec("fever","🌡️","Fever Guide","When to worry & what to do",C.bl),
+    expanded.fever?SecBody(h(F,null,
+      h(Cd,{style:{marginBottom:12}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:6}},"How to Take Temperature"),h(Dot,{items:["Rectal is most accurate for infants (gold standard)","Forehead/temporal artery for quick checks","Under arm (axillary): add 1°F to reading","Normal: 97–100.3°F (36.1–37.9°C)","Do NOT use mercury thermometers"],color:C.bl})),
+      FEVER_GUIDE.map(function(f,i){return h(Cd,{key:i,style:{marginBottom:10,borderLeft:"4px solid "+(f.urgent?C.p:C.w),background:f.urgent?C.pl+"44":"transparent"}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},f.age),
+        h("div",{style:{fontSize:13,fontWeight:600,color:f.urgent?C.p:C.w,marginTop:2}},f.temp+" → "+f.action),
+        h("div",{style:{fontSize:12,color:C.t,marginTop:4,lineHeight:1.5}},f.detail))}),
+      h(Cd,{style:{borderLeft:"4px solid "+C.a}},h("div",{style:{fontSize:13,fontWeight:600,color:C.a,marginBottom:4}},"When in doubt, call your pediatrician"),h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5}},"Trust your instincts. If your baby looks or acts very sick, don't wait — seek medical care regardless of the temperature reading."))
+    )):null,
+
+    // Emergency Contacts
+    Sec("contacts","📞","Emergency Contacts",emergencyContacts.length+" saved",C.s),
+    expanded.contacts?SecBody(h(F,null,
+      emergencyContacts.map(function(c){
+        return h(Cd,{key:c.id,style:{marginBottom:8,padding:14}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+            h("div",null,
+              h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},c.name),
+              h("div",{style:{fontSize:12,color:C.tl}},c.role),
+              h("div",{style:{fontSize:13,color:C.s,fontWeight:600}},c.phone)),
+            h("div",{style:{display:"flex",gap:8}},
+              h("a",{href:"tel:"+c.phone.replace(/[^0-9+]/g,""),style:{width:40,height:40,borderRadius:12,background:C.ok,display:"flex",alignItems:"center",justifyContent:"center",textDecoration:"none"}},
+                h("span",{style:{color:"white",fontSize:18}},"📞")),
+              c.id>2?h("button",{onClick:function(){var id=c.id;setEmergencyContacts(emergencyContacts.filter(function(x){return x.id!==id}))},style:{width:40,height:40,borderRadius:12,background:C.pl,display:"flex",alignItems:"center",justifyContent:"center",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:16,c:C.p})):null)))}),
+      h(AddContactForm,{onAdd:function(c){setEmergencyContacts(emergencyContacts.concat([c]))}})
+    )):null
+  );
+}
+
+// ═══ HOME TAB ═══
+function HomeTab({age,setTab,checked,birth,setBirth,logs,babyName,reminders}){
+  var _td=us(""),td2=_td[0],setTd=_td[1];
+  if(!birth){return h("div",{style:{padding:"60px 20px",textAlign:"center"}},
+    h("div",{style:{fontSize:64,marginBottom:16}},"🍼"),h("h1",{style:{fontSize:28,fontWeight:800,color:C.t,marginBottom:8}},"Welcome to BabyBloom"),
+    h("p",{style:{color:C.tl,fontSize:15,marginBottom:40,lineHeight:1.5}},"Your complete baby care companion\npowered by AAP, CDC & WHO guidelines"),
+    h(Cd,{style:{maxWidth:340,margin:"0 auto",padding:24}},
+      h("p",{style:{fontWeight:600,fontSize:16,marginBottom:16}},"When was your baby born?"),
+      h(Input,{type:"date",value:td2,onChange:setTd}),
+      h("div",{style:{marginTop:16}},h(Btn,{label:"Get Started",onClick:function(){if(td2)setBirth(td2)},color:C.p,full:true})),
+      h("div",{style:{marginTop:10}},h(Btn,{label:"Skip — just born",onClick:function(){setBirth(today())},outline:true,full:true}))),
+    h("div",{style:{marginTop:20,fontSize:12,color:C.tl}},"Data stored locally on your device"))}
+
+  var curKey=0,keys=Object.keys(MILESTONES).map(Number).sort(function(a,b){return a-b});
+  for(var i=0;i<keys.length;i++)if(age>=keys[i])curKey=keys[i];
+  var ms=MILESTONES[curKey];
+  var total=ms?[].concat(ms.motor||[],ms.cog||[],ms.soc||[],ms.lang||[]).length:0;
+  var done=checked[curKey]?Object.values(checked[curKey]).filter(Boolean).length:0;
+  var pct=total>0?Math.round(done/total*100):0;
+  var td=today();
+  var feedCt=(logs.feed||[]).filter(function(x){return x.date===td}).length;
+  var diaperCt=(logs.diaper||[]).filter(function(x){return x.date===td}).length;
+  var sleepCt=(logs.sleep||[]).filter(function(x){return x.date===td}).length;
+  var sleepMinsToday=0;(logs.sleep||[]).filter(function(x){return x.date===td&&x.mins}).forEach(function(x){sleepMinsToday+=x.mins});
+  var sleepHrsToday=Math.round(sleepMinsToday/6)/10;
+  var feedOzToday=0;(logs.feed||[]).filter(function(x){return x.date===td&&x.oz}).forEach(function(x){feedOzToday+=x.oz});
+  var feedMinToday=0;(logs.feed||[]).filter(function(x){return x.date===td&&x.mins&&!x.oz}).forEach(function(x){feedMinToday+=x.mins});
+
+  // Weekly stats
+  function daysAgo(d){var a=new Date();a.setDate(a.getDate()-d);return a.getFullYear()+"-"+String(a.getMonth()+1).padStart(2,"0")+"-"+String(a.getDate()).padStart(2,"0")}
+  var weekFeeds=0,weekDiapers=0,weekSleeps=0,prevWeekFeeds=0,prevWeekDiapers=0;
+  for(var i=0;i<7;i++){var dk=daysAgo(i);
+    weekFeeds+=(logs.feed||[]).filter(function(e){return e.date===dk}).length;
+    weekDiapers+=(logs.diaper||[]).filter(function(e){return e.date===dk}).length;
+    weekSleeps+=(logs.sleep||[]).filter(function(e){return e.date===dk}).length;
+  }
+  for(var i=7;i<14;i++){var dk=daysAgo(i);
+    prevWeekFeeds+=(logs.feed||[]).filter(function(e){return e.date===dk}).length;
+    prevWeekDiapers+=(logs.diaper||[]).filter(function(e){return e.date===dk}).length;
+  }
+  var feedTrend=weekFeeds>prevWeekFeeds?"↑":weekFeeds<prevWeekFeeds?"↓":"→";
+  var diaperTrend=weekDiapers>prevWeekDiapers?"↑":weekDiapers<prevWeekDiapers?"↓":"→";
+
+  var ageDays=Math.round(age*30.44),ageWeeks=Math.floor(ageDays/7);
+  var ageMonths=Math.floor(age);var ageDaysRem=ageDays-Math.floor(age)*30;
+  var ageStr=age<1?ageDays+" days":age<2?ageWeeks+" weeks":ageMonths+" month"+(ageMonths!==1?"s":"");
+
+  return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
+    h("div",{style:{textAlign:"center",marginBottom:16}},h("div",{style:{fontSize:14,color:C.tl,fontWeight:500}},"BabyBloom"),babyName!=="Baby"?h("div",{style:{fontSize:12,color:C.p,fontWeight:600}},babyName):null),
+    // Hero
+    h(Cd,{style:{background:"linear-gradient(135deg,"+C.p+","+C.s+")",border:"none",marginBottom:12,padding:20}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        h("div",null,h("div",{style:{color:"rgba(255,255,255,0.8)",fontSize:12}},"Your baby is"),h("div",{style:{color:"white",fontSize:32,fontWeight:800,lineHeight:1.2}},ageStr),h("div",{style:{color:"rgba(255,255,255,0.8)",fontSize:12,marginTop:2}},ms?"Stage: "+ms.l:"")),
+        h("div",{style:{fontSize:48}},ms?ms.e:"👶")),
+      h("div",{style:{marginTop:12,background:"rgba(255,255,255,0.2)",borderRadius:8,height:5,overflow:"hidden"}},h("div",{style:{background:"white",height:"100%",borderRadius:8,width:Math.min(age/24*100,100)+"%"}}))),
+
+    // Weekly Summary
+    h(Cd,{style:{marginBottom:12}},h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},"This Week"),h("div",{style:{fontSize:11,color:C.tl}},"vs last week")),h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}},[{l:"Feeds",v:weekFeeds,tr:feedTrend,c:C.a},{l:"Diapers",v:weekDiapers,tr:diaperTrend,c:C.bl},{l:"Sleeps",v:weekSleeps,tr:"",c:C.pu}].map(function(s){return h("div",{key:s.l,style:{textAlign:"center",padding:8,background:C.bg,borderRadius:12}},h("div",{style:{fontSize:18,fontWeight:700,color:C.t}},s.v,s.tr?h("span",{style:{fontSize:12,color:s.tr==="↑"?C.ok:s.tr==="↓"?C.p:C.tl,marginLeft:4}},s.tr):null),h("div",{style:{fontSize:11,color:C.tl}},s.l))}))),
+
+    // Today's Summary
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}},
+      [{l:"Feeds",v:feedCt,sub:feedOzToday>0?feedOzToday+" oz":feedMinToday>0?feedMinToday+" min":"",e:"🍼",s:"feed"},{l:"Diapers",v:diaperCt,sub:"",e:"💧",s:"diaper"},{l:"Sleeps",v:sleepCt,sub:sleepHrsToday>0?sleepHrsToday+"h":"",e:"😴",s:"sleep"}].map(function(s){return h(Cd,{key:s.l,onClick:function(){setTab("log",s.s)},style:{padding:12,textAlign:"center",cursor:"pointer"}},h("div",{style:{fontSize:20}},s.e),h("div",{style:{fontSize:18,fontWeight:700,color:C.t}},s.v),s.sub?h("div",{style:{fontSize:12,fontWeight:600,color:C.a}},s.sub):null,h("div",{style:{fontSize:11,color:C.tl}},s.l+" today"))})),
+
+    // Quick stats
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}},
+      h(Cd,{onClick:function(){setTab("miles","dev")},style:{padding:14,cursor:"pointer"}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:8}},h(PR,{pct:pct,sz:42,sw:4,c:C.a}),h("div",null,h("div",{style:{fontSize:11,color:C.tl}},"Milestones"),h("div",{style:{fontSize:16,fontWeight:700,color:C.t}},pct+"%")))),
+      h(Cd,{onClick:function(){setTab("guide","vaccines")},style:{padding:14,cursor:"pointer"}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:8}},h("div",{style:{width:42,height:42,borderRadius:12,background:C.bll,display:"flex",alignItems:"center",justifyContent:"center"}},h(Ic,{n:"syringe",s:20,c:C.bl})),h("div",null,h("div",{style:{fontSize:11,color:C.tl}},"Vaccines"),h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},"Guide"))))),
+
+    // Next feed reminder
+    reminders&&reminders.enabled&&reminders.feedInterval?
+      (function(){
+        var td=today();
+        var feeds=logs.feed||[];
+        var lastFeed=feeds.find(function(e){return e.date===td});
+        if(!lastFeed||!lastFeed.time)return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w,padding:14}},
+          h("div",{style:{fontSize:13,color:C.t}},h(Ic,{n:"clock",s:14,c:C.w,st:{marginRight:6}}),"No feeds logged today — time to feed?"));
+        var parts=lastFeed.time.split(':');
+        var lastT=new Date();lastT.setHours(parseInt(parts[0]),parseInt(parts[1]),0);
+        var nextT=new Date(lastT.getTime()+reminders.feedInterval*3600000);
+        var now2=new Date();
+        if(now2>=nextT)return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"44",padding:14}},
+          h("div",{style:{fontSize:13,fontWeight:600,color:C.p}},h(Ic,{n:"clock",s:14,c:C.p,st:{marginRight:6}}),"Feeding overdue! Last feed: "+lastFeed.time));
+        var hrs=Math.floor((nextT-now2)/3600000),mins=Math.floor(((nextT-now2)%3600000)/60000);
+        return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.a,padding:14}},
+          h("div",{style:{fontSize:13,color:C.t}},h(Ic,{n:"clock",s:14,c:C.a,st:{marginRight:6}}),"Next feed in ",hrs>0?hrs+"h ":"",mins+"m"));
+      })():null,
+
+    // Tip
+    ms?h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.a}},h("div",{style:{fontSize:12,fontWeight:600,color:C.a,marginBottom:4}},"Tip for "+ms.l),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},ms.tips)):null,
+
+    // Stats shortcut
+    h(Cd,{onClick:function(){setTab("log","stats")},style:{marginBottom:12,padding:14,cursor:"pointer",background:"linear-gradient(135deg,"+C.s+","+C.a+")",border:"none"}},
+      h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:10}},
+        h("div",{style:{fontSize:22}},"📊"),
+        h("div",{style:{color:"white",fontSize:15,fontWeight:700}},"View Stats & Charts"),
+        h(Ic,{n:"chevron-right",s:18,c:"white"}))),
+
+    // Quick links
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}},
+      [{l:"Activities 🎨",t:"guide",s:"activities"},{l:"Safety 🛡️",t:"safety",s:"tips"},{l:"Parent Wellness 💜",t:"guide",s:"wellness"},{l:"Firsts 📸",t:"miles",s:"firsts"}].map(function(q){
+        return h(Cd,{key:q.l,onClick:function(){setTab(q.t,q.s)},style:{padding:14,textAlign:"center",cursor:"pointer"}},
+          h("div",{style:{fontSize:13,fontWeight:600,color:C.t}},q.l))})),
+
+    h("div",{style:{textAlign:"center",padding:12,color:C.tl,fontSize:10}},"Based on AAP, CDC & WHO guidelines",h("br"),"Data stored locally • Not medical advice")
+  );
+}
+
+// ═══ PROFILE MANAGER ═══
+function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete}){
+  var _sh=us(false),show=_sh[0],setShow=_sh[1];
+  var _nm=us(""),nm=_nm[0],setNm=_nm[1];
+  var _bd=us(""),bd=_bd[0],setBd=_bd[1];
+
+  return h(F,null,
+    h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"Baby Profiles"),
+    profiles.map(function(p){
+      var isActive=p.id===activeProfile;
+      return h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,background:isActive?C.sl:C.bg,marginBottom:6}},
+        h("div",{style:{width:36,height:36,borderRadius:18,background:isActive?C.s:C.b,display:"flex",alignItems:"center",justifyContent:"center",color:isActive?"white":C.tl,fontSize:16,fontWeight:700}},p.name.charAt(0).toUpperCase()),
+        h("div",{style:{flex:1}},
+          h("div",{style:{fontSize:14,fontWeight:isActive?700:500,color:C.t}},p.name),
+          h("div",{style:{fontSize:11,color:C.tl}},p.birthDate?new Date(p.birthDate+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):"")),
+        isActive?h("span",{style:{fontSize:10,fontWeight:700,color:C.s,background:C.sl,padding:"2px 8px",borderRadius:8}},"Active"):
+          h("button",{onClick:function(){onSwitch(p.id)},style:{background:C.s,color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}},"Switch"),
+        !isActive&&profiles.length>1?h("button",{onClick:function(){onDelete(p.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:14,c:C.tl})):null)}),
+    !show?h(Btn,{label:"+ Add Baby",onClick:function(){setShow(true)},color:C.s,outline:true,full:true}):
+    h(Cd,{style:{marginTop:8}},
+      h("div",{style:{marginBottom:8}},h(Input,{value:nm,onChange:setNm,placeholder:"Baby's name"})),
+      h("div",{style:{marginBottom:8}},h(Input,{type:"date",value:bd,onChange:setBd})),
+      h("div",{style:{display:"flex",gap:8}},
+        h(Btn,{label:"Add",onClick:function(){if(nm){onAdd({id:Date.now(),name:nm,birthDate:bd||today()});setNm("");setBd("");setShow(false)}},color:C.s}),
+        h(Btn,{label:"Cancel",onClick:function(){setShow(false)},outline:true})))
+  );
+}
+
+// ═══ SETTINGS ═══
+function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,logs,checked,vDone,reminders,setReminders}){
+  var fileRef=ur(null);
+  return h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)onClose()}},
+    h("div",{className:"ms"},
+      h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:16}},h("h2",{style:{fontSize:20,fontWeight:700}},"Settings & Data"),h("button",{onClick:onClose,style:{background:"none",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:22,c:C.tl}))),
+      h("div",{style:{background:C.al,borderRadius:14,padding:14,marginBottom:12}},h("div",{style:{fontSize:14,fontWeight:600,marginBottom:4}},"Your Data is Local"),h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5}},"All data stored in IndexedDB on your device. Nothing sent to servers.")),
+      profiles&&profiles.length>0?h("div",{style:{marginBottom:12}},h(ProfileManager,{profiles:profiles,activeProfile:activeProfile,onSwitch:onSwitchProfile,onAdd:onAddProfile,onDelete:onDeleteProfile})):null,
+      birth?h("div",{style:{marginBottom:12}},h("div",{style:{fontSize:13,fontWeight:600,color:C.tl,marginBottom:4}},"Birth Date"),h("div",{style:{fontSize:15,padding:"8px 12px",background:C.bg,borderRadius:10}},new Date(birth+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}))):null,
+      h("div",{style:{marginBottom:16}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"Feeding Reminders"),
+        h("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+          h("div",{style:{flex:1,fontSize:13,color:C.t}},"Enable notifications"),
+          h("button",{onClick:function(){
+            if(!reminders.enabled&&'Notification' in window)Notification.requestPermission();
+            setReminders(Object.assign({},reminders,{enabled:!reminders.enabled}))
+          },style:{width:50,height:28,borderRadius:14,border:"none",background:reminders.enabled?C.ok:C.b,position:"relative",cursor:"pointer",transition:"background 0.2s"}},
+            h("div",{style:{width:24,height:24,borderRadius:12,background:C.cd,position:"absolute",top:2,left:reminders.enabled?24:2,transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}))),
+        reminders.enabled?h("div",{style:{marginBottom:8}},
+          h("div",{style:{fontSize:12,color:C.tl,marginBottom:4}},"Remind after (hours)"),
+          h("div",{style:{display:"flex",gap:6}},
+            [2,2.5,3,4].map(function(hr){return h(Pill,{key:hr,label:hr+"h",active:reminders.feedInterval===hr,onClick:function(){setReminders(Object.assign({},reminders,{feedInterval:hr}))},color:C.a})}))):null),
+      h("div",{style:{marginBottom:12}},
+        h(Btn,{label:"Export Backup",onClick:function(){dga().then(function(d){var b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='babybloom-backup-'+today()+'.json';a.click();URL.revokeObjectURL(u);toast('Saved!')})},color:C.s,full:true}),
+        h("div",{style:{height:8}}),
+        h(Btn,{label:"Import Backup",onClick:function(){fileRef.current.click()},color:C.s,outline:true,full:true}),
+        h("input",{ref:fileRef,type:"file",accept:".json",onChange:function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{var d=JSON.parse(ev.target.result);odb().then(function(db){var tx=db.transaction(ST,'readwrite');var s=tx.objectStore(ST);s.clear();Object.entries(d).forEach(function(kv){s.put({key:kv[0],value:kv[1]})});tx.oncomplete=function(){toast('Restored!');setTimeout(function(){location.reload()},600)}}).catch(function(){toast('Error')})}catch(err){toast('Invalid file')}};r.readAsText(f)},style:{display:"none"}})),
+      h("div",{style:{marginBottom:12}},
+        h(Btn,{label:"Generate Pediatrician Report",onClick:function(){
+          var age2=0;
+          if(birth){var bd=new Date(birth),nd=new Date();age2=Math.max(0,(nd.getFullYear()-bd.getFullYear())*12+(nd.getMonth()-bd.getMonth()))}
+          var ageStr2=age2<1?"Newborn":age2+" months";
+          var lastGrowth=(logs.growth||[]).length>0?(logs.growth||[])[0]:null;
+          var totalV=VACCINES.reduce(function(s,v){return s+v.v.length},0);
+          var doneV=Object.values(vDone).filter(Boolean).length;
+          var allMiles=Object.keys(MILESTONES).map(Number);
+          var totalMs=0,doneMs=0;
+          allMiles.forEach(function(m){var ms=MILESTONES[m];
+            ["motor","cog","soc","lang"].forEach(function(cat){
+              (ms[cat]||[]).forEach(function(_,i){totalMs++;if(checked[m]&&checked[m][cat+"_"+i])doneMs++})})});
+          var feedW=0,diaperW=0,sleepW=0;
+          for(var i=0;i<7;i++){var dk=daysAgo(i);
+            feedW+=(logs.feed||[]).filter(function(e){return e.date===dk}).length;
+            diaperW+=(logs.diaper||[]).filter(function(e){return e.date===dk}).length;
+            sleepW+=(logs.sleep||[]).filter(function(e){return e.date===dk}).length}
+          function daysAgo(d){var a=new Date();a.setDate(a.getDate()-d);return a.getFullYear()+"-"+String(a.getMonth()+1).padStart(2,"0")+"-"+String(a.getDate()).padStart(2,"0")}
+          var w=window.open('','_blank');
+          w.document.write('<html><head><title>BabyBloom Report</title><style>'+
+            'body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#333;line-height:1.6}'+
+            'h1{color:#FF6B8A;border-bottom:2px solid #FF6B8A;padding-bottom:8px}'+
+            'h2{color:#6C63FF;margin-top:20px;font-size:16px}'+
+            '.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}'+
+            '.box{background:#f8f4ef;padding:12px;border-radius:8px}'+
+            '.box b{display:block;font-size:20px;color:#333}'+
+            '.box span{font-size:12px;color:#888}'+
+            'table{width:100%;border-collapse:collapse;margin:8px 0}th,td{text-align:left;padding:6px;border-bottom:1px solid #eee;font-size:13px}'+
+            '@media print{body{margin:0}}</style></head><body>'+
+            '<h1>🌸 BabyBloom Health Report</h1>'+
+            '<p><b>'+(profiles&&profiles.find(function(p){return p.id===activeProfile})||{}).name||"Baby"+'</b> — '+ageStr2+' old<br>Born: '+new Date(birth+'T00:00:00').toLocaleDateString('en-US',{year:"numeric",month:"long",day:"numeric"})+'<br>Generated: '+new Date().toLocaleDateString('en-US',{year:"numeric",month:"long",day:"numeric"})+'</p>'+
+            '<h2>Growth</h2>'+
+            (lastGrowth?'<div class="grid"><div class="box"><b>'+(lastGrowth.weight||"—")+' lbs</b><span>Weight</span></div><div class="box"><b>'+(lastGrowth.height||"—")+' in</b><span>Height</span></div></div>':'<p>No growth data logged yet.</p>')+
+            '<h2>Vaccines</h2><p>'+doneV+' of '+totalV+' vaccines recorded ('+Math.round(doneV/totalV*100)+'%)</p>'+
+            '<h2>Developmental Milestones</h2><p>'+doneMs+' of '+totalMs+' milestones checked ('+Math.round(doneMs/totalMs*100)+'%)</p>'+
+            '<h2>Last 7 Days Summary</h2>'+
+            '<table><tr><th>Category</th><th>Count</th><th>Daily Avg</th></tr>'+
+            '<tr><td>Feedings</td><td>'+feedW+'</td><td>'+Math.round(feedW/7*10)/10+'</td></tr>'+
+            '<tr><td>Diapers</td><td>'+diaperW+'</td><td>'+Math.round(diaperW/7*10)/10+'</td></tr>'+
+            '<tr><td>Sleep entries</td><td>'+sleepW+'</td><td>'+Math.round(sleepW/7*10)/10+'</td></tr></table>'+
+            '<h2>Notes for Pediatrician</h2><p style="border:1px dashed #ccc;padding:20px;border-radius:8px;min-height:80px;color:#888">Write notes here before your visit...</p>'+
+            '<div style="text-align:center;margin-top:30px;font-size:11px;color:#aaa">Generated by BabyBloom — AAP/CDC/WHO 2026</div>'+
+            '</body></html>');
+          w.document.close();
+          setTimeout(function(){w.print()},500);
+        },color:C.a,full:true})),
+      h("div",{style:{marginTop:12}},h(Btn,{label:"Reset All Data",onClick:function(){if(confirm('Delete ALL data?'))dcl().then(function(){toast('Cleared');setTimeout(function(){location.reload()},500)})},color:"#FF5252",outline:true,full:true})),
+      h("div",{style:{textAlign:"center",marginTop:16,fontSize:11,color:C.tl}},"BabyBloom v2.0 — AAP/CDC/WHO 2026")));
+}
+
+// ═══ MAIN APP ═══
+function App(){
+  var _t=us("home"),tab=_t[0],setTab=_t[1];
+  var _b=us(null),birth=_b[0],setBR=_b[1];
+  var _sm=us(0),selMo=_sm[0],setSelMo=_sm[1];
+  var _ck=us({}),checked=_ck[0],setCkR=_ck[1];
+  var _vd=us({}),vDone=_vd[0],setVDR=_vd[1];
+  var _lg=us({}),logs=_lg[0],setLgR=_lg[1];
+  var _th=us({}),teeth=_th[0],setThR=_th[1];
+  var _fi=us([]),firsts=_fi[0],setFiR=_fi[1];
+  var _ec=us([{id:1,name:"Emergency",phone:"911",role:"Emergency"},{id:2,name:"Poison Control",phone:"1-800-222-1222",role:"Poison Control"}]),emergencyContacts=_ec[0],setECR=_ec[1];
+  function setEmergencyContacts(v){setECR(v);ds("emergencyContacts",v)}
+  var _profiles=us([]),profiles=_profiles[0],setProfilesR=_profiles[1];
+  var _activeP=us(null),activeProfile=_activeP[0],setActivePR=_activeP[1];
+  function setProfiles(v){setProfilesR(v);ds("profiles",v)}
+  function setActiveProfile(v){setActivePR(v);ds("activeProfile",v)}
+  var _st=us(false),showSet=_st[0],setShowSet=_st[1];
+  var _sr=us(false),showSearch=_sr[0],setShowSearch=_sr[1];
+  var _lo=us(true),loading=_lo[0],setLoading=_lo[1];
+  var _dm=us(false),darkMode=_dm[0],setDarkModeR=_dm[1];
+  function setDarkMode(v){setDarkModeR(v);applyTheme(v);ds("darkMode",v)}
+  var _ts=us({running:false,type:null,startTime:null}),timerState=_ts[0],setTSR=_ts[1];
+  function setTimerState(v){setTSR(v);ds("timerState",v)}
+  var _rem=us({feedInterval:0,enabled:false}),reminders=_rem[0],setRemR=_rem[1];
+  function setReminders(v){setRemR(v);ds("reminders",v)}
+  var subNavRef=ur(null);
+  function navTo(t,sub){subNavRef.current=sub||null;setTab(t)}
+
+  function setBirth(v){setBR(v);ds("birthDate",v)}
+  function setChecked(fn){if(typeof fn==='function')setCkR(function(p){var n=fn(p);ds("milestones",n);return n});else{setCkR(fn);ds("milestones",fn)}}
+  function setVDone(fn){if(typeof fn==='function')setVDR(function(p){var n=fn(p);ds("vaccines",n);return n});else{setVDR(fn);ds("vaccines",fn)}}
+  function setLogs(v){setLgR(v);ds("logs",v)}
+  function setTeeth(fn){if(typeof fn==='function')setThR(function(p){var n=fn(p);ds("teeth",n);return n});else{setThR(fn);ds("teeth",fn)}}
+  function setFirsts(fn){if(typeof fn==='function')setFiR(function(p){var n=fn(p);ds("firsts",n);return n});else{setFiR(fn);ds("firsts",fn)}}
+
+  function addProfile(p){
+    var newProfiles=profiles.concat([p]);
+    setProfiles(newProfiles);
+    toast("Profile added!");
+  }
+  function deleteProfile(id){
+    setProfiles(profiles.filter(function(x){return x.id!==id}));
+    toast("Profile removed");
+  }
+
+  ue(function(){
+    Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders")]).then(function(r){
+      if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);
+      var loadedProfiles=r[9],loadedActiveProfile=r[10];
+      if(!loadedProfiles||loadedProfiles.length===0){
+        var defaultP={id:1,name:"Baby",birthDate:r[0]||today()};
+        setProfilesR([defaultP]);
+        setActivePR(1);
+        ds("profiles",[defaultP]);
+        ds("activeProfile",1);
+      } else {
+        setProfilesR(loadedProfiles);
+        setActivePR(loadedActiveProfile||loadedProfiles[0].id);
+      }
+      setLoading(false)}).catch(function(err){console.error("BabyBloom load error:",err);setLoading(false)});
+  },[]);
+
+  ue(function(){window.scrollTo({top:0,behavior:"smooth"})},[tab]);
+
+  ue(function(){
+    if(!reminders.enabled||!reminders.feedInterval)return;
+    if('Notification' in window && Notification.permission==='default')Notification.requestPermission();
+    var intv=setInterval(function(){
+      if('Notification' in window && Notification.permission==='granted'){
+        var feeds=logs.feed||[];
+        var lastFeed=feeds.length>0?feeds[0]:null;
+        if(lastFeed&&lastFeed.date===today()&&lastFeed.time){
+          var parts=lastFeed.time.split(':');
+          var lastTime=new Date();lastTime.setHours(parseInt(parts[0]),parseInt(parts[1]),0);
+          var diff=(Date.now()-lastTime.getTime())/3600000;
+          if(diff>=reminders.feedInterval){
+            new Notification('BabyBloom Reminder',{body:'Time for a feeding! Last feed was '+Math.round(diff*10)/10+' hours ago.',icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">🍼</text></svg>'});
+          }
+        }
+      }
+    },300000);
+    return function(){clearInterval(intv)};
+  },[reminders,logs.feed]);
+
+  var age=0;
+  if(birth){var b=new Date(birth+'T00:00:00'),n=new Date();var diffMs=n.getTime()-b.getTime();age=Math.max(0,Math.min(24,diffMs/(1000*60*60*24*30.4375)))}
+
+  var babyName=profiles.length?((profiles.find(function(p){return p.id===activeProfile})||{}).name||"Baby"):"Baby";
+
+  if(loading)return h("div",{style:{maxWidth:430,margin:"0 auto",background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}},h("div",{style:{fontSize:64}},"🍼"),h("div",{style:{fontSize:18,fontWeight:600,color:C.t,marginTop:12}},"Loading..."));
+
+  return h("div",{style:{maxWidth:430,margin:"0 auto",background:C.bg,minHeight:"100vh",position:"relative"}},
+    h("div",{style:{height:44}}),
+    birth?h(F,null,
+      h("button",{onClick:function(){setDarkMode(!darkMode)},style:{position:"fixed",top:12,right:96,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:darkMode?"sun":"moon",s:18,c:C.tl})),
+      h("button",{onClick:function(){setShowSearch(true)},style:{position:"fixed",top:12,right:54,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:"search",s:18,c:C.tl})),
+      h("button",{onClick:function(){setShowSet(true)},style:{position:"fixed",top:12,right:12,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:"settings",s:18,c:C.tl}))):null,
+    tab==="home"?h(HomeTab,{age:age,setTab:navTo,checked:checked,birth:birth,setBirth:setBirth,logs:logs,babyName:babyName,reminders:reminders}):null,
+    tab==="log"?h(LogTab,{logs:logs,setLogs:setLogs,age:age,subNavRef:subNavRef,timerState:timerState,setTimerState:setTimerState}):null,
+    tab==="miles"?h(MilestonesTab,{age:age,selMo:selMo,setSelMo:setSelMo,checked:checked,setChecked:setChecked,teeth:teeth,setTeeth:setTeeth,firsts:firsts,setFirsts:setFirsts,subNavRef:subNavRef}):null,
+    tab==="guide"?h(GuideTab,{age:age,vDone:vDone,setVDone:setVDone,subNavRef:subNavRef,logs:logs,birth:birth}):null,
+    tab==="safety"?h(SafetyTab,{subNavRef:subNavRef,emergencyContacts:emergencyContacts,setEmergencyContacts:setEmergencyContacts}):null,
+    birth?h(TabBar,{active:tab,set:setTab}):null,
+    showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:setActiveProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders}):null,
+    showSearch?h(SearchModal,{onClose:function(){setShowSearch(false)},logs:logs,firsts:firsts,checked:checked}):null);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>

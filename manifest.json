@@ -1,0 +1,18 @@
+{
+  "name": "BabyBloom — Baby Care Companion",
+  "short_name": "BabyBloom",
+  "description": "Evidence-based baby care companion for 0-24 months. Track milestones, vaccines, feeding, sleep & safety.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF6B8A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23FF6B8A'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white'>🍼</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
