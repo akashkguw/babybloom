@@ -1543,23 +1543,31 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
 }
 
 // ═══ PROFILE MANAGER ═══
-function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete}){
+function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete,onRename}){
   var _sh=us(false),show=_sh[0],setShow=_sh[1];
   var _nm=us(""),nm=_nm[0],setNm=_nm[1];
   var _bd=us(""),bd=_bd[0],setBd=_bd[1];
+  var _editId=us(null),editId=_editId[0],setEditId=_editId[1];
+  var _editNm=us(""),editNm=_editNm[0],setEditNm=_editNm[1];
 
   return h(F,null,
     h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"Baby Profiles"),
     profiles.map(function(p){
       var isActive=p.id===activeProfile;
+      var isEditing=editId===p.id;
       return h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,background:isActive?C.sl:C.bg,marginBottom:6}},
         h("div",{style:{width:36,height:36,borderRadius:18,background:isActive?C.s:C.b,display:"flex",alignItems:"center",justifyContent:"center",color:isActive?"white":C.tl,fontSize:16,fontWeight:700}},p.name.charAt(0).toUpperCase()),
         h("div",{style:{flex:1}},
-          h("div",{style:{fontSize:14,fontWeight:isActive?700:500,color:C.t}},p.name),
-          h("div",{style:{fontSize:11,color:C.tl}},p.birthDate?new Date(p.birthDate+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):"")),
-        isActive?h("span",{style:{fontSize:10,fontWeight:700,color:C.s,background:C.sl,padding:"2px 8px",borderRadius:8}},"Active"):
+          isEditing?h("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+            h("input",{value:editNm,onChange:function(e){setEditNm(e.target.value)},style:{fontSize:14,padding:"4px 8px",borderRadius:8,border:"1px solid "+C.b,background:C.bg,color:C.t,width:"100%"},autoFocus:true,onKeyDown:function(e){if(e.key==="Enter"&&editNm.trim()){onRename(p.id,editNm.trim());setEditId(null)}}}),
+            h("button",{onClick:function(){if(editNm.trim()){onRename(p.id,editNm.trim());setEditId(null)}},style:{background:C.s,color:"white",border:"none",padding:"4px 8px",borderRadius:6,fontSize:11,cursor:"pointer"}},"Save"),
+            h("button",{onClick:function(){setEditId(null)},style:{background:"none",border:"none",cursor:"pointer",fontSize:11,color:C.tl}},"Cancel")):
+          h(F,null,
+            h("div",{style:{fontSize:14,fontWeight:isActive?700:500,color:C.t,cursor:"pointer"},onClick:function(){setEditId(p.id);setEditNm(p.name)}},p.name," ",h("span",{style:{fontSize:10,color:C.tl}},"(tap to rename)")),
+            h("div",{style:{fontSize:11,color:C.tl}},p.birthDate?new Date(p.birthDate+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):""))),
+        isEditing?null:isActive?h("span",{style:{fontSize:10,fontWeight:700,color:C.s,background:C.sl,padding:"2px 8px",borderRadius:8}},"Active"):
           h("button",{onClick:function(){onSwitch(p.id)},style:{background:C.s,color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}},"Switch"),
-        !isActive&&profiles.length>1?h("button",{onClick:function(){onDelete(p.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:14,c:C.tl})):null)}),
+        !isActive&&profiles.length>1&&!isEditing?h("button",{onClick:function(){onDelete(p.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:14,c:C.tl})):null)}),
     !show?h(Btn,{label:"+ Add Baby",onClick:function(){setShow(true)},color:C.s,outline:true,full:true}):
     h(Cd,{style:{marginTop:8}},
       h("div",{style:{marginBottom:8}},h(Input,{value:nm,onChange:setNm,placeholder:"Baby's name"})),
@@ -1571,13 +1579,13 @@ function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete}){
 }
 
 // ═══ SETTINGS ═══
-function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,logs,checked,vDone,reminders,setReminders}){
+function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,onRenameProfile,logs,checked,vDone,reminders,setReminders}){
   var fileRef=ur(null);
   return h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)onClose()}},
     h("div",{className:"ms"},
       h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:16}},h("h2",{style:{fontSize:20,fontWeight:700}},"Settings & Data"),h("button",{onClick:onClose,style:{background:"none",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:22,c:C.tl}))),
       h("div",{style:{background:C.al,borderRadius:14,padding:14,marginBottom:12}},h("div",{style:{fontSize:14,fontWeight:600,marginBottom:4}},"Your Data is Local"),h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5}},"All data stored in IndexedDB on your device. Nothing sent to servers.")),
-      profiles&&profiles.length>0?h("div",{style:{marginBottom:12}},h(ProfileManager,{profiles:profiles,activeProfile:activeProfile,onSwitch:onSwitchProfile,onAdd:onAddProfile,onDelete:onDeleteProfile})):null,
+      profiles&&profiles.length>0?h("div",{style:{marginBottom:12}},h(ProfileManager,{profiles:profiles,activeProfile:activeProfile,onSwitch:onSwitchProfile,onAdd:onAddProfile,onDelete:onDeleteProfile,onRename:onRenameProfile})):null,
       birth?h("div",{style:{marginBottom:12}},h("div",{style:{fontSize:13,fontWeight:600,color:C.tl,marginBottom:4}},"Birth Date"),h("div",{style:{fontSize:15,padding:"8px 12px",background:C.bg,borderRadius:10}},new Date(birth+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}))):null,
       h("div",{style:{marginBottom:16}},
         h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"Feeding Reminders"),
@@ -1679,45 +1687,120 @@ function App(){
   var quickFormRef=ur(null);
   function navTo(t,sub,formData){subNavRef.current=sub||null;quickFormRef.current=formData||null;setTab(t)}
 
-  function setBirth(v){setBR(v);ds("birthDate",v)}
-  function setChecked(fn){if(typeof fn==='function')setCkR(function(p){var n=fn(p);ds("milestones",n);return n});else{setCkR(fn);ds("milestones",fn)}}
-  function setVDone(fn){if(typeof fn==='function')setVDR(function(p){var n=fn(p);ds("vaccines",n);return n});else{setVDR(fn);ds("vaccines",fn)}}
-  function setLogs(v){setLgR(v);ds("logs",v)}
-  function setTeeth(fn){if(typeof fn==='function')setThR(function(p){var n=fn(p);ds("teeth",n);return n});else{setThR(fn);ds("teeth",fn)}}
-  function setFirsts(fn){if(typeof fn==='function')setFiR(function(p){var n=fn(p);ds("firsts",n);return n});else{setFiR(fn);ds("firsts",fn)}}
+  // Helper: save a field to both global key (backward compat) and profile-specific key
+  function spd(field,val){
+    ds(field,val);
+    if(activeProfile){
+      dg("profileData_"+activeProfile).then(function(d){
+        var data=d||{};data[field==="birthDate"?"birthDate":field==="milestones"?"milestones":field==="vaccines"?"vaccines":field==="logs"?"logs":field==="teeth"?"teeth":"firsts"]=val;
+        ds("profileData_"+activeProfile,data);
+      });
+    }
+  }
+  function setBirth(v){setBR(v);spd("birthDate",v)}
+  function setChecked(fn){if(typeof fn==='function')setCkR(function(p){var n=fn(p);spd("milestones",n);return n});else{setCkR(fn);spd("milestones",fn)}}
+  function setVDone(fn){if(typeof fn==='function')setVDR(function(p){var n=fn(p);spd("vaccines",n);return n});else{setVDR(fn);spd("vaccines",fn)}}
+  function setLogs(v){setLgR(v);spd("logs",v)}
+  function setTeeth(fn){if(typeof fn==='function')setThR(function(p){var n=fn(p);spd("teeth",n);return n});else{setThR(fn);spd("teeth",fn)}}
+  function setFirsts(fn){if(typeof fn==='function')setFiR(function(p){var n=fn(p);spd("firsts",n);return n});else{setFiR(fn);spd("firsts",fn)}}
+
+  // ═══ PROFILE DATA PARTITIONING ═══
+  // Each profile stores its own: logs, milestones, vaccines, teeth, firsts
+  function saveProfileData(profileId){
+    if(!profileId)return Promise.resolve();
+    var data={logs:logs,milestones:checked,vaccines:vDone,teeth:teeth,firsts:firsts,birthDate:birth};
+    return ds("profileData_"+profileId,data);
+  }
+  function loadProfileData(profileId){
+    return dg("profileData_"+profileId).then(function(data){
+      if(data){
+        setLgR(data.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+        setCkR(data.milestones||{});
+        setVDR(data.vaccines||{});
+        setThR(data.teeth||{});
+        setFiR(data.firsts||[]);
+        if(data.birthDate)setBR(data.birthDate);
+      } else {
+        // New profile — start with empty data
+        var prof=profiles.find(function(p){return p.id===profileId});
+        setLgR({feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+        setCkR({});setVDR({});setThR({});setFiR([]);
+        if(prof&&prof.birthDate)setBR(prof.birthDate);
+      }
+    });
+  }
+  function switchProfile(newId){
+    if(newId===activeProfile)return;
+    saveProfileData(activeProfile).then(function(){
+      return loadProfileData(newId);
+    }).then(function(){
+      setActiveProfile(newId);
+      toast("Switched profile!");
+    });
+  }
 
   function addProfile(p){
     var newProfiles=profiles.concat([p]);
     setProfiles(newProfiles);
     toast("Profile added!");
   }
+  function renameProfile(id,newName){
+    var updated=profiles.map(function(p){return p.id===id?Object.assign({},p,{name:newName}):p});
+    setProfiles(updated);
+    toast("Name updated!");
+  }
   function deleteProfile(id){
     setProfiles(profiles.filter(function(x){return x.id!==id}));
+    ds("profileData_"+id,null);
     toast("Profile removed");
   }
 
   ue(function(){
     Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders"),dg("feedTimerApp")]).then(function(r){
-      if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);if(r[12]!=null)_setFTA(r[12]);
+      if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);if(r[12]!=null)_setFTA(r[12]);
       var loadedProfiles=r[9],loadedActiveProfile=r[10];
+      var activeId;
       if(!loadedProfiles||loadedProfiles.length===0){
         var defaultP={id:1,name:"Baby",birthDate:r[0]||today()};
         setProfilesR([defaultP]);
         setActivePR(1);
+        activeId=1;
         ds("profiles",[defaultP]);
         ds("activeProfile",1);
       } else {
         setProfilesR(loadedProfiles);
-        setActivePR(loadedActiveProfile||loadedProfiles[0].id);
+        activeId=loadedActiveProfile||loadedProfiles[0].id;
+        setActivePR(activeId);
       }
-      setLoading(false)}).catch(function(err){console.error("BabyBloom load error:",err);setLoading(false)});
+      // Load profile-specific data (or migrate from global keys)
+      dg("profileData_"+activeId).then(function(pData){
+        if(pData){
+          // Load from per-profile storage
+          setLgR(pData.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+          setCkR(pData.milestones||{});
+          setVDR(pData.vaccines||{});
+          setThR(pData.teeth||{});
+          setFiR(pData.firsts||[]);
+          if(pData.birthDate)setBR(pData.birthDate);else if(r[0]!=null)setBR(r[0]);
+        } else {
+          // First time or migration: use global data and save under profile key
+          if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);
+          // Migrate global data to this profile
+          ds("profileData_"+activeId,{logs:r[3]||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]},milestones:r[1]||{},vaccines:r[2]||{},teeth:r[4]||{},firsts:r[5]||[],birthDate:r[0]||null});
+        }
+        setLoading(false);
+      }).catch(function(){setLoading(false)});
+    }).catch(function(err){console.error("BabyBloom load error:",err);setLoading(false)});
   },[]);
 
   ue(function(){window.scrollTo({top:0,behavior:"smooth"})},[tab]);
 
+  var lastNotifRef=ur(null);
   ue(function(){
     if(!reminders.enabled||!reminders.feedInterval)return;
     if('Notification' in window && Notification.permission==='default')Notification.requestPermission();
+    // Reset dedup tracker when new feed is logged
+    lastNotifRef.current=null;
     var intv=setInterval(function(){
       if('Notification' in window && Notification.permission==='granted'){
         var feeds=logs.feed||[];
@@ -1725,8 +1808,10 @@ function App(){
         if(lastFeed&&lastFeed.date&&lastFeed.time){
           var dp=lastFeed.date.split("-"),parts=lastFeed.time.split(':');
           var lastTime=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),parseInt(parts[0]),parseInt(parts[1]),0);
+          var feedKey=lastFeed.date+"_"+lastFeed.time;
           var diff=(Date.now()-lastTime.getTime())/3600000;
-          if(diff>=reminders.feedInterval){
+          if(diff>=reminders.feedInterval&&lastNotifRef.current!==feedKey){
+            lastNotifRef.current=feedKey;
             new Notification('BabyBloom Reminder',{body:'Time for a feeding! Last feed was '+Math.round(diff*10)/10+' hours ago.',icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">🍼</text></svg>'});
           }
         }
@@ -1754,7 +1839,7 @@ function App(){
     tab==="guide"?h(GuideTab,{age:age,vDone:vDone,setVDone:setVDone,subNavRef:subNavRef,logs:logs,birth:birth}):null,
     tab==="safety"?h(SafetyTab,{subNavRef:subNavRef,emergencyContacts:emergencyContacts,setEmergencyContacts:setEmergencyContacts}):null,
     birth?h(TabBar,{active:tab,set:setTab}):null,
-    showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:setActiveProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders}):null,
+    showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:switchProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,onRenameProfile:renameProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders}):null,
     showSearch?h(SearchModal,{onClose:function(){setShowSearch(false)},logs:logs,firsts:firsts,checked:checked}):null);
 }
 
