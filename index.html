@@ -69,10 +69,10 @@ function Input({value,onChange,type,placeholder,style}){return h("input",{type:t
 function Btn({label,onClick,color,outline,full,small}){return h("button",{onClick:onClick,style:{width:full?"100%":"auto",padding:small?"8px 16px":"14px 20px",borderRadius:14,border:outline?"2px solid "+(color||C.s):"none",background:outline?"transparent":(color||C.s),color:outline?(color||C.s):"white",fontSize:small?13:15,fontWeight:600,cursor:"pointer"}},label)}
 
 // ═══ CHART HELPERS ═══
-function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function weekLabel(dateStr){var d=new Date(dateStr+'T00:00:00');return(d.getMonth()+1)+'/'+d.getDate()}
 function monthLabel(dateStr){return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(dateStr.slice(5,7))-1]}
-function getWeekStart(dateStr){var d=new Date(dateStr+'T00:00:00');var day=d.getDay();var diff=d.getDate()-day+(day===0?-6:1);var m=new Date(d.getFullYear(),d.getMonth(),diff);return m.toISOString().slice(0,10)}
+function getWeekStart(dateStr){var d=new Date(dateStr+'T00:00:00');var day=d.getDay();var diff=d.getDate()-day+(day===0?-6:1);var m=new Date(d.getFullYear(),d.getMonth(),diff);return m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")+"-"+String(m.getDate()).padStart(2,"0")}
 
 function aggregateLogs(entries,period){
   var buckets={},labels={},order=[];
@@ -81,7 +81,7 @@ function aggregateLogs(entries,period){
   }else if(period==='weekly'){
     for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=0;labels[dk]='W'+(4-i);order.push(dk)}}
   }else{
-    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
   }
   (entries||[]).forEach(function(e){
     if(!e.date)return;
@@ -98,7 +98,7 @@ function aggregateValues(entries,field,period){
   }else if(period==='weekly'){
     for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=[];labels[dk]='W'+(4-i);order.push(dk)}}
   }else{
-    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=[];labels[mk]=monthLabel(mk);order.push(mk)}
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");buckets[mk]=[];labels[mk]=monthLabel(mk);order.push(mk)}
   }
   (entries||[]).forEach(function(e){
     if(!e.date||!e[field])return;var v=parseFloat(e[field]);if(isNaN(v))return;
@@ -115,7 +115,7 @@ function aggregateSum(entries,field,period,divisor){
   }else if(period==='weekly'){
     for(var i=3;i>=0;i--){var dk=getWeekStart(daysAgo(i*7));if(!buckets[dk]){buckets[dk]=0;labels[dk]='W'+(4-i);order.push(dk)}}
   }else{
-    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.toISOString().slice(0,7);buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
+    for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);var mk=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");buckets[mk]=0;labels[mk]=monthLabel(mk);order.push(mk)}
   }
   var div=divisor||1;
   (entries||[]).forEach(function(e){
