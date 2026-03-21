@@ -43,6 +43,9 @@ Built as a single HTML file with zero build steps, BabyBloom works on any device
 ### Quick Log (Home Page)
 One-tap logging directly from the home screen — no navigating to forms for frequent actions like diaper changes, naps, and breast feeding. The inline feed timer starts counting in real time and logs the exact duration when you tap Done.
 
+### Voice Logging
+Hands full? Just tap the microphone button and speak. BabyBloom understands natural phrases like "bottle 4 ounces," "wet diaper," "nap," "woke up," "temperature 99.5," or "breast left 15 minutes." It parses your speech, shows a confirmation, and auto-saves — no typing required. You can even specify a time: "bottle 3 oz at 2:30 PM." Powered by the Web Speech API (works in Chrome, Safari, and Edge).
+
 ### Consolidated Stats
 Interactive charts with metric selectors for each category. Toggle between count, duration (minutes/hours), and volume (oz) on a single chart. View daily, weekly, or monthly trends.
 
@@ -75,7 +78,7 @@ Track 100+ milestones across motor, cognitive, social, and language domains from
 - **Feeding Reminders** — Configurable push notifications (2h, 2.5h, 3h, or 4h intervals)
 - **Dark Mode** — Easy on the eyes during late-night feeds
 - **Search** — Find anything across logs, milestones, vaccines, safety info, and guides
-- **Multiple Profiles** — Track more than one child
+- **Multiple Profiles** — Track more than one child with separate data (logs, milestones, vaccines) per baby, inline rename, and one-tap switching
 - **Pediatrician Report** — Generate a printable health summary for doctor visits
 - **Export / Import** — JSON backup and restore for your data
 - **Teeth Tracker** — Track all 20 baby teeth eruption dates
@@ -95,6 +98,7 @@ Track 100+ milestones across motor, cognitive, social, and language domains from
 | Hosting | GitHub Pages (static, single HTML file) |
 | Icons | Hand-crafted SVG path data |
 | Charts | Custom SVG bar charts and growth curve plots |
+| Voice | Web Speech API with NLP parser for hands-free logging |
 
 **Zero dependencies. Zero build tools. Zero server calls.**
 
@@ -130,7 +134,7 @@ No `npm install`. No `webpack`. No `.env` files. Just one HTML file.
 
 ```
 babybloom/
-├── index.html       # The entire app (~1750 lines)
+├── index.html       # The entire app (~1900 lines)
 ├── sw.js            # Service worker for offline support
 ├── manifest.json    # PWA manifest for installability
 ├── LICENSE          # MIT License

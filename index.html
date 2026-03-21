@@ -14,6 +14,7 @@
 html,body,#root{height:100%;width:100%;overflow-x:hidden}
 body{background:#FFF8F0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:#2D2D3A}
 ::-webkit-scrollbar{display:none}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
 input,select,textarea{font-family:inherit}
 input[type="date"],input[type="time"],input[type="number"],input[type="text"],select,textarea{-webkit-appearance:none;appearance:none;font-size:16px}
 button{-webkit-appearance:none;appearance:none;font-family:inherit}
@@ -1342,6 +1343,230 @@ function SafetyTab({subNavRef,emergencyContacts,setEmergencyContacts}){
   );
 }
 
+// ═══ VOICE LOG — NLP PARSER ═══
+function parseVoice(text){
+  var t=text.toLowerCase().trim().replace(/[.,!?]+$/,"");
+  var result=null;
+
+  // Extract time if mentioned (e.g., "at 2:30", "at 2 30 PM")
+  var timeOverride=null;
+  var tm=t.match(/(?:at\s+)?(\d{1,2})[:\s](\d{2})\s*(am|pm|a\.m\.|p\.m\.)?/i);
+  if(tm){
+    var hr=parseInt(tm[1]),mn=parseInt(tm[2]),ap=tm[3]?tm[3].replace(/\./g,"").toLowerCase():null;
+    if(ap==="pm"&&hr<12)hr+=12;if(ap==="am"&&hr===12)hr=0;
+    if(hr>=0&&hr<24&&mn>=0&&mn<60)timeOverride=String(hr).padStart(2,"0")+":"+String(mn).padStart(2,"0");
+  }
+
+  // Extract oz/ml amounts
+  var ozM=t.match(/(\d+(?:\.\d+)?)\s*(?:oz|ounce|ounces)/);
+  var mlM=t.match(/(\d+(?:\.\d+)?)\s*(?:ml|milliliter)/);
+  var minM=t.match(/(\d+(?:\.\d+)?)\s*(?:min|minute|minutes)/);
+
+  // Temperature
+  var tempM=t.match(/(?:temp|temperature|fever)\s*(?:is|was|of)?\s*(\d{2,3}(?:\.\d+)?)\s*(?:°?\s*f|fahrenheit|degrees)?/i);
+  if(!tempM)tempM=t.match(/(\d{2,3}\.\d+)\s*(?:°?\s*f|fahrenheit|degrees|temp)/i);
+
+  // ═══ FEEDING ═══
+  if(/breast\s*(?:feed|fed)?\s*(?:left|l\b)/i.test(t)||/left\s*breast/i.test(t)){
+    result={cat:"feed",entry:{type:"Breast L"}};
+    if(minM)result.entry.mins=parseFloat(minM[1]);
+    if(minM)result.entry.amount=minM[1]+" min";
+  }else if(/breast\s*(?:feed|fed)?\s*(?:right|r\b)/i.test(t)||/right\s*breast/i.test(t)){
+    result={cat:"feed",entry:{type:"Breast R"}};
+    if(minM)result.entry.mins=parseFloat(minM[1]);
+    if(minM)result.entry.amount=minM[1]+" min";
+  }else if(/nurs(?:ed|ing)\s.*left|left\s.*nurs/i.test(t)){
+    result={cat:"feed",entry:{type:"Breast L"}};
+    if(minM)result.entry.mins=parseFloat(minM[1]);
+    if(minM)result.entry.amount=minM[1]+" min";
+  }else if(/nurs(?:ed|ing)\s.*right|right\s.*nurs/i.test(t)){
+    result={cat:"feed",entry:{type:"Breast R"}};
+    if(minM)result.entry.mins=parseFloat(minM[1]);
+    if(minM)result.entry.amount=minM[1]+" min";
+  }else if((/breast\s*(?:feed|fed)?/i.test(t)||/\bnurs(?:ed|ing|e)\b/i.test(t))&&!/left|right|l\b|r\b/i.test(t)){
+    result={cat:"feed",entry:{type:"Breast L"}};
+    if(minM)result.entry.mins=parseFloat(minM[1]);
+    if(minM)result.entry.amount=minM[1]+" min";
+  }else if(/bottle|formula/i.test(t)){
+    result={cat:"feed",entry:{type:"Bottle"}};
+    if(ozM){result.entry.oz=parseFloat(ozM[1]);result.entry.amount=ozM[1]+" oz"}
+    else if(mlM){result.entry.oz=Math.round(parseFloat(mlM[1])/29.5735*10)/10;result.entry.amount=mlM[1]+" ml"}
+    else if(minM){result.entry.mins=parseFloat(minM[1]);result.entry.amount=minM[1]+" min"}
+  }else if(/(?:fed|feed|ate|eating|nursed)\s+(\d+(?:\.\d+)?)\s*(?:oz|ounce)/i.test(t)){
+    var fOz=t.match(/(\d+(?:\.\d+)?)\s*(?:oz|ounce)/);
+    result={cat:"feed",entry:{type:"Bottle",oz:parseFloat(fOz[1]),amount:fOz[1]+" oz"}};
+  }else if(/solid|puree|cereal|banana|avocado|sweet potato|rice|oat/i.test(t)){
+    result={cat:"feed",entry:{type:"Solids",notes:t}};
+
+  // ═══ DIAPER ═══
+  }else if(/both|wet\s*and\s*dirty|mixed/i.test(t)){
+    result={cat:"diaper",entry:{type:"Both"}};
+  }else if(/poop|poopy|dirty\s*diaper|dirty|bowel|bm\b|diarrhea/i.test(t)){
+    result={cat:"diaper",entry:{type:"Dirty"}};
+    if(/green/i.test(t))result.entry.notes="Green";
+    if(/watery|runny|diarrhea/i.test(t))result.entry.notes="Watery/runny";
+  }else if(/wet\s*diaper|wet|pee|urine/i.test(t)){
+    result={cat:"diaper",entry:{type:"Wet"}};
+  }else if(/diaper\s*change|changed\s*diaper|diaper/i.test(t)){
+    result={cat:"diaper",entry:{type:/poop|dirty/i.test(t)?"Dirty":"Wet"}};
+
+  // ═══ SLEEP ═══
+  }else if(/woke\s*up|wake\s*up|awake|waking/i.test(t)){
+    result={cat:"sleep",entry:{type:"Wake Up"}};
+  }else if(/night\s*sleep|bedtime|bed\s*time|going\s*to\s*(?:bed|sleep)\s*(?:for\s*the\s*)?night/i.test(t)){
+    result={cat:"sleep",entry:{type:"Night Sleep"}};
+  }else if(/nap|napping|sleeping|fell\s*asleep|dozed/i.test(t)){
+    result={cat:"sleep",entry:{type:"Nap"}};
+  }else if(/tummy\s*time/i.test(t)){
+    result={cat:"sleep",entry:{type:"Tummy Time"}};
+    if(minM){result.entry.mins=parseFloat(minM[1]);result.entry.amount=minM[1]+" min"}
+
+  // ═══ HEALTH ═══
+  }else if(tempM){
+    result={cat:"temp",entry:{type:"Temperature",value:parseFloat(tempM[1]),notes:tempM[1]+"°F"}};
+  }else if(/bath|bathed|shower/i.test(t)){
+    result={cat:"bath",entry:{type:"Bath"}};
+  }else if(/medicine|tylenol|ibuprofen|advil|motrin|gripe|vitamin|drops/i.test(t)){
+    result={cat:"meds",entry:{type:"Medicine",notes:t}};
+  }else if(/allergy|allergic|rash|hives|reaction|swelling/i.test(t)){
+    result={cat:"allergy",entry:{type:"Allergy",notes:t}};
+
+  // ═══ GROWTH ═══
+  }else if(/weigh|weight|pound|lb/i.test(t)){
+    var wM=t.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs|pound)/);
+    if(wM)result={cat:"growth",entry:{type:"Weight",value:parseFloat(wM[1]),unit:"lb",notes:wM[1]+" lbs"}};
+  }else if(/height|length|inch|cm|tall/i.test(t)){
+    var hM=t.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|cm)/);
+    if(hM)result={cat:"growth",entry:{type:"Height",value:parseFloat(hM[1]),notes:hM[1]+(hM[0].includes("cm")?" cm":" in")}};
+  }
+
+  if(result&&timeOverride)result.entry.time=timeOverride;
+  return result;
+}
+
+// ═══ VOICE INPUT COMPONENT ═══
+function VoiceButton({onResult,quickLog,babyName}){
+  var _ls=us("idle"),listenState=_ls[0],setLS=_ls[1];
+  var _txt=us(""),transcript=_txt[0],setTxt=_txt[1];
+  var _parsed=us(null),parsed=_parsed[0],setParsed=_parsed[1];
+  var _err=us(""),err=_err[0],setErr=_err[1];
+  var recRef=ur(null);
+  var timeoutRef=ur(null);
+
+  var supported=typeof window!=="undefined"&&("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
+
+  function startListening(){
+    if(!supported){setErr("Voice not supported in this browser");return}
+    setErr("");setTxt("");setParsed(null);
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    var rec=new SR();
+    rec.lang="en-US";rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=1;
+    recRef.current=rec;
+    rec.onstart=function(){setLS("listening")};
+    rec.onresult=function(e){
+      var interim="",final="";
+      for(var i=0;i<e.results.length;i++){
+        if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+        else interim+=e.results[i][0].transcript;
+      }
+      setTxt(final||interim);
+    };
+    rec.onerror=function(e){
+      if(e.error==="no-speech")setErr("No speech detected — try again");
+      else if(e.error==="not-allowed")setErr("Mic access denied — check browser settings");
+      else setErr("Error: "+e.error);
+      setLS("idle");
+    };
+    rec.onend=function(){
+      setLS("processing");
+      // Process final transcript
+      if(timeoutRef.current)clearTimeout(timeoutRef.current);
+      timeoutRef.current=setTimeout(function(){
+        var t=recRef.current?recRef.current:null;
+        // Use latest transcript from state — we read via closure
+      },100);
+    };
+    rec.start();
+    // Auto-stop after 8 seconds
+    setTimeout(function(){try{rec.stop()}catch(e){}},8000);
+  }
+
+  // Process transcript when we move to "processing" state
+  ue(function(){
+    if(listenState==="processing"&&transcript){
+      var p=parseVoice(transcript);
+      if(p){
+        setParsed(p);
+        // Auto-confirm after 2 seconds
+        timeoutRef.current=setTimeout(function(){
+          quickLog(p.cat,p.entry);
+          setParsed(null);setTxt("");setLS("idle");
+        },2000);
+      } else {
+        setErr("Didn't catch that — try: \"bottle 4 oz\" or \"wet diaper\" or \"nap\"");
+        setLS("idle");
+      }
+    }
+  },[listenState,transcript]);
+
+  function cancelVoice(){
+    if(recRef.current)try{recRef.current.stop()}catch(e){}
+    if(timeoutRef.current)clearTimeout(timeoutRef.current);
+    setParsed(null);setTxt("");setLS("idle");setErr("");
+  }
+
+  function confirmNow(){
+    if(parsed){
+      if(timeoutRef.current)clearTimeout(timeoutRef.current);
+      quickLog(parsed.cat,parsed.entry);
+      setParsed(null);setTxt("");setLS("idle");
+    }
+  }
+
+  if(!supported)return null;
+
+  var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
+
+  return h(F,null,
+    // Floating mic button
+    listenState==="idle"&&!parsed?h("button",{onClick:startListening,style:{position:"fixed",bottom:88,right:16,zIndex:99,width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,"+C.p+","+C.s+")",border:"none",boxShadow:"0 4px 16px rgba(139,92,246,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform 0.2s"},onMouseDown:function(e){e.currentTarget.style.transform="scale(0.9)"},onMouseUp:function(e){e.currentTarget.style.transform="scale(1)"}},
+      h("svg",{width:26,height:26,viewBox:"0 0 24 24",fill:"none",stroke:"white",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
+        h("path",{d:"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"}),
+        h("path",{d:"M19 10v2a7 7 0 0 1-14 0v-2"}),
+        h("line",{x1:12,y1:19,x2:12,y2:23}),
+        h("line",{x1:8,y1:23,x2:16,y2:23}))
+    ):null,
+
+    // Listening overlay
+    listenState==="listening"?h("div",{style:{position:"fixed",bottom:0,left:0,right:0,top:0,zIndex:200,background:"rgba(0,0,0,0.6)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",paddingBottom:100}},
+      h("div",{style:{background:C.cd,borderRadius:24,padding:"32px 28px",maxWidth:340,width:"90%",textAlign:"center"}},
+        h("div",{style:{fontSize:48,marginBottom:12,animation:"pulse 1.5s infinite"}},"🎙️"),
+        h("div",{style:{fontSize:18,fontWeight:700,color:C.t,marginBottom:6}},"Listening..."),
+        h("div",{style:{fontSize:13,color:C.tl,marginBottom:12}},transcript||"Say something like \"bottle 4 oz\" or \"wet diaper\""),
+        h("div",{style:{fontSize:12,color:C.tl,marginBottom:16}},"Examples: breast left 15 min, dirty diaper, nap, woke up, temp 99.5"),
+        h("button",{onClick:cancelVoice,style:{padding:"10px 24px",borderRadius:12,background:C.b,border:"none",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer"}},"Cancel"))
+    ):null,
+
+    // Confirmation overlay
+    parsed?h("div",{style:{position:"fixed",bottom:0,left:0,right:0,top:0,zIndex:200,background:"rgba(0,0,0,0.6)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",paddingBottom:100}},
+      h("div",{style:{background:C.cd,borderRadius:24,padding:"28px 24px",maxWidth:340,width:"90%",textAlign:"center"}},
+        h("div",{style:{fontSize:36,marginBottom:8}},"✅"),
+        h("div",{style:{fontSize:16,fontWeight:700,color:C.t,marginBottom:4}},"Got it!"),
+        h("div",{style:{fontSize:14,color:C.s,fontWeight:600,marginBottom:4}},catLabels[parsed.cat]||parsed.cat),
+        h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}},parsed.entry.type+(parsed.entry.amount?" — "+parsed.entry.amount:"")),
+        parsed.entry.notes?h("div",{style:{fontSize:12,color:C.tl,marginBottom:4}},parsed.entry.notes):null,
+        h("div",{style:{fontSize:12,color:C.tl,marginBottom:16,fontStyle:"italic"}},"\""+transcript+"\""),
+        h("div",{style:{fontSize:11,color:C.ok,marginBottom:12}},"Auto-saving in 2s..."),
+        h("div",{style:{display:"flex",gap:10,justifyContent:"center"}},
+          h("button",{onClick:confirmNow,style:{padding:"10px 24px",borderRadius:12,background:C.ok,border:"none",color:"white",fontSize:14,fontWeight:700,cursor:"pointer"}},"Save Now"),
+          h("button",{onClick:cancelVoice,style:{padding:"10px 20px",borderRadius:12,background:C.b,border:"none",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer"}},"Cancel")))
+    ):null,
+
+    // Error toast
+    err?h("div",{style:{position:"fixed",bottom:88,left:16,right:16,zIndex:200,padding:"12px 16px",borderRadius:12,background:C.pl,color:C.p,fontSize:13,fontWeight:600,textAlign:"center"},onClick:function(){setErr("")}},err):null
+  );
+}
+
 // ═══ HOME TAB ═══
 function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,reminders,feedTimerApp,setFeedTimerApp}){
   var _td=us(""),td2=_td[0],setTd=_td[1];
@@ -1538,7 +1763,10 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
         return h(Cd,{key:q.l,onClick:function(){setTab(q.t,q.s)},style:{padding:12,textAlign:"center",cursor:"pointer"}},
           h("div",{style:{fontSize:12,fontWeight:600,color:C.t}},q.l))})),
 
-    h("div",{style:{textAlign:"center",padding:8,color:C.tl,fontSize:10}},"Based on AAP, CDC & WHO guidelines",h("br"),"Data stored locally • Not medical advice")
+    h("div",{style:{textAlign:"center",padding:8,color:C.tl,fontSize:10}},"Based on AAP, CDC & WHO guidelines",h("br"),"Data stored locally • Not medical advice"),
+
+    // ═══ VOICE LOG BUTTON ═══
+    h(VoiceButton,{quickLog:quickLog,babyName:babyName})
   );
 }
 
