@@ -37,6 +37,7 @@ Built as a single HTML file with zero build steps, BabyBloom works on any device
 - **Growth** — Weight, height, and head circumference with WHO percentile charts
 - **Temperature** — Log readings with fever threshold alerts
 - **Bath** — Full bath, sponge bath, or hair wash
+- **Massage** — Body part, oil used, duration, and baby's mood with a full best practices guide (techniques, oils, age-specific tips)
 - **Medications** — Name, dose, and schedule tracking
 - **Allergies** — Food introduction log with reaction tracking
 

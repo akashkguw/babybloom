@@ -208,6 +208,8 @@ function StatsView({logs,period,setPeriod,logColors}){
     (logs.pump||[]).length>0?ChartCard("pump","🫙","Pump",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.a}]):null,
     // Bath
     (logs.bath||[]).length>0?ChartCard("bath","🛁","Bath",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.bl}]):null,
+    // Massage
+    (logs.massage||[]).length>0?ChartCard("massage","🤲","Massage",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.pu},{id:"mins",label:"Minutes",getData:function(e,p){return aggregateSum(e,p,"duration")},color:C.s}]):null,
     // Meds
     (logs.meds||[]).length>0?ChartCard("meds","💊","Medications",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.s}]):null,
     // Allergy
@@ -613,6 +615,58 @@ var REMEDIES={
   ]}
 };
 
+var MASSAGE_GUIDE={
+  benefits:{title:"Why Baby Massage?",icon:"💜",items:[
+    "Promotes bonding and attachment between parent and baby",
+    "Improves sleep quality and helps baby fall asleep faster",
+    "Relieves gas, colic, and constipation through tummy strokes",
+    "Supports healthy weight gain in premature babies (research-backed)",
+    "Reduces cortisol (stress hormone) and increases oxytocin",
+    "Stimulates nervous system development and body awareness",
+    "Improves circulation and strengthens immune system",
+    "Helps with teething pain when gentle face/jaw massage is included"
+  ]},
+  bestTime:{title:"When to Massage",icon:"🕐",items:[
+    {r:"After bath time",d:"Baby is already relaxed, warm skin absorbs oil well. Most popular time."},
+    {r:"Before bedtime",d:"Calming massage helps signal sleep time. Great for bedtime routine."},
+    {r:"Between feeds",d:"Wait 45 min after feeding to avoid spit-up. Baby shouldn't be hungry either."},
+    {r:"When baby is calm & alert",d:"Look for quiet alert state — eyes open, relaxed body, not fussy."},
+    {r:"Avoid when",d:"Baby is crying, hungry, just fed, has fever, has skin infection, or after vaccinations (24 hrs)."}
+  ]},
+  oils:{title:"Recommended Oils",icon:"🫒",items:[
+    {r:"Coconut oil (top choice)",d:"Natural, antimicrobial, gentle on sensitive skin. Cold-pressed virgin is best."},
+    {r:"Sesame oil (traditional)",d:"Used in Ayurvedic tradition. Warming, great for winter. Rich in vitamin E."},
+    {r:"Olive oil",d:"Rich in antioxidants and vitamin E. Use extra virgin. Good for dry skin."},
+    {r:"Almond oil",d:"Light, easily absorbed. Rich in vitamin E. Avoid if nut allergy in family."},
+    {r:"Sunflower oil",d:"Rich in linoleic acid, supports skin barrier. Pediatrician-recommended."},
+    {r:"Avoid",d:"Mineral oil, mustard oil (can irritate), essential oils (too strong for babies), fragranced oils."}
+  ]},
+  techniques:{title:"Massage Techniques by Body Part",icon:"🤲",items:[
+    {r:"Legs & Feet (start here)",d:"Hold ankle, stroke from thigh to foot with gentle pressure. Squeeze gently down the leg. Thumb circles on sole of foot. Gently squeeze each toe."},
+    {r:"Tummy (clockwise only)",d:"Clockwise circles around belly button — follows digestion. 'I Love You' strokes: I down left side, L across and down, U shape. Great for gas relief."},
+    {r:"Chest",d:"Hands flat on chest, stroke outward from center to sides like opening a book. Heart shape from center, up, around, and back to center."},
+    {r:"Arms & Hands",d:"Same as legs — stroke from shoulder to wrist. Roll arm gently between hands. Open palm and do thumb circles. Gently squeeze each finger."},
+    {r:"Back",d:"Place baby on tummy. Long strokes from shoulders to bottom. Small circles along spine (never ON spine). Side-to-side rocking strokes."},
+    {r:"Face & Head",d:"Thumbs from center of forehead outward. Small circles on temples. Stroke from nose bridge outward across cheeks. Gentle jaw circles for teething."}
+  ]},
+  ageGuide:{title:"By Age",icon:"📅",items:[
+    {r:"Newborn (0-6 weeks)",d:"Very gentle, light touch only. Keep sessions to 5 min. Focus on legs and feet. Use minimal oil. Stop if baby fusses."},
+    {r:"2-4 months",d:"Can increase to 10-15 min. Add tummy and chest. Baby starts to enjoy it. Good time to establish routine."},
+    {r:"4-6 months",d:"15-20 min sessions. Include all body parts. Baby may try to roll — that's OK! Can be more playful."},
+    {r:"6-12 months",d:"Baby may not stay still — make it fun! Sing songs during massage. Let them play with oil. Focus on legs after crawling."},
+    {r:"12-24 months",d:"Toddlers may prefer shorter targeted massage — feet after walking, back before bed. Make it part of wind-down routine."}
+  ]},
+  tips:{title:"Pro Tips",icon:"💡",items:[
+    {r:"Warm the oil",d:"Rub oil between your palms for 30 seconds before applying. Never microwave oil."},
+    {r:"Talk and sing",d:"Narrate what you're doing: 'Now I'm massaging your little feet.' Eye contact and voice soothe baby."},
+    {r:"Follow baby's cues",d:"If baby turns away, arches back, or cries — stop that area or end the session. It should be enjoyable."},
+    {r:"Be consistent",d:"Daily massage at the same time builds routine. Even 5 min daily is better than 20 min occasionally."},
+    {r:"Skin patch test",d:"First time with a new oil, apply a small amount to baby's inner arm. Wait 24 hours for any reaction."},
+    {r:"Pressure guide",d:"Use the pressure you'd use to comfortably close your eyelid. Firm enough to not tickle, gentle enough to not press."},
+    {r:"Keep baby warm",d:"Room should be warm (75-80°F). Undress only the part you're massaging, or use a warm room with full undress."}
+  ]}
+};
+
 var MOM_NUTRITION={
   general:{title:"Daily Nutrition Goals",items:[
     "2,300-2,500 calories/day while breastfeeding",
@@ -666,7 +720,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
   var td=today();
 
   var _period=us("daily"),period=_period[0],setPeriod=_period[1];
-  var subs=[{id:"timer",l:"Timer",e:"⏱️"},{id:"feed",l:"Feed",e:"🍼"},{id:"pump",l:"Pump",e:"🫙"},{id:"diaper",l:"Diaper",e:"💧"},{id:"sleep",l:"Sleep",e:"😴"},{id:"bath",l:"Bath",e:"🛁"},{id:"growth",l:"Growth",e:"📏"},{id:"temp",l:"Temp",e:"🌡️"},{id:"meds",l:"Meds",e:"💊"},{id:"allergy",l:"Allergy",e:"⚠️"},{id:"stats",l:"Stats",e:"📊"}];
+  var subs=[{id:"timer",l:"Timer",e:"⏱️"},{id:"feed",l:"Feed",e:"🍼"},{id:"pump",l:"Pump",e:"🫙"},{id:"diaper",l:"Diaper",e:"💧"},{id:"sleep",l:"Sleep",e:"😴"},{id:"bath",l:"Bath",e:"🛁"},{id:"massage",l:"Massage",e:"🤲"},{id:"growth",l:"Growth",e:"📏"},{id:"temp",l:"Temp",e:"🌡️"},{id:"meds",l:"Meds",e:"💊"},{id:"allergy",l:"Allergy",e:"⚠️"},{id:"stats",l:"Stats",e:"📊"}];
   var items=(logs[sub]||[]).filter(function(x){return x.date===td});
   var allItems=logs[sub]||[];
 
@@ -700,7 +754,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
     setLogs(next);toast("Removed");
   }
 
-  var logColors={feed:C.a,pump:C.a,diaper:C.bl,sleep:C.pu,bath:C.bl,growth:C.p,temp:C.w,meds:C.s,allergy:C.p};
+  var logColors={feed:C.a,pump:C.a,diaper:C.bl,sleep:C.pu,bath:C.bl,massage:C.pu,growth:C.p,temp:C.w,meds:C.s,allergy:C.p};
 
   return h("div",{className:"ca",style:{padding:"16px 16px 120px"}},
     h(SH,{icon:"edit",title:"Daily Log",color:C.s,sub:"Track feeding, diapers, sleep & more"}),
@@ -736,7 +790,9 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
               entry.consistency?h("div",{style:{fontSize:13,color:C.t}},"Consistency: "+entry.consistency):null,
               entry.peeAmount?h("div",{style:{fontSize:13,color:C.t}},"Pee: "+entry.peeAmount):null,
               entry.duration?h("div",{style:{fontSize:13,color:C.t}},"Duration: "+entry.duration+" min"):null,
-              entry.waterTemp?h("div",{style:{fontSize:13,color:C.t}},"Water: "+entry.waterTemp):null),
+              entry.waterTemp?h("div",{style:{fontSize:13,color:C.t}},"Water: "+entry.waterTemp):null,
+              entry.oil?h("div",{style:{fontSize:13,color:C.t}},"Oil: "+entry.oil):null,
+              entry.mood?h("div",{style:{fontSize:13,color:C.t}},"Mood: "+entry.mood):null),
             h("div",{style:{display:"flex",gap:4}},
               h("button",{onClick:function(){var e=Object.assign({},entry);if(sub==='sleep'&&typeof e.mins==='number'){e.sleepHrs=String(Math.floor(e.mins/60));e.sleepMins=String(Math.round(e.mins%60))}if(sub==='feed'){if(e.mins&&!e.oz)e.feedMins=String(e.mins);if(e.oz)e.feedOz=String(e.oz)}setForm(e);setEditId(e.id);setShowAdd(true)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"edit",s:14,c:C.bl})),
               h("button",{onClick:function(){removeEntry(entry.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:16,c:C.tl})))))}),
@@ -887,6 +943,17 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
             h("div",{style:{display:"flex",gap:8}},["Full Bath","Sponge Bath","Hair Wash"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
           h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Water Temp"),
             h("div",{style:{display:"flex",gap:8}},["Warm","Lukewarm","Cool"].map(function(t){return h(Pill,{key:t,label:t,active:form.waterTemp===t,onClick:function(){setForm(Object.assign({},form,{waterTemp:t}))},color:C.bl})})))
+        ):null,
+
+        // Massage specific
+        sub==="massage"?h(F,null,
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
+            h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},["Full Body","Legs & Feet","Tummy","Back","Arms","Face & Head"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.pu})}))),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Oil Used"),
+            h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},["Coconut","Sesame","Olive","Almond","Sunflower","None"].map(function(t){return h(Pill,{key:t,label:t,active:form.oil===t,onClick:function(){setForm(Object.assign({},form,{oil:t}))},color:C.a})}))),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (minutes)"),h(Input,{type:"number",value:form.duration||"",onChange:function(v){setForm(Object.assign({},form,{duration:v}))},placeholder:"e.g. 10"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Baby's Mood"),
+            h("div",{style:{display:"flex",gap:8}},["Calm","Happy","Fussy","Sleepy"].map(function(t){return h(Pill,{key:t,label:t,active:form.mood===t,onClick:function(){setForm(Object.assign({},form,{mood:t}))},color:C.s})})))
         ):null,
 
         // Notes (all)
@@ -1210,6 +1277,25 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
               h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5,marginTop:2}},item.d))}))})
     ):null,
 
+    // Baby Massage Guide
+    Sec("massage","🤲","Baby Massage Guide","Techniques, oils & best practices",C.pu,false),
+    expanded.massage?SecBody(h(F,null,
+      // Benefits
+      h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.pu}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},h("div",{style:{fontSize:22}},MASSAGE_GUIDE.benefits.icon),h("div",{style:{fontSize:15,fontWeight:700,color:C.t}},MASSAGE_GUIDE.benefits.title)),
+        h(Dot,{items:MASSAGE_GUIDE.benefits.items,color:C.pu})),
+      // Best Time, Oils, Techniques, Age Guide, Tips — all use same remedies-style layout
+      ["bestTime","oils","techniques","ageGuide","tips"].map(function(key){var sec=MASSAGE_GUIDE[key];
+        return h(Cd,{key:key,style:{marginBottom:12}},
+          h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},
+            h("div",{style:{fontSize:24}},sec.icon),
+            h("div",{style:{fontSize:16,fontWeight:700,color:C.t}},sec.title)),
+          sec.items.map(function(item,i){
+            return h("div",{key:i,style:{padding:"8px 0",borderTop:i?"1px solid "+C.b:"none"}},
+              h("div",{style:{fontSize:13,fontWeight:600,color:C.s}},item.r),
+              h("div",{style:{fontSize:12,color:C.t,lineHeight:1.5,marginTop:2}},item.d))}))})
+    )):null,
+
     // Mom Nutrition
     Sec("momfood","🤱","Mom Nutrition","What to eat while breastfeeding",C.pu,false),
     expanded.momfood?SecBody(h(F,null,
@@ -1424,6 +1510,18 @@ function parseVoice(text){
   // ═══ HEALTH ═══
   }else if(tempM){
     result={cat:"temp",entry:{type:"Temperature",value:parseFloat(tempM[1]),notes:tempM[1]+"°F"}};
+  }else if(/massage|massaged|rubdown|oil\s*massage/i.test(t)){
+    result={cat:"massage",entry:{type:"Full Body"}};
+    if(/leg|feet|foot/i.test(t))result.entry.type="Legs & Feet";
+    if(/tummy|belly|stomach/i.test(t))result.entry.type="Tummy";
+    if(/back/i.test(t))result.entry.type="Back";
+    if(/arm|hand/i.test(t))result.entry.type="Arms";
+    if(/face|head/i.test(t))result.entry.type="Face & Head";
+    if(/coconut/i.test(t))result.entry.oil="Coconut";
+    if(/sesame/i.test(t))result.entry.oil="Sesame";
+    if(/olive/i.test(t))result.entry.oil="Olive";
+    if(/almond/i.test(t))result.entry.oil="Almond";
+    if(minM){result.entry.duration=minM[1];result.entry.amount=minM[1]+" min"}
   }else if(/bath|bathed|shower/i.test(t)){
     result={cat:"bath",entry:{type:"Bath"}};
   }else if(/medicine|tylenol|ibuprofen|advil|motrin|gripe|vitamin|drops/i.test(t)){
@@ -1525,7 +1623,7 @@ function VoiceButton({onResult,quickLog,babyName}){
 
   if(!supported)return null;
 
-  var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
+  var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",massage:"Massage",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
 
   return h(F,null,
     // Floating mic button
@@ -1823,7 +1921,8 @@ function SiriShortcutsSetup(){
     {name:"Baby Wake",icon:"☀️",param:"quick=wake",desc:"Log wake up"},
     {name:"Baby Night",icon:"🌙",param:"quick=night",desc:"Log bedtime"},
     {name:"Baby Bath",icon:"🛁",param:"quick=bath",desc:"Log bath time"},
-    {name:"Baby Tummy",icon:"💪",param:"quick=tummy",desc:"Log tummy time"}
+    {name:"Baby Tummy",icon:"💪",param:"quick=tummy",desc:"Log tummy time"},
+    {name:"Baby Massage",icon:"🤲",param:"quick=massage",desc:"Log massage session"}
   ];
 
   function copyUrl(param){
@@ -2026,7 +2125,7 @@ function App(){
   function loadProfileData(profileId){
     return dg("profileData_"+profileId).then(function(data){
       if(data){
-        setLgR(data.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+        setLgR(data.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],massage:[],meds:[],allergy:[]});
         setCkR(data.milestones||{});
         setVDR(data.vaccines||{});
         setThR(data.teeth||{});
@@ -2035,7 +2134,7 @@ function App(){
       } else {
         // New profile — start with empty data
         var prof=profiles.find(function(p){return p.id===profileId});
-        setLgR({feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+        setLgR({feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],massage:[],meds:[],allergy:[]});
         setCkR({});setVDR({});setThR({});setFiR([]);
         if(prof&&prof.birthDate)setBR(prof.birthDate);
       }
@@ -2088,7 +2187,7 @@ function App(){
       dg("profileData_"+activeId).then(function(pData){
         if(pData){
           // Load from per-profile storage
-          setLgR(pData.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]});
+          setLgR(pData.logs||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],massage:[],meds:[],allergy:[]});
           setCkR(pData.milestones||{});
           setVDR(pData.vaccines||{});
           setThR(pData.teeth||{});
@@ -2098,7 +2197,7 @@ function App(){
           // First time or migration: use global data and save under profile key
           if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);
           // Migrate global data to this profile
-          ds("profileData_"+activeId,{logs:r[3]||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],meds:[],allergy:[]},milestones:r[1]||{},vaccines:r[2]||{},teeth:r[4]||{},firsts:r[5]||[],birthDate:r[0]||null});
+          ds("profileData_"+activeId,{logs:r[3]||{feed:[],diaper:[],sleep:[],growth:[],temp:[],bath:[],massage:[],meds:[],allergy:[]},milestones:r[1]||{},vaccines:r[2]||{},teeth:r[4]||{},firsts:r[5]||[],birthDate:r[0]||null});
         }
         setLoading(false);
       }).catch(function(){setLoading(false)});
@@ -2137,7 +2236,8 @@ function App(){
       night:{cat:"sleep",entry:{type:"Night Sleep"}},
       tummy:{cat:"sleep",entry:{type:"Tummy Time"}},
       bath:{cat:"bath",entry:{type:"Bath"}},
-      pump:{cat:"feed",entry:{type:"Pump"}}
+      pump:{cat:"feed",entry:{type:"Pump"}},
+      massage:{cat:"massage",entry:{type:"Full Body"}}
     };
 
     var result=null;
@@ -2165,7 +2265,7 @@ function App(){
         }
       }
       var next=Object.assign({},logs);next[result.cat]=[e].concat(logs[result.cat]||[]);setLogs(next);
-      var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
+      var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",massage:"Massage",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
       setSiriResult({cat:catLabels[result.cat]||result.cat,type:e.type,amount:e.amount||"",time:fmtTime(e.time)});
       toast(e.type+" logged via Shortcut!");
       // Auto-dismiss after 3 seconds
