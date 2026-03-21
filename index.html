@@ -669,6 +669,16 @@ function LogTab({logs,setLogs,age,subNavRef,timerState,setTimerState}){
 
   function addEntry(){
     var entry=Object.assign({date:td,time:now(),id:editId||Date.now()},form);
+    // Auto-compute sleep duration for Wake Up if not already set
+    if(sub==="sleep"&&entry.type==="Wake Up"&&!entry.mins){
+      var sl=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
+      if(sl.length>0&&sl[0].time&&entry.time){
+        var wP=(entry.time||"").split(":"),sP=sl[0].time.split(":");
+        var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
+        var df=wM-sM;if(df<0)df+=1440;
+        if(df>0&&df<1440){var hrs2=Math.floor(df/60),mins2=df%60;entry.mins=df;entry.amount=(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m");entry.sleepHrs=String(hrs2);entry.sleepMins=String(mins2)}
+      }
+    }
     var cur=logs[sub]||[];
     var next=Object.assign({},logs);
     if(editId){
@@ -679,7 +689,7 @@ function LogTab({logs,setLogs,age,subNavRef,timerState,setTimerState}){
     }
     setLogs(next);
     setShowAdd(false);setForm({});
-    toast(editId?"Updated!":"Logged!");
+    toast(editId?"Updated!":"Logged!"+(sub==="sleep"&&entry.type==="Wake Up"&&entry.mins?" ("+entry.amount+" sleep)":""));
   }
   function removeEntry(id){
     var next=Object.assign({},logs);
@@ -737,7 +747,19 @@ function LogTab({logs,setLogs,age,subNavRef,timerState,setTimerState}){
           h("h3",{style:{fontSize:18,fontWeight:700,color:C.t}},(editId?"Edit":"Log")+" "+(subs.find(function(s){return s.id===sub})||{l:sub}).l),
           h("button",{onClick:function(){setShowAdd(false);setEditId(null)},style:{background:"none",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:22,c:C.tl}))),
         // Time
-        h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Time"),h(Input,{type:"time",value:form.time||now(),onChange:function(v){setForm(Object.assign({},form,{time:v}))}})),
+        h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Time"),h(Input,{type:"time",value:form.time||now(),onChange:function(v){
+          // If Wake Up, recalc duration when time changes
+          if(sub==="sleep"&&form.type==="Wake Up"){
+            var sl=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
+            if(sl.length>0&&sl[0].time){
+              var wP=v.split(":"),sP=sl[0].time.split(":");
+              var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
+              var df=wM-sM;if(df<0)df+=1440;
+              if(df>0&&df<1440){var hrs2=Math.floor(df/60),mins2=df%60;setForm(Object.assign({},form,{time:v,sleepHrs:String(hrs2),sleepMins:String(mins2),amount:(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m"),mins:df,autoSleep:sl[0].type+" at "+fmtTime(sl[0].time)}));return}
+            }
+          }
+          setForm(Object.assign({},form,{time:v}))
+        }})),
 
         // Feed specific
         sub==="feed"?h(F,null,
@@ -778,44 +800,59 @@ function LogTab({logs,setLogs,age,subNavRef,timerState,setTimerState}){
         sub==="sleep"?(function(){
           // Find last sleep entry for auto-calc on Wake Up
           var lastSleep=null;
-          if(form.type==="Wake Up"){
+          if(form.type==="Wake Up"||form.type==="Tummy Time"){
             var sleepEntries=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
-            if(sleepEntries.length>0){lastSleep=sleepEntries[0]}// most recent (entries prepended)
+            if(sleepEntries.length>0){lastSleep=sleepEntries[0]}
           }
-          var autoMins=null,autoLabel="";
-          if(lastSleep&&lastSleep.time&&(form.time||now())){
+          // Compute auto duration for display
+          var autoMins=null;
+          if(form.type==="Wake Up"&&lastSleep&&lastSleep.time){
             var wt=form.time||now();var st=lastSleep.time;
-            var wParts=wt.split(":"),sParts=st.split(":");
-            var wMin=parseInt(wParts[0])*60+parseInt(wParts[1]),sMin=parseInt(sParts[0])*60+parseInt(sParts[1]);
-            var diff=wMin-sMin;if(diff<0)diff+=1440;// crossed midnight
-            if(diff>0&&diff<1440){autoMins=diff;var ah=Math.floor(diff/60),am=diff%60;autoLabel=ah+"h "+am+"m"}
+            var wP=wt.split(":"),sP=st.split(":");
+            var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
+            var df=wM-sM;if(df<0)df+=1440;
+            if(df>0&&df<1440)autoMins=df;
           }
           return h(F,null,
             h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Type"),
-              h("div",{style:{display:"flex",gap:8}},["Nap","Night Sleep","Wake Up"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){
+              h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},["Nap","Night Sleep","Wake Up","Tummy Time"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){
                 if(t==="Wake Up"){
                   // Auto-calc from last sleep entry
                   var sl=(logs.sleep||[]).filter(function(e){return e.type==="Nap"||e.type==="Night Sleep"});
                   if(sl.length>0&&sl[0].time){
                     var wt2=form.time||now();var st2=sl[0].time;
-                    var wP=wt2.split(":"),sP=st2.split(":");
-                    var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
-                    var df=wM-sM;if(df<0)df+=1440;
-                    if(df>0&&df<1440){var hrs2=Math.floor(df/60),mins2=df%60;setForm(Object.assign({},form,{type:t,sleepHrs:String(hrs2),sleepMins:String(mins2),amount:(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m"),mins:df,autoSleep:sl[0].type+" at "+sl[0].time}));return}
+                    var wP2=wt2.split(":"),sP2=st2.split(":");
+                    var wM2=parseInt(wP2[0])*60+parseInt(wP2[1]),sM2=parseInt(sP2[0])*60+parseInt(sP2[1]);
+                    var df2=wM2-sM2;if(df2<0)df2+=1440;
+                    if(df2>0&&df2<1440){var hrs2=Math.floor(df2/60),mins2=df2%60;setForm(Object.assign({},form,{type:t,sleepHrs:String(hrs2),sleepMins:String(mins2),amount:(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m"),mins:df2,autoSleep:sl[0].type+" at "+fmtTime(sl[0].time)}));return}
                   }
-                  setForm(Object.assign({},form,{type:t}))
-                }else{setForm(Object.assign({},form,{type:t}))}
+                  setForm(Object.assign({},form,{type:t,sleepHrs:"",sleepMins:"",amount:"",mins:0,autoSleep:""}))
+                }else{setForm(Object.assign({},form,{type:t,sleepHrs:"",sleepMins:"",amount:"",mins:0,autoSleep:""}))}
               },color:C.pu})}))),
-            // Show auto-calc info for Wake Up
-            form.type==="Wake Up"&&form.autoSleep?h("div",{style:{marginBottom:12,padding:10,background:C.pul,borderRadius:10,fontSize:12,color:C.pu}},
-              h("div",{style:{fontWeight:600,marginBottom:2}},"Auto-calculated from: "+form.autoSleep),
-              h("div",{style:{fontSize:16,fontWeight:700}},"Slept: "+(form.sleepHrs||"0")+"h "+(form.sleepMins||"0")+"m")):null,
-            // Duration inputs (always shown so user can override or manually enter)
-            h("div",{style:{display:"flex",gap:8,marginBottom:12}},
-              h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},form.type==="Wake Up"?"Slept Hours":"Hours"),
-                h(Input,{type:"number",value:form.sleepHrs||"",onChange:function(v){var hrs=parseInt(v)||0;var m2=parseInt(form.sleepMins)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepHrs:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})),
-              h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},form.type==="Wake Up"?"Slept Mins":"Minutes"),
-                h(Input,{type:"number",value:form.sleepMins||"",onChange:function(v){var hrs=parseInt(form.sleepHrs)||0;var m2=parseInt(v)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepMins:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})))
+            // Nap / Night Sleep — just shows a helpful hint, no duration needed
+            form.type==="Nap"||form.type==="Night Sleep"?h("div",{style:{marginBottom:12,padding:12,background:C.pul,borderRadius:12,textAlign:"center"}},
+              h("div",{style:{fontSize:13,color:C.pu,fontWeight:600}},"Recording: baby fell asleep"),
+              h("div",{style:{fontSize:11,color:C.tl,marginTop:4}},"Log \"Wake Up\" later to auto-calculate sleep duration")
+            ):null,
+            // Wake Up — show auto-computed duration prominently + allow override
+            form.type==="Wake Up"?h(F,null,
+              form.autoSleep?h("div",{style:{marginBottom:12,padding:14,background:C.pul,borderRadius:12,textAlign:"center"}},
+                h("div",{style:{fontSize:11,color:C.tl,marginBottom:4}},"Since: "+form.autoSleep),
+                h("div",{style:{fontSize:28,fontWeight:800,color:C.pu}},(form.sleepHrs||"0")+"h "+(form.sleepMins||"0")+"m"),
+                h("div",{style:{fontSize:11,color:C.tl,marginTop:4}},"Baby slept")
+              ):!lastSleep?h("div",{style:{marginBottom:12,padding:12,background:C.wl,borderRadius:12,textAlign:"center",fontSize:12,color:C.w}},"No previous sleep entry found — enter duration manually below"):null,
+              h("div",{style:{fontSize:12,fontWeight:600,color:C.tl,marginBottom:6}},form.autoSleep?"Adjust if needed:":"Duration:"),
+              h("div",{style:{display:"flex",gap:8,marginBottom:12}},
+                h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Hours"),
+                  h(Input,{type:"number",value:form.sleepHrs||"",onChange:function(v){var hrs=parseInt(v)||0;var m2=parseInt(form.sleepMins)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepHrs:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})),
+                h("div",{style:{flex:1}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Minutes"),
+                  h(Input,{type:"number",value:form.sleepMins||"",onChange:function(v){var hrs=parseInt(form.sleepHrs)||0;var m2=parseInt(v)||0;var total=hrs*60+m2;setForm(Object.assign({},form,{sleepMins:v,amount:(hrs>0?hrs+"h ":"")+(m2>0?m2+"m":"0m"),mins:total}))},placeholder:"0"})))
+            ):null,
+            // Tummy Time — duration in minutes
+            form.type==="Tummy Time"?h("div",{style:{marginBottom:12}},
+              h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (minutes)"),
+              h(Input,{type:"number",value:form.sleepMins||"",onChange:function(v){var m=parseInt(v)||0;setForm(Object.assign({},form,{sleepMins:v,sleepHrs:"0",amount:m+" min",mins:m}))},placeholder:"e.g. 10"})
+            ):null
           )
         })():null,
 
