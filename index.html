@@ -300,7 +300,7 @@ function TabBar({active,set}){
     tabs.map(function(t){return h("button",{key:t.id,onClick:function(){set(t.id)},style:{background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",padding:"4px 8px",opacity:active===t.id?1:0.45}},h(Ic,{n:t.icon,s:22,c:active===t.id?C.p:C.tl}),h("span",{style:{fontSize:10,fontWeight:active===t.id?700:500,color:active===t.id?C.p:C.tl}},t.l))}))}
 
 // ═══ DATE HELPERS ═══
-function today(){return new Date().toISOString().slice(0,10)}
+function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function now(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
 function fmtTime(t){if(!t)return'';var p=t.split(':'),h=parseInt(p[0]),m=p[1],ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+' '+ap}
 function fmtDate(d){if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}
@@ -484,7 +484,7 @@ function TimerView({logs,setLogs,age,timerState,setTimerState}){
   function saveToLog(){
     var mins=Math.floor(elapsed/60),secs=elapsed%60;
     var dur=mins+"m "+secs+"s";
-    var totalMins=Math.round(elapsed/6)/10;
+    var totalMins=Math.round(elapsed/60*10)/10;
     var isSleep=["Nap","Night Sleep","Tummy Time"].indexOf(timerType)>=0;
     var entry={date:today(),time:now(),id:Date.now(),type:timerType,amount:dur,mins:totalMins,notes:"Timed"};
     var logKey=isSleep?"sleep":"feed";
@@ -1379,8 +1379,14 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
   var feedIntRef=ur(null);
   ue(function(){
     if(feedTimer){
-      setFeedElapsed(Math.floor((Date.now()-feedTimer.startTime)/1000));
-      feedIntRef.current=setInterval(function(){setFeedElapsed(Math.floor((Date.now()-feedTimer.startTime)/1000))},1000);
+      var diff=Math.floor((Date.now()-feedTimer.startTime)/1000);
+      if(diff>14400){setFeedTimerApp(null);toast("Feed timer auto-reset (exceeded 4 hrs)");return}
+      setFeedElapsed(diff);
+      feedIntRef.current=setInterval(function(){
+        var el=Math.floor((Date.now()-feedTimer.startTime)/1000);
+        if(el>14400){clearInterval(feedIntRef.current);setFeedTimerApp(null);toast("Feed timer auto-reset (exceeded 4 hrs)");return}
+        setFeedElapsed(el)
+      },1000);
       return function(){clearInterval(feedIntRef.current)}
     }else{setFeedElapsed(0)}
   },[feedTimer]);
@@ -1412,9 +1418,15 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
   var feedOzToday=0;(logs.feed||[]).filter(function(x){return x.date===td&&x.oz}).forEach(function(x){feedOzToday+=x.oz});
   var feedMinToday=0;(logs.feed||[]).filter(function(x){return x.date===td&&x.mins&&!x.oz}).forEach(function(x){feedMinToday+=x.mins});
 
-  // Last sleep status
+  // Last sleep status — check if the most recent non-Tummy-Time sleep entry is a Nap or Night Sleep (not Wake Up)
   var lastSleepEntry=(logs.sleep||[]).find(function(e){return e.type==="Nap"||e.type==="Night Sleep"||e.type==="Wake Up"});
   var isSleeping=lastSleepEntry&&(lastSleepEntry.type==="Nap"||lastSleepEntry.type==="Night Sleep");
+  // Auto-expire: if the sleep entry is from over 14 hours ago, assume baby woke up
+  if(isSleeping&&lastSleepEntry.time&&lastSleepEntry.date){
+    var spD=lastSleepEntry.date.split("-"),spT=lastSleepEntry.time.split(":");
+    var sleepDate=new Date(parseInt(spD[0]),parseInt(spD[1])-1,parseInt(spD[2]),parseInt(spT[0]),parseInt(spT[1]));
+    if((Date.now()-sleepDate.getTime())>14*3600000)isSleeping=false;
+  }
 
   // Weekly stats
   function daysAgo(d){var a=new Date();a.setDate(a.getDate()-d);return a.getFullYear()+"-"+String(a.getMonth()+1).padStart(2,"0")+"-"+String(a.getDate()).padStart(2,"0")}
@@ -1490,13 +1502,12 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
     // Next feed reminder
     reminders&&reminders.enabled&&reminders.feedInterval?
       (function(){
-        var td=today();
         var feeds=logs.feed||[];
-        var lastFeed=feeds.find(function(e){return e.date===td});
-        if(!lastFeed||!lastFeed.time)return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w,padding:14}},
+        var lastFeed=feeds.length>0?feeds[0]:null;
+        if(!lastFeed||!lastFeed.time||!lastFeed.date)return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.w,padding:14}},
           h("div",{style:{fontSize:13,color:C.t}},h(Ic,{n:"clock",s:14,c:C.w,st:{marginRight:6}}),"No feeds logged today — time to feed?"));
-        var parts=lastFeed.time.split(':');
-        var lastT=new Date();lastT.setHours(parseInt(parts[0]),parseInt(parts[1]),0);
+        var dp2=lastFeed.date.split("-"),parts=lastFeed.time.split(':');
+        var lastT=new Date(parseInt(dp2[0]),parseInt(dp2[1])-1,parseInt(dp2[2]),parseInt(parts[0]),parseInt(parts[1]),0);
         var nextT=new Date(lastT.getTime()+reminders.feedInterval*3600000);
         var now2=new Date();
         if(now2>=nextT)return h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"44",padding:14}},
@@ -1662,7 +1673,8 @@ function App(){
   function setTimerState(v){setTSR(v);ds("timerState",v)}
   var _rem=us({feedInterval:0,enabled:false}),reminders=_rem[0],setRemR=_rem[1];
   function setReminders(v){setRemR(v);ds("reminders",v)}
-  var _ftApp=us(null),feedTimerApp=_ftApp[0],setFeedTimerApp=_ftApp[1]; // {type,startTime,startTimeStr}
+  var _ftApp=us(null),feedTimerApp=_ftApp[0],_setFTA=_ftApp[1];
+  function setFeedTimerApp(v){_setFTA(v);ds("feedTimerApp",v)}
   var subNavRef=ur(null);
   var quickFormRef=ur(null);
   function navTo(t,sub,formData){subNavRef.current=sub||null;quickFormRef.current=formData||null;setTab(t)}
@@ -1685,8 +1697,8 @@ function App(){
   }
 
   ue(function(){
-    Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders")]).then(function(r){
-      if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);
+    Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders"),dg("feedTimerApp")]).then(function(r){
+      if(r[0]!=null)setBR(r[0]);if(r[1]!=null)setCkR(r[1]);if(r[2]!=null)setVDR(r[2]);if(r[3]!=null)setLgR(r[3]);if(r[4]!=null)setThR(r[4]);if(r[5]!=null)setFiR(r[5]);if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);if(r[12]!=null)_setFTA(r[12]);
       var loadedProfiles=r[9],loadedActiveProfile=r[10];
       if(!loadedProfiles||loadedProfiles.length===0){
         var defaultP={id:1,name:"Baby",birthDate:r[0]||today()};
@@ -1710,9 +1722,9 @@ function App(){
       if('Notification' in window && Notification.permission==='granted'){
         var feeds=logs.feed||[];
         var lastFeed=feeds.length>0?feeds[0]:null;
-        if(lastFeed&&lastFeed.date===today()&&lastFeed.time){
-          var parts=lastFeed.time.split(':');
-          var lastTime=new Date();lastTime.setHours(parseInt(parts[0]),parseInt(parts[1]),0);
+        if(lastFeed&&lastFeed.date&&lastFeed.time){
+          var dp=lastFeed.date.split("-"),parts=lastFeed.time.split(':');
+          var lastTime=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),parseInt(parts[0]),parseInt(parts[1]),0);
           var diff=(Date.now()-lastTime.getTime())/3600000;
           if(diff>=reminders.feedInterval){
             new Notification('BabyBloom Reminder',{body:'Time for a feeding! Last feed was '+Math.round(diff*10)/10+' hours ago.',icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">🍼</text></svg>'});
