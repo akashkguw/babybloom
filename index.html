@@ -50,8 +50,8 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.class
 var R=React,h=R.createElement,F=R.Fragment,us=R.useState,ue=R.useEffect,um=R.useMemo,ur=R.useRef,uc=R.useCallback;
 
 // ═══ COLORS ═══
-var C_LIGHT={bg:"#FFF8F0",cd:"#FFFFFF",p:"#FF6B8A",pl:"#FFE0E8",s:"#6C63FF",sl:"#E8E6FF",a:"#00C9A7",al:"#E0FFF8",w:"#FFB347",wl:"#FFF3E0",t:"#2D2D3A",tl:"#8E8E9A",b:"#F0EBE3",ok:"#4CAF50",bl:"#42A5F5",bll:"#E3F2FD",pu:"#AB47BC",pul:"#F3E5F5"};
-var C_DARK={bg:"#1A1A2E",cd:"#16213E",p:"#FF6B8A",pl:"#3D1F2E",s:"#8B83FF",sl:"#2A2654",a:"#00C9A7",al:"#1A3330",w:"#FFB347",wl:"#3D2E1A",t:"#E8E8F0",tl:"#7A7A8E",b:"#2A2A4A",ok:"#4CAF50",bl:"#42A5F5",bll:"#1A2A3E",pu:"#CE93D8",pul:"#2E1F3E"};
+var C_LIGHT={bg:"#FFF8F0",cd:"#FFFFFF",p:"#FF6B8A",pl:"#FFE0E8",s:"#6C63FF",sl:"#E8E6FF",a:"#00C9A7",al:"#E0FFF8",w:"#FFB347",wl:"#FFF3E0",t:"#2D2D3A",tl:"#8E8E9A",b:"#F0EBE3",ok:"#4CAF50",okl:"#E8F5E9",bl:"#42A5F5",bll:"#E3F2FD",pu:"#AB47BC",pul:"#F3E5F5"};
+var C_DARK={bg:"#1A1A2E",cd:"#16213E",p:"#FF6B8A",pl:"#3D1F2E",s:"#8B83FF",sl:"#2A2654",a:"#00C9A7",al:"#1A3330",w:"#FFB347",wl:"#3D2E1A",t:"#E8E8F0",tl:"#7A7A8E",b:"#2A2A4A",ok:"#4CAF50",okl:"#1A3320",bl:"#42A5F5",bll:"#1A2A3E",pu:"#CE93D8",pul:"#2E1F3E"};
 var C=Object.assign({},C_LIGHT);
 function applyTheme(dark){Object.assign(C,dark?C_DARK:C_LIGHT);document.body.style.background=C.bg;document.querySelector('meta[name="theme-color"]').content=C.bg;document.documentElement.style.setProperty('--modal-bg',dark?'#16213E':'#fff');}
 
@@ -1529,7 +1529,7 @@ function VoiceButton({onResult,quickLog,babyName}){
 
   return h(F,null,
     // Floating mic button
-    listenState==="idle"&&!parsed?h("button",{onClick:startListening,style:{position:"fixed",bottom:88,right:16,zIndex:99,width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,"+C.p+","+C.s+")",border:"none",boxShadow:"0 4px 16px rgba(139,92,246,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform 0.2s"},onMouseDown:function(e){e.currentTarget.style.transform="scale(0.9)"},onMouseUp:function(e){e.currentTarget.style.transform="scale(1)"}},
+    listenState==="idle"&&!parsed?h("button",{onClick:startListening,style:{position:"fixed",bottom:100,right:16,zIndex:99,width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,"+C.p+","+C.s+")",border:"none",boxShadow:"0 4px 16px rgba(139,92,246,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"transform 0.2s"},onMouseDown:function(e){e.currentTarget.style.transform="scale(0.9)"},onMouseUp:function(e){e.currentTarget.style.transform="scale(1)"}},
       h("svg",{width:26,height:26,viewBox:"0 0 24 24",fill:"none",stroke:"white",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
         h("path",{d:"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"}),
         h("path",{d:"M19 10v2a7 7 0 0 1-14 0v-2"}),
@@ -1563,7 +1563,7 @@ function VoiceButton({onResult,quickLog,babyName}){
     ):null,
 
     // Error toast
-    err?h("div",{style:{position:"fixed",bottom:88,left:16,right:16,zIndex:200,padding:"12px 16px",borderRadius:12,background:C.pl,color:C.p,fontSize:13,fontWeight:600,textAlign:"center"},onClick:function(){setErr("")}},err):null
+    err?h("div",{style:{position:"fixed",bottom:164,left:16,right:16,zIndex:200,padding:"12px 16px",borderRadius:12,background:C.pl,color:C.p,fontSize:13,fontWeight:600,textAlign:"center"},onClick:function(){setErr("")}},err):null
   );
 }
 
@@ -1806,6 +1806,87 @@ function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete,onRename
   );
 }
 
+// ═══ SIRI SHORTCUTS SETUP ═══
+function SiriShortcutsSetup(){
+  var _show=us(false),show=_show[0],setShow=_show[1];
+  var _copied=us(""),copied=_copied[0],setCopied=_copied[1];
+
+  var baseUrl=window.location.origin+window.location.pathname;
+
+  var shortcuts=[
+    {name:"Baby Breast L",icon:"🤱",param:"quick=breast_l",desc:"Log left breast feed"},
+    {name:"Baby Breast R",icon:"🤱",param:"quick=breast_r",desc:"Log right breast feed"},
+    {name:"Baby Bottle",icon:"🍼",param:"quick=bottle_4",desc:"Log bottle feed (4 oz)"},
+    {name:"Baby Wet",icon:"💧",param:"quick=wet",desc:"Log wet diaper"},
+    {name:"Baby Dirty",icon:"💩",param:"quick=dirty",desc:"Log dirty diaper"},
+    {name:"Baby Nap",icon:"😴",param:"quick=nap",desc:"Log nap start"},
+    {name:"Baby Wake",icon:"☀️",param:"quick=wake",desc:"Log wake up"},
+    {name:"Baby Night",icon:"🌙",param:"quick=night",desc:"Log bedtime"},
+    {name:"Baby Bath",icon:"🛁",param:"quick=bath",desc:"Log bath time"},
+    {name:"Baby Tummy",icon:"💪",param:"quick=tummy",desc:"Log tummy time"}
+  ];
+
+  function copyUrl(param){
+    var url=baseUrl+"?"+param;
+    if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){setCopied(param);setTimeout(function(){setCopied("")},2000)});
+  }
+
+  function openShortcutsApp(param){
+    // Apple Shortcuts URL scheme to create a new shortcut
+    var url=baseUrl+"?"+param;
+    var shortcutUrl="shortcuts://create-shortcut?name=BabyBloom&actions=[{\"WFWorkflowActionIdentifier\":\"is.workflow.actions.openurl\",\"WFWorkflowActionParameters\":{\"WFInput\":\""+encodeURIComponent(url)+"\"}}]";
+    window.open(shortcutUrl,"_blank");
+  }
+
+  return h("div",{style:{marginTop:16,marginBottom:12}},
+    h("div",{onClick:function(){setShow(!show)},style:{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",padding:"12px 14px",background:C.cd,borderRadius:12,border:"1px solid "+C.b}},
+      h("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        h("div",{style:{fontSize:22}},"⌨️"),
+        h("div",null,
+          h("div",{style:{fontSize:14,fontWeight:700,color:C.t}},"Siri Shortcuts"),
+          h("div",{style:{fontSize:11,color:C.tl}},"Log without opening the app"))),
+      h(Ic,{n:show?"chevron-up":"chevron-down",s:16,c:C.tl})),
+
+    show?h("div",{style:{marginTop:8,background:C.cd,borderRadius:12,padding:14,border:"1px solid "+C.b}},
+      h("div",{style:{fontSize:13,color:C.t,lineHeight:1.6,marginBottom:12}},
+        "Set up Siri Shortcuts to log from your iPhone home screen or by voice with \"Hey Siri.\" Each shortcut opens BabyBloom for a split second, logs the action, and confirms."),
+
+      h("div",{style:{fontSize:12,fontWeight:700,color:C.s,marginBottom:8}},"How to set up:"),
+      h("div",{style:{fontSize:12,color:C.t,lineHeight:1.7,marginBottom:14}},
+        "1. Tap a shortcut below to copy its URL",h("br"),
+        "2. Open the ",h("strong",null,"Shortcuts")," app on your iPhone",h("br"),
+        "3. Tap ",h("strong",null,"+")," → ",h("strong",null,"Add Action")," → search ",h("strong",null,"Open URLs"),h("br"),
+        "4. Paste the copied URL",h("br"),
+        "5. Tap the name at top → rename to the shortcut name",h("br"),
+        "6. Tap ",h("strong",null,"Done")," — it's now on your Shortcuts page!",h("br"),
+        h("br"),
+        "Say ",h("strong",null,"\"Hey Siri, Baby Breast L\"")," to use it hands-free."),
+
+      h("div",{style:{fontSize:12,fontWeight:700,color:C.s,marginBottom:8}},"Available shortcuts:"),
+      shortcuts.map(function(s){
+        var isCopied=copied===s.param;
+        return h("div",{key:s.param,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",marginBottom:4,borderRadius:10,background:isCopied?C.okl:C.bg,transition:"background 0.2s"}},
+          h("div",{style:{fontSize:18,width:28,textAlign:"center"}},s.icon),
+          h("div",{style:{flex:1}},
+            h("div",{style:{fontSize:13,fontWeight:600,color:C.t}},s.name),
+            h("div",{style:{fontSize:10,color:C.tl}},s.desc)),
+          h("button",{onClick:function(){copyUrl(s.param)},style:{padding:"5px 12px",borderRadius:8,border:"1px solid "+(isCopied?C.ok:C.b),background:isCopied?C.ok:"transparent",color:isCopied?"white":C.s,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.2s"}},isCopied?"Copied!":"Copy URL"))}),
+
+      h("div",{style:{marginTop:12,padding:10,background:C.al,borderRadius:10}},
+        h("div",{style:{fontSize:12,fontWeight:700,color:C.a,marginBottom:4}},"Pro tip: Voice shortcut"),
+        h("div",{style:{fontSize:11,color:C.t,lineHeight:1.6}},
+          "Create one shortcut called ",h("strong",null,"\"Baby Log\"")," that uses the ",h("strong",null,"Dictate Text")," action, then opens:",h("br"),
+          h("code",{style:{fontSize:10,background:C.bg,padding:"2px 6px",borderRadius:4,wordBreak:"break-all"}},baseUrl+"?voice=[Dictated Text]"),h("br"),
+          "This lets you say anything naturally: \"Hey Siri, Baby Log\" → \"bottle 4 ounces\"")),
+
+      h("div",{style:{marginTop:10,padding:10,background:C.bg,borderRadius:10}},
+        h("div",{style:{fontSize:12,fontWeight:700,color:C.t,marginBottom:4}},"Add to Home Screen"),
+        h("div",{style:{fontSize:11,color:C.tl,lineHeight:1.6}},
+          "In the Shortcuts app, long-press any shortcut → ",h("strong",null,"Add to Home Screen"),". This gives you a widget-like icon that logs with a single tap."))
+    ):null
+  );
+}
+
 // ═══ SETTINGS ═══
 function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,onRenameProfile,logs,checked,vDone,reminders,setReminders}){
   var fileRef=ur(null);
@@ -1880,8 +1961,11 @@ function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddPro
           w.document.close();
           setTimeout(function(){w.print()},500);
         },color:C.a,full:true})),
+      // ═══ SIRI SHORTCUTS SETUP ═══
+      h(SiriShortcutsSetup,null),
+
       h("div",{style:{marginTop:12}},h(Btn,{label:"Reset All Data",onClick:function(){if(confirm('Delete ALL data?'))dcl().then(function(){toast('Cleared');setTimeout(function(){location.reload()},500)})},color:"#FF5252",outline:true,full:true})),
-      h("div",{style:{textAlign:"center",marginTop:16,fontSize:11,color:C.tl}},"BabyBloom v2.0 — AAP/CDC/WHO 2026")));
+      h("div",{style:{textAlign:"center",marginTop:16,fontSize:11,color:C.tl}},"BabyBloom v2.1 — AAP/CDC/WHO 2026")));
 }
 
 // ═══ MAIN APP ═══
@@ -2023,6 +2107,72 @@ function App(){
 
   ue(function(){window.scrollTo({top:0,behavior:"smooth"})},[tab]);
 
+  // ═══ SIRI SHORTCUTS / URL PARAMETER HANDLER ═══
+  var _siriResult=us(null),siriResult=_siriResult[0],setSiriResult=_siriResult[1];
+  var siriProcessed=ur(false);
+  ue(function(){
+    if(loading||siriProcessed.current)return;
+    var params=new URLSearchParams(window.location.search);
+    var quick=params.get("quick");
+    var voice=params.get("voice");
+    if(!quick&&!voice)return;
+    siriProcessed.current=true;
+    // Clean URL without reload
+    window.history.replaceState({},"",window.location.pathname);
+
+    var QUICK_MAP={
+      breast_l:{cat:"feed",entry:{type:"Breast L"}},
+      breast_r:{cat:"feed",entry:{type:"Breast R"}},
+      bottle:{cat:"feed",entry:{type:"Bottle"}},
+      bottle_2:{cat:"feed",entry:{type:"Bottle",oz:2,amount:"2 oz"}},
+      bottle_3:{cat:"feed",entry:{type:"Bottle",oz:3,amount:"3 oz"}},
+      bottle_4:{cat:"feed",entry:{type:"Bottle",oz:4,amount:"4 oz"}},
+      bottle_5:{cat:"feed",entry:{type:"Bottle",oz:5,amount:"5 oz"}},
+      bottle_6:{cat:"feed",entry:{type:"Bottle",oz:6,amount:"6 oz"}},
+      wet:{cat:"diaper",entry:{type:"Wet"}},
+      dirty:{cat:"diaper",entry:{type:"Dirty"}},
+      both:{cat:"diaper",entry:{type:"Both"}},
+      nap:{cat:"sleep",entry:{type:"Nap"}},
+      wake:{cat:"sleep",entry:{type:"Wake Up"}},
+      night:{cat:"sleep",entry:{type:"Night Sleep"}},
+      tummy:{cat:"sleep",entry:{type:"Tummy Time"}},
+      bath:{cat:"bath",entry:{type:"Bath"}},
+      pump:{cat:"feed",entry:{type:"Pump"}}
+    };
+
+    var result=null;
+    if(quick&&QUICK_MAP[quick]){
+      result=QUICK_MAP[quick];
+      // Check for extra params
+      var oz=params.get("oz");if(oz)result.entry.oz=parseFloat(oz);
+      var min=params.get("min");if(min){result.entry.mins=parseFloat(min);result.entry.amount=min+" min"}
+      if(oz)result.entry.amount=oz+" oz";
+    } else if(voice){
+      result=parseVoice(decodeURIComponent(voice));
+    }
+
+    if(result){
+      // Log the entry
+      var e=Object.assign({date:today(),time:now(),id:Date.now()},result.entry);
+      // Auto-compute sleep duration for Wake Up
+      if(result.cat==="sleep"&&e.type==="Wake Up"){
+        var sl=(logs.sleep||[]).filter(function(x){return x.type==="Nap"||x.type==="Night Sleep"});
+        if(sl.length>0&&sl[0].time&&e.time){
+          var wP=e.time.split(":"),sP=sl[0].time.split(":");
+          var wM=parseInt(wP[0])*60+parseInt(wP[1]),sM=parseInt(sP[0])*60+parseInt(sP[1]);
+          var df=wM-sM;if(df<0)df+=1440;
+          if(df>0&&df<1440){var hrs2=Math.floor(df/60),mins2=df%60;e.mins=df;e.amount=(hrs2>0?hrs2+"h ":"")+(mins2>0?mins2+"m":"0m")}
+        }
+      }
+      var next=Object.assign({},logs);next[result.cat]=[e].concat(logs[result.cat]||[]);setLogs(next);
+      var catLabels={feed:"Feeding",diaper:"Diaper",sleep:"Sleep",temp:"Temperature",bath:"Bath",meds:"Medicine",allergy:"Allergy",growth:"Growth"};
+      setSiriResult({cat:catLabels[result.cat]||result.cat,type:e.type,amount:e.amount||"",time:fmtTime(e.time)});
+      toast(e.type+" logged via Shortcut!");
+      // Auto-dismiss after 3 seconds
+      setTimeout(function(){setSiriResult(null)},3000);
+    }
+  },[loading,logs]);
+
   var lastNotifRef=ur(null);
   ue(function(){
     if(!reminders.enabled||!reminders.feedInterval)return;
@@ -2068,7 +2218,18 @@ function App(){
     tab==="safety"?h(SafetyTab,{subNavRef:subNavRef,emergencyContacts:emergencyContacts,setEmergencyContacts:setEmergencyContacts}):null,
     birth?h(TabBar,{active:tab,set:setTab}):null,
     showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:switchProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,onRenameProfile:renameProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders}):null,
-    showSearch?h(SearchModal,{onClose:function(){setShowSearch(false)},logs:logs,firsts:firsts,checked:checked}):null);
+    showSearch?h(SearchModal,{onClose:function(){setShowSearch(false)},logs:logs,firsts:firsts,checked:checked}):null,
+
+    // ═══ SIRI SHORTCUT CONFIRMATION OVERLAY ═══
+    siriResult?h("div",{style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:300,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){setSiriResult(null)}},
+      h("div",{style:{background:C.cd,borderRadius:24,padding:"36px 32px",maxWidth:320,width:"85%",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
+        h("div",{style:{fontSize:56,marginBottom:12}},"✅"),
+        h("div",{style:{fontSize:20,fontWeight:800,color:C.t,marginBottom:8}},"Logged!"),
+        h("div",{style:{fontSize:16,fontWeight:600,color:C.s,marginBottom:4}},siriResult.cat),
+        h("div",{style:{fontSize:18,fontWeight:700,color:C.t}},siriResult.type+(siriResult.amount?" — "+siriResult.amount:"")),
+        h("div",{style:{fontSize:13,color:C.tl,marginTop:8}},siriResult.time),
+        h("div",{style:{fontSize:12,color:C.ok,marginTop:12}},"Auto-closing..."))
+    ):null);
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));

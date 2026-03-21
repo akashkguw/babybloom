@@ -46,6 +46,15 @@ One-tap logging directly from the home screen — no navigating to forms for fre
 ### Voice Logging
 Hands full? Just tap the microphone button and speak. BabyBloom understands natural phrases like "bottle 4 ounces," "wet diaper," "nap," "woke up," "temperature 99.5," or "breast left 15 minutes." It parses your speech, shows a confirmation, and auto-saves — no typing required. You can even specify a time: "bottle 3 oz at 2:30 PM." Powered by the Web Speech API (works in Chrome, Safari, and Edge).
 
+### Siri Shortcuts (iPhone)
+Log without even opening the app. BabyBloom supports URL-based shortcuts that work with Apple's Shortcuts app:
+
+- **One-tap shortcuts** — Add icons to your home screen for "Breast L," "Wet Diaper," "Nap," etc. One tap logs instantly.
+- **"Hey Siri" voice** — Say "Hey Siri, Baby Breast L" to log hands-free while holding your baby.
+- **Voice dictation shortcut** — Create a "Baby Log" shortcut with Dictate Text to say anything naturally: "bottle 4 ounces," "dirty diaper," "woke up."
+
+Set up in seconds from **Settings → Siri Shortcuts** inside the app. Each shortcut opens BabyBloom momentarily, logs the action, shows confirmation, and you're done.
+
 ### Consolidated Stats
 Interactive charts with metric selectors for each category. Toggle between count, duration (minutes/hours), and volume (oz) on a single chart. View daily, weekly, or monthly trends.
 
@@ -99,6 +108,7 @@ Track 100+ milestones across motor, cognitive, social, and language domains from
 | Icons | Hand-crafted SVG path data |
 | Charts | Custom SVG bar charts and growth curve plots |
 | Voice | Web Speech API with NLP parser for hands-free logging |
+| Shortcuts | URL parameter API for Siri Shortcuts / Tasker / automation |
 
 **Zero dependencies. Zero build tools. Zero server calls.**
 
@@ -134,7 +144,7 @@ No `npm install`. No `webpack`. No `.env` files. Just one HTML file.
 
 ```
 babybloom/
-├── index.html       # The entire app (~1900 lines)
+├── index.html       # The entire app (~2100 lines)
 ├── sw.js            # Service worker for offline support
 ├── manifest.json    # PWA manifest for installability
 ├── LICENSE          # MIT License
