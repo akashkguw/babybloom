@@ -1715,10 +1715,44 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
   },[feedTimer]);
 
   function startFeedTimer(type){if(feedTimer)return;setFeedTimerApp({type:type,startTime:Date.now(),startTimeStr:now()})}
+  // Check if last feed is recent & same type (for merge/continue)
+  function getRecentFeed(type){
+    var feeds=logs.feed||[];
+    if(feeds.length===0)return null;
+    var last=feeds[0];
+    if(!last.time||!last.date)return null;
+    // Check if within 30 min
+    var dp=last.date.split("-"),tp=last.time.split(":");
+    var lastTime=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),parseInt(tp[0]),parseInt(tp[1]));
+    var diffMin=(Date.now()-lastTime.getTime())/60000;
+    if(diffMin<=30&&(!type||last.type===type))return last;
+    return null;
+  }
+  function mergeIntoLastFeed(extraMins,type){
+    var feeds=logs.feed||[];
+    if(feeds.length===0)return;
+    var last=feeds[0];
+    var prevMins=last.mins||0;
+    var totalMins=prevMins+extraMins;
+    var updated=Object.assign({},last,{mins:totalMins,amount:totalMins+" min",notes:(last.notes?last.notes+"; ":"")+"+ "+extraMins+" min"+(type&&type!==last.type?" ("+type+")":"")});
+    var next=Object.assign({},logs);
+    next.feed=[updated].concat(feeds.slice(1));
+    setLogs(next);
+    toast("Added "+extraMins+" min → total "+totalMins+" min");
+  }
+  var _mergePrompt=us(null),mergePrompt=_mergePrompt[0],setMergePrompt=_mergePrompt[1];
+
   function stopFeedTimer(){
     if(!feedTimer)return;
     var secs=Math.floor((Date.now()-feedTimer.startTime)/1000);
     var minsInt=Math.round(secs/60);if(minsInt<1)minsInt=1;
+    var recent=getRecentFeed(null);
+    if(recent){
+      // Show merge prompt
+      setMergePrompt({mins:minsInt,type:feedTimer.type,recent:recent});
+      setFeedTimerApp(null);
+      return;
+    }
     var entry={date:today(),time:feedTimer.startTimeStr,id:Date.now(),type:feedTimer.type,amount:minsInt+" min",mins:minsInt,notes:"Timed"};
     var next=Object.assign({},logs);next.feed=[entry].concat(logs.feed||[]);setLogs(next);
     toast(feedTimer.type+" — "+minsInt+" min logged");
@@ -1812,6 +1846,13 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
         ].map(function(q){return h("div",{key:q.l,onClick:q.fn,style:{textAlign:"center",padding:"10px 4px",borderRadius:12,background:q.l==="Wake Up"?C.pul:C.cd,border:"1px solid "+(q.l==="Wake Up"?C.pu:C.b),cursor:"pointer"}},
           h("div",{style:{fontSize:20}},q.e),h("div",{style:{fontSize:10,color:q.l==="Wake Up"?C.pu:C.tl,marginTop:2,fontWeight:600}},q.l))}))),
 
+    // ═══ CONTINUE LAST FEED — shows when recent feed within 30 min, no timer running ═══
+    !feedTimer&&(function(){var rf=getRecentFeed(null);if(!rf)return null;var elapsed=rf.mins||0;return h("div",{style:{marginTop:6,padding:"10px 14px",background:C.okl,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      h("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        h("div",{style:{fontSize:16}},"🔄"),
+        h("div",null,h("div",{style:{fontSize:12,fontWeight:700,color:C.ok||C.t}},"Continue "+rf.type+"?"),h("div",{style:{fontSize:10,color:C.tl}},elapsed+" min so far • tap to resume timer"))),
+      h("div",{onClick:function(){startFeedTimer(rf.type)},style:{padding:"6px 14px",borderRadius:10,background:C.ok||C.a,color:"white",fontSize:12,fontWeight:700,cursor:"pointer"}},"Resume"))})(),
+
     // Sleep status banner
     isSleeping?h("div",{style:{marginBottom:12,padding:"10px 14px",background:C.pul,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
       h("div",{style:{fontSize:13,color:C.pu}},h("span",{style:{fontWeight:700}},"Sleeping"),h("span",{style:{marginLeft:6,fontSize:11,color:C.tl}},lastSleepEntry.type+" since "+fmtTime(lastSleepEntry.time))),
@@ -1864,7 +1905,31 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
     h("div",{style:{textAlign:"center",padding:8,color:C.tl,fontSize:10}},"Based on AAP, CDC & WHO guidelines",h("br"),"Data stored locally • Not medical advice"),
 
     // ═══ VOICE LOG BUTTON ═══
-    h(VoiceButton,{quickLog:quickLog,babyName:babyName})
+    h(VoiceButton,{quickLog:quickLog,babyName:babyName}),
+
+    // ═══ FEED MERGE PROMPT ═══
+    mergePrompt?h("div",{style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:250,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"}},
+      h("div",{style:{background:C.cd,borderRadius:20,padding:"28px 24px",maxWidth:340,width:"88%",textAlign:"center"}},
+        h("div",{style:{fontSize:36,marginBottom:8}},"🍼"),
+        h("div",{style:{fontSize:17,fontWeight:700,color:C.t,marginBottom:6}},mergePrompt.type+" — "+mergePrompt.mins+" min"),
+        h("div",{style:{fontSize:13,color:C.tl,marginBottom:16,lineHeight:1.5}},
+          "Last feed was ",h("strong",null,mergePrompt.recent.type+" ("+( mergePrompt.recent.amount||"?")+")"),
+          " at ",h("strong",null,fmtTime(mergePrompt.recent.time)),". Same session?"),
+        h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          h("button",{onClick:function(){
+            mergeIntoLastFeed(mergePrompt.mins,mergePrompt.type);
+            setMergePrompt(null);
+          },style:{padding:"14px 20px",borderRadius:14,background:C.s,color:"white",border:"none",fontSize:15,fontWeight:700,cursor:"pointer"}},
+            "Add to previous feed ("+((mergePrompt.recent.mins||0)+mergePrompt.mins)+" min total)"),
+          h("button",{onClick:function(){
+            var entry={date:today(),time:now(),id:Date.now(),type:mergePrompt.type,amount:mergePrompt.mins+" min",mins:mergePrompt.mins,notes:"Timed"};
+            var next=Object.assign({},logs);next.feed=[entry].concat(logs.feed||[]);setLogs(next);
+            toast(mergePrompt.type+" — "+mergePrompt.mins+" min logged as new");
+            setMergePrompt(null);
+          },style:{padding:"12px 20px",borderRadius:14,background:C.bg,border:"1px solid "+C.b,color:C.t,fontSize:14,fontWeight:600,cursor:"pointer"}},
+            "Log as separate feed"),
+          h("button",{onClick:function(){setMergePrompt(null)},style:{background:"none",border:"none",color:C.tl,fontSize:13,cursor:"pointer",padding:8}},"Cancel")))
+    ):null
   );
 }
 

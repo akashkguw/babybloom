@@ -31,7 +31,7 @@ Built as a single HTML file with zero build steps, BabyBloom works on any device
 ## Features
 
 ### Daily Tracking
-- **Feeding** — Breast (L/R with real-time timer), bottle (oz), solids, and pump sessions
+- **Feeding** — Breast (L/R with real-time timer), bottle (oz), solids, and pump sessions with smart session merging
 - **Diapers** — Wet, dirty, or both with color, consistency, and pee amount tracking
 - **Sleep** — Nap, night sleep, and wake-up with automatic duration calculation
 - **Growth** — Weight, height, and head circumference with WHO percentile charts
@@ -43,6 +43,9 @@ Built as a single HTML file with zero build steps, BabyBloom works on any device
 
 ### Quick Log (Home Page)
 One-tap logging directly from the home screen — no navigating to forms for frequent actions like diaper changes, naps, and breast feeding. The inline feed timer starts counting in real time and logs the exact duration when you tap Done.
+
+### Feed Session Merging
+Babies often feed in bursts — drink for a few minutes, burp, then continue. BabyBloom detects when you stop a feed timer and there's a recent feed within the last 30 minutes. It asks whether this is part of the same session, so you can merge the minutes into one combined entry instead of cluttering your stats with tiny separate feeds. A green "Continue" button also appears on the home screen after a recent feed, letting you resume the timer with one tap after a burp break.
 
 ### Voice Logging
 Hands full? Just tap the microphone button and speak. BabyBloom understands natural phrases like "bottle 4 ounces," "wet diaper," "nap," "woke up," "temperature 99.5," or "breast left 15 minutes." It parses your speech, shows a confirmation, and auto-saves — no typing required. You can even specify a time: "bottle 3 oz at 2:30 PM." Powered by the Web Speech API (works in Chrome, Safari, and Edge).
@@ -145,7 +148,7 @@ No `npm install`. No `webpack`. No `.env` files. Just one HTML file.
 
 ```
 babybloom/
-├── index.html       # The entire app (~2100 lines)
+├── index.html       # The entire app (~2400 lines)
 ├── sw.js            # Service worker for offline support
 ├── manifest.json    # PWA manifest for installability
 ├── LICENSE          # MIT License
