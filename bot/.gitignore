@@ -1,4 +1,7 @@
 node_modules/
 .env
 bot.log
+pipeline.log
 com.babybloom.telegram-bot.plist
+com.babybloom.pipeline.plist
+package-lock.json
