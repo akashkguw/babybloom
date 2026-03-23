@@ -12,6 +12,7 @@ import { dga, odb, dcl, ST } from '@/lib/db/indexeddb';
 interface SettingsProps {
   onClose: () => void;
   birth: string | null;
+  setBirth: (date: string) => void;
   profiles: any[];
   activeProfile: number | null;
   onSwitchProfile: (id: number) => void;
@@ -42,6 +43,7 @@ const Section = ({ title, icon, children }: { title: string; icon: string; child
 export default function Settings({
   onClose,
   birth,
+  setBirth,
   profiles,
   activeProfile,
   onSwitchProfile,
@@ -62,23 +64,13 @@ export default function Settings({
     <div
       className="ca"
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 200,
         background: C.bg,
-        overflowY: 'auto',
-        animation: 'fadeOverlay 0.2s ease-out',
+        minHeight: '100vh',
       }}
     >
       {/* Header */}
       <div
         style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
           background: C.bg,
           borderBottom: '1px solid ' + C.b,
           padding: '12px 16px',
@@ -135,13 +127,22 @@ export default function Settings({
           {birth && (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 4 }}>Birth Date</div>
-              <div style={{ fontSize: 14, padding: '8px 12px', background: C.bg, borderRadius: 10, color: C.t }}>
-                {new Date(birth + 'T00:00:00').toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </div>
+              <input
+                type="date"
+                value={birth}
+                onChange={(e) => { if (e.target.value) setBirth(e.target.value); }}
+                style={{
+                  fontSize: 14,
+                  padding: '8px 12px',
+                  background: C.bg,
+                  borderRadius: 10,
+                  color: C.t,
+                  border: '1px solid ' + C.b,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                }}
+              />
             </div>
           )}
           <div>
@@ -443,47 +444,6 @@ export default function Settings({
             full
           />
         </Section>
-
-        {/* Ko-fi support */}
-        <div
-          style={{
-            marginBottom: 20,
-            padding: 16,
-            background: C.cd,
-            borderRadius: 16,
-            border: '1px solid ' + C.b,
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: 18, marginBottom: 6 }}>☕</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.t, marginBottom: 4 }}>
-            Enjoying BabyBloom?
-          </div>
-          <div style={{ fontSize: 12, color: C.tl, marginBottom: 12, lineHeight: 1.5 }}>
-            Free, no ads, no tracking. If it's helped during those sleepless nights, a small coffee keeps it going.
-          </div>
-          <div
-            onClick={() => window.open('https://ko-fi.com/babybloom', '_blank')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 24px',
-              borderRadius: 12,
-              background: '#FF5E5B',
-              color: 'white',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            <span>☕</span>
-            <span>Buy me a coffee</span>
-          </div>
-          <div style={{ fontSize: 10, color: C.tl, marginTop: 8 }}>
-            No account needed · One-time · Any amount
-          </div>
-        </div>
 
         {/* Footer */}
         <div

@@ -432,13 +432,13 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      {/* Hero (compact) — age + milestone progress combined */}
+      {/* Hero — age + milestone + today's stats */}
       <Cd
         style={{
           background: `linear-gradient(135deg,${C.p},${C.s})`,
           border: 'none',
           marginBottom: 12,
-          padding: '14px 20px',
+          padding: '14px 20px 12px',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -463,6 +463,33 @@ export default function HomeTab({
               {pct}% milestones
             </div>
           </div>
+        </div>
+        {/* Today's stats — compact row inside hero */}
+        <div
+          onClick={() => { setTab('log', 'stats'); }}
+          style={{
+            marginTop: 10,
+            padding: '8px 0 0',
+            borderTop: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex',
+            justifyContent: 'space-around',
+            cursor: 'pointer',
+          }}
+        >
+          {[
+            { l: 'Feeds', v: feedCt, sub: feedOzToday > 0 ? fmtVol(feedOzToday, volumeUnit) : feedMinToday > 0 ? feedMinToday + 'm' : '', e: '🍼' },
+            { l: 'Diapers', v: diaperCt, sub: '', e: '💧' },
+            { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴' },
+          ].map((s) => (
+            <div key={s.l} style={{ textAlign: 'center', minWidth: 56 }}>
+              <div style={{ fontSize: 11 }}>{s.e}</div>
+              <div style={{ color: 'white', fontSize: 16, fontWeight: 800, lineHeight: 1.1 }}>
+                {s.v}
+                {s.sub && <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 2, opacity: 0.85 }}>{s.sub}</span>}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9 }}>{s.l}</div>
+            </div>
+          ))}
         </div>
       </Cd>
 
@@ -970,27 +997,6 @@ export default function HomeTab({
         })()
       ) : null}
 
-      {/* Quick nav row: Stats + Vaccines */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <Cd
-          onClick={() => {
-            setTab('log', 'stats');
-          }}
-          style={{ padding: 12, textAlign: 'center', cursor: 'pointer' }}
-        >
-          <div style={{ fontSize: 20 }}>📊</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.t, marginTop: 2 }}>Stats</div>
-        </Cd>
-        <Cd
-          onClick={() => {
-            setTab('guide', 'vaccines');
-          }}
-          style={{ padding: 12, textAlign: 'center', cursor: 'pointer' }}
-        >
-          <div style={{ fontSize: 20 }}>💉</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.t, marginTop: 2 }}>Vaccines</div>
-        </Cd>
-      </div>
 
       {/* Tip */}
       {ms && (

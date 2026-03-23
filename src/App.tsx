@@ -599,63 +599,11 @@ function App() {
         </div>
       ) : null}
 
-      {tab === 'home' ? (
-        <HomeTab
-          age={age}
-          setTab={navTo}
-          checked={checked}
-          birth={birth}
-          setBirth={setBirth}
-          logs={logs}
-          setLogs={setLogs}
-          babyName={babyName}
-          reminders={reminders}
-          feedTimerApp={feedTimerApp}
-          setFeedTimerApp={setFeedTimerApp}
-          volumeUnit={volumeUnit}
-          vDone={vDone}
-          setVDone={setVDone}
-        />
-      ) : null}
-      {tab === 'log' ? (
-        <LogTab
-          logs={logs}
-          setLogs={setLogs}
-          age={age}
-          subNavRef={subNavRef}
-          quickFormRef={quickFormRef}
-          timerState={timerState}
-          setTimerState={setTimerState}
-          volumeUnit={volumeUnit}
-        />
-      ) : null}
-      {tab === 'miles' ? (
-        <MilestonesTab
-          age={age}
-          selMo={selMo}
-          setSelMo={setSelMo}
-          checked={checked}
-          setChecked={setChecked}
-          teeth={teeth}
-          setTeeth={setTeeth}
-          firsts={firsts}
-          setFirsts={setFirsts}
-          subNavRef={subNavRef}
-        />
-      ) : null}
-      {tab === 'guide' ? (
-        <GuideTab age={age} vDone={vDone} setVDone={setVDone} subNavRef={subNavRef} logs={logs} birth={birth || ''} />
-      ) : null}
-      {tab === 'safety' ? (
-        <SafetyTab subNavRef={subNavRef} emergencyContacts={emergencyContacts} setEmergencyContacts={setEmergencyContacts} />
-      ) : null}
-
-      {birth ? <TabBar active={tab} set={setTab} /> : null}
-
       {showSet ? (
         <Settings
           onClose={() => setShowSet(false)}
           birth={birth}
+          setBirth={setBirth}
           profiles={profiles}
           activeProfile={activeProfile}
           onSwitchProfile={switchProfile}
@@ -670,7 +618,62 @@ function App() {
           volumeUnit={volumeUnit}
           setVolumeUnit={setVolumeUnit}
         />
-      ) : null}
+      ) : (
+        <>
+          {tab === 'home' ? (
+            <HomeTab
+              age={age}
+              setTab={navTo}
+              checked={checked}
+              birth={birth}
+              setBirth={setBirth}
+              logs={logs}
+              setLogs={setLogs}
+              babyName={babyName}
+              reminders={reminders}
+              feedTimerApp={feedTimerApp}
+              setFeedTimerApp={setFeedTimerApp}
+              volumeUnit={volumeUnit}
+              vDone={vDone}
+              setVDone={setVDone}
+            />
+          ) : null}
+          {tab === 'log' ? (
+            <LogTab
+              logs={logs}
+              setLogs={setLogs}
+              age={age}
+              subNavRef={subNavRef}
+              quickFormRef={quickFormRef}
+              timerState={timerState}
+              setTimerState={setTimerState}
+              volumeUnit={volumeUnit}
+            />
+          ) : null}
+          {tab === 'miles' ? (
+            <MilestonesTab
+              age={age}
+              selMo={selMo}
+              setSelMo={setSelMo}
+              checked={checked}
+              setChecked={setChecked}
+              teeth={teeth}
+              setTeeth={setTeeth}
+              firsts={firsts}
+              setFirsts={setFirsts}
+              subNavRef={subNavRef}
+            />
+          ) : null}
+          {tab === 'guide' ? (
+            <GuideTab age={age} vDone={vDone} setVDone={setVDone} subNavRef={subNavRef} logs={logs} birth={birth || ''} />
+          ) : null}
+          {tab === 'safety' ? (
+            <SafetyTab subNavRef={subNavRef} emergencyContacts={emergencyContacts} setEmergencyContacts={setEmergencyContacts} />
+          ) : null}
+        </>
+      )}
+
+      {birth ? <TabBar active={tab} set={setTab} /> : null}
 
       {showSearch ? (
         <SearchModal
