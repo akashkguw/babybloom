@@ -481,7 +481,7 @@ function App() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 16 }}>{showFeedBanner ? '🤱' : '⏱️'}</div>
+            <div style={{ fontSize: 16 }}>{showFeedBanner ? (feedTimerApp!.type === 'Tummy Time' ? '🧒' : '🤱') : '⏱️'}</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>
                 {showFeedBanner ? feedTimerApp!.type : timerState.type} in progress

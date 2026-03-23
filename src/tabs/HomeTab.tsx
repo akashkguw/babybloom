@@ -262,12 +262,16 @@ export default function HomeTab({
     let minsInt = Math.round(secs / 60);
     if (minsInt < 1) minsInt = 1;
 
-    const recent = getRecentFeed(null);
-    if (recent) {
-      // Show merge prompt
-      setMergePrompt({ mins: minsInt, type: feedTimer.type, recent: recent });
-      setFeedTimerApp(null);
-      return;
+    const isTummy = feedTimer.type === 'Tummy Time';
+
+    if (!isTummy) {
+      const recent = getRecentFeed(null);
+      if (recent) {
+        // Show merge prompt
+        setMergePrompt({ mins: minsInt, type: feedTimer.type, recent: recent });
+        setFeedTimerApp(null);
+        return;
+      }
     }
 
     const entry: LogEntry = {
@@ -279,8 +283,9 @@ export default function HomeTab({
       mins: minsInt,
       notes: 'Timed',
     };
+    const cat = isTummy ? 'sleep' : 'feed';
     const next = Object.assign({}, logs);
-    next.feed = [entry].concat(logs.feed || []);
+    next[cat] = [entry].concat((logs[cat] || []) as LogEntry[]);
     setLogs(next);
     toast(feedTimer.type + ' — ' + minsInt + ' min logged');
     setFeedTimerApp(null);
@@ -437,7 +442,7 @@ export default function HomeTab({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 18 }}>🤱</div>
+            <div style={{ fontSize: 18 }}>{feedTimer.type === 'Tummy Time' ? '🧒' : '🤱'}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.a }}>{feedTimer.type}</div>
               <div style={{ fontSize: 11, color: C.tl }}>since {fmtTime(feedTimer.startTimeStr)}</div>
@@ -534,10 +539,9 @@ export default function HomeTab({
             {
               e: '🧒',
               l: 'Tummy',
-              fn: () => {
-                if (!feedTimer) quickLog('sleep', { type: 'Tummy Time' });
-              },
-              dis: !!feedTimer,
+              fn: () => startFeedTimer('Tummy Time'),
+              active: feedTimer && feedTimer.type === 'Tummy Time',
+              dis: feedTimer && feedTimer.type !== 'Tummy Time',
             },
           ].map((q: any) => (
             <div
