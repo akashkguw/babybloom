@@ -21,9 +21,10 @@ export const Toast: React.FC<ToastProps> = () => {
   useEffect(() => {
     toastCallback = (msg: string) => {
       setState({ message: msg, visible: true });
+      const duration = msg.includes('\n') ? 3000 : 2000;
       setTimeout(() => {
         setState((prev) => ({ ...prev, visible: false }));
-      }, 2000);
+      }, duration);
     };
 
     return () => {
@@ -50,7 +51,9 @@ export const Toast: React.FC<ToastProps> = () => {
         pointerEvents: 'none',
       }}
     >
-      {state.message}
+      {state.message.split('\n').map((line, i) => (
+        <div key={i} style={i > 0 ? { fontSize: 11, fontWeight: 400, marginTop: 2, opacity: 0.9 } : undefined}>{line}</div>
+      ))}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/util
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { toast } from '@/lib/utils/toast';
+import { getEncouragement } from '@/lib/constants/encouragements';
 
 interface LogEntry {
   id: number;
@@ -171,7 +172,8 @@ export default function HomeTab({
       cat === 'sleep' && e.type === 'Wake Up' && e.mins
         ? e.type + ' logged (' + e.amount + ' sleep)'
         : e.type + ' logged';
-    toast(msg);
+    const encouragement = getEncouragement(cat, e.type);
+    toast(msg + '\n' + encouragement);
   }
 
   // ═══ Inline feed timer (state lives in App so it survives tab switches) ═══
@@ -313,7 +315,9 @@ export default function HomeTab({
     const next = Object.assign({}, logs);
     next[cat] = [entry].concat((logs[cat] || []) as LogEntry[]);
     setLogs(next);
-    toast(feedTimer.type + ' — ' + minsInt + ' min logged');
+    const timerCat = isTummy ? 'tummy' : 'feed';
+    const enc = getEncouragement(timerCat, feedTimer.type);
+    toast(feedTimer.type + ' — ' + minsInt + ' min logged\n' + enc);
     setFeedTimerApp(null);
   }
 
