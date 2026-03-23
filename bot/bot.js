@@ -198,10 +198,65 @@ Just send me a message describing what you want, and I'll create a GitHub Issue.
 *Commands:*
 /bug \`description\` — Shortcut for bug reports
 /feature \`description\` — Shortcut for feature requests
+/edit \`number\` \`new description\` — Update an existing issue
 /status — See open issue count
 /recent — See last 5 issues`,
     { parse_mode: "Markdown" }
   );
+});
+
+// ═══════════════════════════════
+//  /edit <number> <new description>
+// ═══════════════════════════════
+bot.onText(/\/edit\s+(\d+)\s+(.+)/s, async (msg, match) => {
+  if (!isAllowed(msg.from.username)) return;
+  const issueNumber = parseInt(match[1]);
+  const newText = match[2].trim();
+
+  try {
+    // Fetch existing issue to preserve labels
+    const { data: existing } = await octokit.rest.issues.get({ owner, repo, issue_number: issueNumber });
+
+    const { labels: autoLabels } = detectLabels(newText);
+    const allLabels = [...new Set([...existing.labels.map(l => l.name), ...autoLabels, "telegram"])];
+    const newTitle = generateTitle(newText);
+    const newBody = buildIssueBody(newText, allLabels);
+
+    await octokit.rest.issues.update({
+      owner, repo,
+      issue_number: issueNumber,
+      title: newTitle,
+      body: newBody,
+      labels: allLabels,
+    });
+
+    // Add a comment noting the update
+    await octokit.rest.issues.createComment({
+      owner, repo,
+      issue_number: issueNumber,
+      body: `✏️ *Issue updated via Telegram*\n\n**New description:** ${newText}\n\n_Updated by @${msg.from.username || "user"} via BabyBloom Bot_`,
+    });
+
+    // Update in local queue if present
+    try {
+      const queue = readQueue();
+      const entry = queue.find(i => i.number === issueNumber);
+      if (entry) {
+        entry.title = newTitle;
+        entry.body = newBody;
+        entry.status = "pending"; // re-open for implementation
+        writeQueue(queue);
+      }
+    } catch {}
+
+    bot.sendMessage(
+      msg.chat.id,
+      `✅ *Issue #${issueNumber} updated!*\n\n📌 ${newTitle}\n🔗 [View on GitHub](${existing.html_url})`,
+      { parse_mode: "Markdown", disable_web_page_preview: true }
+    );
+  } catch (e) {
+    bot.sendMessage(msg.chat.id, `❌ Failed to update issue #${issueNumber}: ${e.message}`);
+  }
 });
 
 // ═══════════════════════════════
@@ -311,6 +366,43 @@ bot.on("photo", async (msg) => {
 });
 
 // ═══════════════════════════════
+//  Build structured issue body (issue #9)
+//  — detailed info, no private data
+// ═══════════════════════════════
+function buildIssueBody(text, labels) {
+  // Detect request type from labels
+  const typeMap = {
+    bug: "🐛 Bug Report",
+    enhancement: "✨ Feature Request",
+    ui: "🎨 UI/Design",
+    content: "📝 Content / Guide",
+    feeding: "🍼 Feeding",
+    sleep: "😴 Sleep",
+    health: "💜 Health",
+    growth: "📊 Growth",
+    "voice-input": "🎤 Voice Input",
+    priority: "🔴 Priority",
+  };
+  const typeLabel = labels.map(l => typeMap[l]).filter(Boolean)[0] || "💬 Feedback";
+
+  // Category tags (exclude meta-labels)
+  const metaLabels = new Set(["telegram", "feedback", "priority"]);
+  const categoryTags = labels.filter(l => !metaLabels.has(l)).map(l => `\`${l}\``).join(" ");
+
+  return `## ${typeLabel}
+
+${text}
+
+---
+
+**Category:** ${categoryTags || "`general`"}
+**Source:** Telegram Bot
+**Status:** Pending implementation
+
+> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._`;
+}
+
+// ═══════════════════════════════
 //  Core: Create GitHub Issue
 // ═══════════════════════════════
 async function createIssue(chatId, text, forceLabels, customBody) {
@@ -321,9 +413,7 @@ async function createIssue(chatId, text, forceLabels, customBody) {
     await ensureLabels(allLabels);
 
     const title = generateTitle(text);
-    const body =
-      customBody ||
-      `${text}\n\n---\n_Created via BabyBloom Telegram Bot_\n_Labels auto-detected: ${allLabels.join(", ")}_`;
+    const body = customBody || buildIssueBody(text, allLabels);
 
     const { data: issue } = await octokit.rest.issues.create({
       owner, repo,
