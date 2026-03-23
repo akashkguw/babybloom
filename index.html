@@ -160,7 +160,7 @@ function StatsSummary({entries,label}){
         h("div",{style:{fontSize:11,color:C.tl}},s.l))}))}
 
 // ═══ STATS VIEW (consolidated charts with metric selectors) ═══
-function StatsView({logs,period,setPeriod,logColors}){
+function StatsView({logs,period,setPeriod,logColors,volumeUnit}){
   var _sm=us({}),statMet=_sm[0],setStatMet=_sm[1];
   function getMet(cat,def){return statMet[cat]||def}
   function setMet(cat,v){setStatMet(function(p){var n=Object.assign({},p);n[cat]=v;return n})}
@@ -196,7 +196,7 @@ function StatsView({logs,period,setPeriod,logColors}){
   if((logs.sleep||[]).some(function(e){return e.mins}))sleepMetrics.push({id:"hours",label:"Total Hrs",unit:"hrs",getData:function(e,p){return aggregateSum(e,"mins",p,60)},color:C.pu});
 
   // Set defaults to the most useful metric
-  if(!statMet.feed&&feedMetrics.length>1)setMet("feed",feedMetrics.length>2?"bottle_oz":"breast_min");
+  if(!statMet.feed&&feedMetrics.length>1)setMet("feed",feedMetrics.length>2?"bottle_vol":"breast_min");
   if(!statMet.sleep&&sleepMetrics.length>1)setMet("sleep","hours");
 
   return h(F,null,
@@ -218,7 +218,7 @@ function StatsView({logs,period,setPeriod,logColors}){
     // Bath
     (logs.bath||[]).length>0?ChartCard("bath","🛁","Bath",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.bl}]):null,
     // Massage
-    (logs.massage||[]).length>0?ChartCard("massage","🤲","Massage",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.pu},{id:"mins",label:"Minutes",getData:function(e,p){return aggregateSum(e,p,"duration")},color:C.s}]):null,
+    (logs.massage||[]).length>0?ChartCard("massage","🤲","Massage",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.pu},{id:"mins",label:"Minutes",getData:function(e,p){return aggregateSum(e,"duration",p,1)},color:C.s}]):null,
     // Meds
     (logs.meds||[]).length>0?ChartCard("meds","💊","Medications",[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.s}]):null,
     // Allergy
@@ -833,7 +833,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
     sub==="timer"?h(TimerView,{logs:logs,setLogs:setLogs,age:age,timerState:timerState,setTimerState:setTimerState}):null,
 
     // ═══ STATS VIEW ═══
-    sub==="stats"?h(StatsView,{logs:logs,period:period,setPeriod:setPeriod,logColors:logColors}):null,
+    sub==="stats"?h(StatsView,{logs:logs,period:period,setPeriod:setPeriod,logColors:logColors,volumeUnit:volumeUnit}):null,
 
     // add button (hidden in stats and timer view)
     sub!=="stats"&&sub!=="timer"?h(Btn,{label:"+ Add Entry",onClick:function(){setForm({});setShowAdd(true)},color:C.s,full:true}):null,
@@ -1956,7 +1956,7 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
           h("div",{style:{fontSize:18}},q.e),h("div",{style:{fontSize:9,color:q.l==="Wake Up"?C.pu:C.tl,marginTop:2,fontWeight:600}},q.l))}))),
 
     // ═══ CONTINUE LAST FEED — shows when recent feed within 30 min, no timer running ═══
-    !feedTimer&&(function(){var rf=getRecentFeed(null);if(!rf)return null;var elapsed=rf.mins||0;return h("div",{style:{marginTop:6,padding:"10px 14px",background:C.okl,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+    !feedTimer&&(function(){var rf=getRecentFeed(null);if(!rf)return null;var elapsed=rf.mins||0;return h("div",{style:{marginTop:10,marginBottom:12,padding:"10px 14px",background:C.okl,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
       h("div",{style:{display:"flex",alignItems:"center",gap:8}},
         h("div",{style:{fontSize:16}},"🔄"),
         h("div",null,h("div",{style:{fontSize:12,fontWeight:700,color:C.ok||C.t}},"Continue "+rf.type+"?"),h("div",{style:{fontSize:10,color:C.tl}},elapsed+" min so far • tap to resume timer"))),
