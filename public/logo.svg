@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Pink rounded rectangle background -->
+  <rect x="20" y="20" width="160" height="160" rx="30" ry="30" fill="#FF6B8A"/>
+
+  <!-- Bottle shape -->
+  <g id="bottle">
+    <!-- Cap -->
+    <rect x="85" y="45" width="30" height="15" rx="3" ry="3" fill="#FFD700"/>
+
+    <!-- Neck -->
+    <path d="M 85 60 Q 80 70 80 80 L 120 80 Q 120 70 115 60 Z" fill="#FFF8DC" stroke="#333" stroke-width="1.5"/>
+
+    <!-- Main bottle body -->
+    <ellipse cx="100" cy="85" rx="25" ry="8" fill="#FFF8DC" stroke="#333" stroke-width="1.5"/>
+    <path d="M 75 85 L 70 135 Q 70 145 80 150 L 120 150 Q 130 145 130 135 L 125 85 Z" fill="#FFF8DC" stroke="#333" stroke-width="1.5"/>
+
+    <!-- Liquid inside -->
+    <path d="M 75 110 L 72 135 Q 72 143 80 147 L 120 147 Q 128 143 128 135 L 125 110 Z" fill="#FF6B8A" opacity="0.6"/>
+
+    <!-- Shine/highlight -->
+    <ellipse cx="85" cy="100" rx="6" ry="12" fill="#FFFFFF" opacity="0.4"/>
+  </g>
+</svg>

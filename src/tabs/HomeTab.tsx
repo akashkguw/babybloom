@@ -521,8 +521,8 @@ export default function HomeTab({
               dis: !!feedTimer,
             },
             {
-              e: '🫙',
-              l: 'Pumped',
+              e: '🍼',
+              l: 'Breast Milk',
               fn: () => {
                 if (!feedTimer) {
                   setQuickFeedType('Pumped Milk');

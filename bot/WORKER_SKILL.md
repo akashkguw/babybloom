@@ -74,41 +74,50 @@ Then stop — do not implement anything.
 Never edit blindly. First understand the relevant code:
 
 ```bash
-# Find relevant functions
-grep -n "KEYWORD" $REPO_DIR/index.html | head -20
+# Find relevant functions/components in src/
+grep -rn "KEYWORD" $REPO_DIR/src/ | head -20
 
-# Read only the relevant section (not the whole file)
-sed -n 'START,ENDp' $REPO_DIR/index.html
+# Read only the relevant file
+cat $REPO_DIR/src/path/to/file.tsx
 ```
 
-### Code conventions (strict)
-- `var R=React, h=R.createElement` — **NO JSX ever**
-- Hooks: `us=useState` `ue=useEffect` `ur=useRef` `um=useMemo` `uc=useCallback`
-- Storage: `ds(key,val)` save · `dg(key)` load (IndexedDB)
-- Per-profile: `spd(profileId, key, val)`
-- **Bump SW cache version by 1** in `sw.js` on every change (e.g. v22 → v23)
+### Code conventions (strict — Vite + React + TypeScript modular architecture)
+- **JSX + TypeScript** — Use JSX syntax with `.tsx` files
+- **Proper imports** — ESM imports at top of files, use `@/` path alias (→ `src/`)
+- **Max 400 lines per file** — Split larger components
+- Type safety with TypeScript interfaces/types (strict mode, `tsc --noEmit` must pass)
+- React hooks: `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
+- Storage: Use `dg`/`ds` from `@/lib/db` (IndexedDB wrappers)
+- Per-profile: Store in profile-scoped collections via `spd()` in App.tsx
+- Shared UI: Import from `@/components/shared` (Icon uses `n`/`s`/`c` props, not `name`/`size`/`color`)
+- Feature modules: `@/features/{feeding,voice,settings,profiles,shortcuts,stats}/`
+- Tabs: `@/tabs/{HomeTab,LogTab,MilestonesTab,GuideTab,SafetyTab}.tsx`
+- Constants: `@/lib/constants/{colors,icons,milestones,vaccines,guides,i18n}.ts`
+- Volume: Use `'ml' | 'oz'` literal type (not `string`) for volumeUnit
 
 ---
 
 ## Step 4 — Implement
 
-Edit **only** `$REPO_DIR/index.html` and `$REPO_DIR/sw.js`.
+Edit **only** files in `$REPO_DIR/src/` and `$REPO_DIR/tests/`.
 
 If the issue is too vague or requires touching prohibited files — mark `skipped` with a `skip_reason` and stop.
 
 ---
 
-## Step 5 — Run regression tests (mandatory, never skip)
+## Step 5 — Run tests and type checking (mandatory, never skip)
 
 ```bash
-cd $REPO_DIR && node tests/regression.js
+cd $REPO_DIR && npm run test
 ```
 
-All 50 tests must pass. If any fail — fix the code, **never modify the test file**.
+All tests must pass.
 
 ```bash
-node --check $REPO_DIR/sw.js && echo "sw.js syntax OK"
+npm run type-check
 ```
+
+TypeScript must have no errors.
 
 ---
 
@@ -118,7 +127,7 @@ node --check $REPO_DIR/sw.js && echo "sw.js syntax OK"
 cd $REPO_DIR
 git config user.email "akashgupta5384@gmail.com"
 git config user.name "Akash"
-git add index.html sw.js
+git add src/
 git commit -m "Implement: ISSUE_TITLE (closes #NUMBER)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
@@ -145,7 +154,7 @@ print('Done')
 
 ## Step 8 — Report
 
-Print: issue number + title, test result (50/50), commit SHA.
+Print: issue number + title, test result (all passed), commit SHA.
 The Mac pipeline.sh handles push + GitHub close + Telegram notify.
 
 ---
@@ -154,10 +163,12 @@ The Mac pipeline.sh handles push + GitHub close + Telegram notify.
 
 - ❌ `git push / pull / rebase / reset / checkout / stash`
 - ❌ Any HTTP request (`curl`, `wget`, `fetch`)
-- ❌ Edit anything except `index.html` and `sw.js`
-- ❌ Modify `tests/regression.js`
+- ❌ Edit anything except `src/` and `tests/` directories
+- ❌ Modify test files without explicit approval
 - ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist`
 - ❌ `rm`, `mv`, `cp` any file
-- ❌ `npm`, `pip`, package installs
+- ❌ `npm install` or package manager changes
 - ❌ Add `fetch()` or network calls to external domains in app code
 - ❌ Process more than ONE issue per run
+- ❌ Create files outside `src/` (except config files for build/test)
+- ❌ Edit `package.json`, `tsconfig.json`, `vite.config.ts` without approval

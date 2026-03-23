@@ -46,10 +46,15 @@ if git diff --quiet HEAD && [ -z "$(git status --porcelain)" ]; then
 fi
 
 # ─── Stage only known safe files (never plist, .env, node_modules, logs) ───
-FILES_TO_STAGE=(
-  index.html
-  sw.js
-  README.md
+# App source (Vite + React + TypeScript modular architecture)
+git add src/ 2>/dev/null || true
+git add index.html 2>/dev/null || true
+git add package.json tsconfig.json vite.config.ts vitest.config.ts 2>/dev/null || true
+git add .eslintrc.json 2>/dev/null || true
+git add public/ 2>/dev/null || true
+
+# Bot files (safe subset)
+BOT_SAFE_FILES=(
   bot/bot.js
   bot/package.json
   bot/Dockerfile
@@ -57,12 +62,16 @@ FILES_TO_STAGE=(
   bot/.gitignore
   bot/README.md
   bot/deploy.sh
-  .github/workflows/test.yml
+  bot/WORKER_SKILL.md
 )
-
-for f in "${FILES_TO_STAGE[@]}"; do
+for f in "${BOT_SAFE_FILES[@]}"; do
   [ -f "$f" ] && git add "$f" 2>/dev/null || true
 done
+
+# CI/CD and docs
+git add .github/workflows/test.yml .github/workflows/deploy.yml 2>/dev/null || true
+git add README.md MIGRATION_GUIDE.md ARCHITECTURE_PLAN.md 2>/dev/null || true
+git add tests/ 2>/dev/null || true
 
 # ─── SECRET SCAN — hard stop if any secret found in staged files ───
 echo "🔍 Scanning staged files for secrets..."
@@ -84,20 +93,34 @@ if [ -z "$CHANGED" ]; then
 fi
 echo "📦 Staged: $CHANGED"
 
-# ─── Local CI checks ───
+# ─── Local CI checks (validate modular Vite + React + TS codebase) ───
 echo "🧪 Running local CI checks..."
 node -e "
 const fs = require('fs');
-const html = fs.readFileSync('index.html','utf8');
+const path = require('path');
+
+// Recursively read all files in src/ as one blob for feature checks
+function readDir(dir) {
+  let content = '';
+  for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, f.name);
+    if (f.isDirectory()) content += readDir(p);
+    else if (f.name.match(/\.(tsx?|ts|jsx?)$/)) content += fs.readFileSync(p, 'utf8');
+  }
+  return content;
+}
+const src = readDir('src');
+
 const checks = [
-  ['React loaded','react/18'],['Service Worker','serviceWorker.register'],
-  ['IndexedDB','indexedDB'],['Voice logging','SpeechRecognition'],
-  ['Feed merge','mergeIntoLastFeed'],['Siri Shortcuts','SiriShortcutsSetup'],
-  ['Massage guide','MASSAGE_GUIDE'],['Profile system','switchProfile'],
-  ['Dark mode','C_DARK'],['Firsts edit','updateFirst'],['Volume unit','volumeUnit'],
+  ['React components','useState'],['IndexedDB','indexedDB'],
+  ['Voice logging','SpeechRecognition'],['Feed merge','mergeIntoLastFeed'],
+  ['Siri Shortcuts','SiriShortcutsSetup'],['Massage guide','MASSAGE_GUIDE'],
+  ['Profile system','switchProfile'],['Dark mode','applyTheme'],
+  ['Volume unit','volumeUnit'],['Timer view','TimerView'],
+  ['Guide tab','GuideTab'],['Safety tab','SafetyTab'],
 ];
 let fail=0;
-checks.forEach(([n,p])=>{if(!html.includes(p)){console.log('FAIL:',n);fail++;}});
+checks.forEach(([n,p])=>{if(!src.includes(p)){console.log('FAIL:',n);fail++;}});
 if(fail>0)process.exit(1);
 console.log('All '+checks.length+' feature checks passed');
 " || {

@@ -1,9 +1,87 @@
-package-lock.json
-bot/node_modules/
+# ─── Dependencies ───────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Build output ───────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+out/
+*.local
+
+# ─── Secrets & credentials ──────────────────────────────────────
+.env
+.env.*
+!.env.example        # allow the template — never real values
+
+# Extra safety: never commit tokens even if misnamed
+*.token
+*.secret
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# ─── Bot runtime files ──────────────────────────────────────────
 bot/.env
+bot/.env.*
+!bot/.env.example
 bot/bot.log
 bot/pipeline.log
 bot/pending-issues.json
-bot/com.babybloom.telegram-bot.plist
-bot/com.babybloom.pipeline.plist
+bot/node_modules/
 bot/package-lock.json
+
+# macOS LaunchAgent plists (contain local paths, not portable)
+bot/com.babybloom.*.plist
+*.plist
+
+# ─── Logs ───────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Lock files (generated, not needed in repo) ─────────────────
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ─── Test & coverage artifacts ──────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ─── TypeScript incremental build ───────────────────────────────
+*.tsbuildinfo
+
+# ─── Editor & OS ────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*.vim
+.editorconfig
+
+# ─── Vite cache ─────────────────────────────────────────────────
+.vite/
+
+# ─── Misc ───────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
