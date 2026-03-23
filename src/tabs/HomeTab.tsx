@@ -74,6 +74,7 @@ export default function HomeTab({
   const [td2, setTd] = useState('');
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
   const [quickFeedVal, setQuickFeedVal] = useState('');
+  const [carouselIdx, setCarouselIdx] = useState(0);
   // Merge prompt state kept for type compatibility but auto-merge is used instead
   const mergeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [feedElapsed, setFeedElapsed] = useState(
@@ -466,69 +467,83 @@ export default function HomeTab({
         </div>
       </Cd>
 
-      {/* ═══ NEXT CRITICAL ACTION ═══ */}
-      {nextAction && (
-        <Cd
-          style={{
-            marginBottom: 12,
-            padding: '12px 14px',
-            borderLeft: '4px solid ' + (nextAction.overdue ? C.p : C.bl),
-            background: nextAction.overdue ? C.pl + '22' : C.bll + '44',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: nextAction.overdue ? C.p : C.bl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
-                {nextAction.overdue ? '⚠️ Overdue' : '💉 Don\'t miss'}
+      {/* ═══ CAROUSEL: Don't Miss + Tip ═══ */}
+      {(() => {
+        const slides: { id: string; node: React.ReactNode }[] = [];
+        if (nextAction) {
+          slides.push({
+            id: 'vaccine',
+            node: (
+              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + (nextAction.overdue ? C.p : C.bl), background: nextAction.overdue ? C.pl + '22' : C.bll + '44', borderRadius: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: nextAction.overdue ? C.p : C.bl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                      {nextAction.overdue ? '⚠️ Overdue' : '💉 Don\'t miss'}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.t, lineHeight: 1.3 }}>
+                      {nextAction.vaccine.n} — {nextAction.vaccine.d}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>Due at {nextAction.ageLabel}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                    <div
+                      onClick={() => {
+                        setVDone((p) => {
+                          const n = Object.assign({}, p);
+                          n[nextAction.key] = true;
+                          return n;
+                        });
+                        toast('Marked ' + nextAction.vaccine.n + ' as done!');
+                      }}
+                      style={{ padding: '6px 14px', borderRadius: 10, background: C.ok, color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    >Done</div>
+                    <div
+                      onClick={() => { setTab('guide', 'vaccines'); }}
+                      style={{ padding: '6px 10px', borderRadius: 10, background: C.cd, border: '1px solid ' + C.b, color: C.tl, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                    >View all</div>
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.t, lineHeight: 1.3 }}>
-                {nextAction.vaccine.n} — {nextAction.vaccine.d}
+            ),
+          });
+        }
+        if (ms) {
+          slides.push({
+            id: 'tip',
+            node: (
+              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.a, background: C.cd, borderRadius: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.a, marginBottom: 3 }}>Tip for {ms.l}</div>
+                <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>{ms.tips}</div>
               </div>
-              <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>
-                Due at {nextAction.ageLabel}
+            ),
+          });
+        }
+        if (slides.length === 0) return null;
+        const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
+        return (
+          <div style={{ marginBottom: 12 }}>
+            {slides[idx].node}
+            {slides.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 6 }}>
+                {slides.map((s, i) => (
+                  <div
+                    key={s.id}
+                    onClick={() => setCarouselIdx(i)}
+                    style={{
+                      width: i === idx ? 16 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: i === idx ? C.p : C.b,
+                      cursor: 'pointer',
+                      transition: 'width 0.2s, background 0.2s',
+                    }}
+                  />
+                ))}
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
-              <div
-                onClick={() => {
-                  setVDone((p) => {
-                    const n = Object.assign({}, p);
-                    n[nextAction.key] = true;
-                    return n;
-                  });
-                  toast('Marked ' + nextAction.vaccine.n + ' as done!');
-                }}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 10,
-                  background: C.ok,
-                  color: 'white',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Done
-              </div>
-              <div
-                onClick={() => { setTab('guide', 'vaccines'); }}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 10,
-                  background: C.cd,
-                  border: '1px solid ' + C.b,
-                  color: C.tl,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                View all
-              </div>
-            </div>
+            )}
           </div>
-        </Cd>
-      )}
+        );
+      })()}
 
       {/* ═══ ACTIVE FEED TIMER — compact banner ═══ */}
       {feedTimer && (
@@ -979,15 +994,7 @@ export default function HomeTab({
       ) : null}
 
 
-      {/* Tip */}
-      {ms && (
-        <Cd style={{ marginBottom: 12, borderLeft: '4px solid ' + C.a }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.a, marginBottom: 3 }}>
-            Tip for {ms.l}
-          </div>
-          <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>{ms.tips}</div>
-        </Cd>
-      )}
+      {/* (Tip is now part of the carousel above) */}
 
       {/* Explore links (compact row) */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
