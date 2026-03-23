@@ -27,6 +27,18 @@ interface SettingsProps {
   setVolumeUnit: (unit: 'ml' | 'oz') => void;
 }
 
+const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <span style={{ fontSize: 16 }}>{icon}</span>
+      <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>{title}</div>
+    </div>
+    <div style={{ background: C.cd, borderRadius: 16, padding: 16, border: '1px solid ' + C.b }}>
+      {children}
+    </div>
+  </div>
+);
+
 export default function Settings({
   onClose,
   birth,
@@ -48,28 +60,65 @@ export default function Settings({
 
   return (
     <div
-      className="mo"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      className="ca"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 200,
+        background: C.bg,
+        overflowY: 'auto',
+        animation: 'fadeOverlay 0.2s ease-out',
       }}
     >
-      <div className="ms">
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700 }}>Settings & Data</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <Icon n="x" s={22} c={C.tl} />
-          </button>
-        </div>
+      {/* Header */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          background: C.bg,
+          borderBottom: '1px solid ' + C.b,
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            background: C.cd,
+            border: '1px solid ' + C.b,
+            borderRadius: 10,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <Icon n="arrow-left" s={18} c={C.t} />
+        </button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: C.t, margin: 0 }}>Settings</h1>
+      </div>
 
-        <div style={{ background: C.al, borderRadius: 14, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Your Data is Local</div>
-          <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>
-            All data stored in IndexedDB on your device. Nothing sent to servers.
+      <div style={{ padding: '16px 16px 100px' }}>
+        {/* Privacy notice */}
+        <div style={{ background: C.al, borderRadius: 14, padding: '12px 14px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon n="shield" s={18} c={C.a} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.a }}>Your Data is Local</div>
+            <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.4 }}>Stored on your device. Nothing sent to servers.</div>
           </div>
         </div>
 
+        {/* Profiles */}
         {profiles && profiles.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
+          <Section title="Profiles" icon="👶">
             <ProfileManager
               profiles={profiles}
               activeProfile={activeProfile}
@@ -78,26 +127,43 @@ export default function Settings({
               onDelete={onDeleteProfile}
               onRename={onRenameProfile}
             />
-          </div>
+          </Section>
         )}
 
-        {birth && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.tl, marginBottom: 4 }}>Birth Date</div>
-            <div style={{ fontSize: 15, padding: '8px 12px', background: C.bg, borderRadius: 10 }}>
-              {new Date(birth + 'T00:00:00').toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+        {/* General */}
+        <Section title="General" icon="⚙️">
+          {birth && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 4 }}>Birth Date</div>
+              <div style={{ fontSize: 14, padding: '8px 12px', background: C.bg, borderRadius: 10, color: C.t }}>
+                {new Date(birth + 'T00:00:00').toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </div>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 6 }}>Volume Unit</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['ml', 'oz'] as const).map((u) => (
+                <Pill
+                  key={u}
+                  label={u === 'ml' ? 'Milliliters (ml)' : 'Ounces (oz)'}
+                  active={volumeUnit === u}
+                  onClick={() => setVolumeUnit(u)}
+                  color={C.a}
+                />
+              ))}
             </div>
           </div>
-        )}
+        </Section>
 
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.t, marginBottom: 8 }}>Feeding Reminders</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ flex: 1, fontSize: 13, color: C.t }}>Enable notifications</div>
+        {/* Feeding Reminders */}
+        <Section title="Feeding Reminders" icon="🔔">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: reminders.enabled ? 12 : 0 }}>
+            <div style={{ fontSize: 13, color: C.t }}>Enable notifications</div>
             <button
               onClick={() => {
                 if (!reminders.enabled && 'Notification' in window) {
@@ -132,8 +198,8 @@ export default function Settings({
             </button>
           </div>
           {reminders.enabled && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 12, color: C.tl, marginBottom: 4 }}>Remind after (hours)</div>
+            <div>
+              <div style={{ fontSize: 12, color: C.tl, marginBottom: 6 }}>Remind after</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {[2, 2.5, 3, 4].map((hr) => (
                   <Pill
@@ -147,243 +213,225 @@ export default function Settings({
               </div>
             </div>
           )}
-        </div>
+        </Section>
 
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.t, marginBottom: 8 }}>Volume Unit</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {['ml', 'oz'].map((u) => (
-              <Pill
-                key={u}
-                label={u === 'ml' ? 'Milliliters (ml)' : 'Ounces (oz)'}
-                active={volumeUnit === u}
-                onClick={() => setVolumeUnit(u as 'ml' | 'oz')}
-                color={C.a}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Siri Shortcuts */}
+        <Section title="Shortcuts" icon="🎙️">
+          <SiriShortcutsSetup volumeUnit={volumeUnit} />
+        </Section>
 
-        <div style={{ marginBottom: 12 }}>
-          <Button
-            label="Export Backup"
-            onClick={() => {
-              dga()
-                .then((d: any) => {
-                  const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
-                  const u = URL.createObjectURL(b);
-                  const a = document.createElement('a');
-                  a.href = u;
-                  a.download = 'babybloom-backup-' + today() + '.json';
-                  a.click();
-                  URL.revokeObjectURL(u);
-                  // toast('Saved!');
-                });
-            }}
-            color={C.s}
-            full
-          />
-          <div style={{ height: 8 }} />
-          <Button
-            label="Import Backup"
-            onClick={() => fileRef.current?.click()}
-            color={C.s}
-            outline
-            full
-          />
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              const r = new FileReader();
-              r.onload = (ev) => {
-                try {
-                  const d = JSON.parse(ev.target?.result as string);
-                  odb()
-                    .then((db: any) => {
-                      const tx = db.transaction(ST, 'readwrite');
-                      const s = tx.objectStore(ST);
-                      s.clear();
-                      Object.entries(d).forEach(([k, v]: any) => {
-                        s.put({ key: k, value: v });
+        {/* Data Management */}
+        <Section title="Data" icon="💾">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Button
+              label="Export Backup"
+              onClick={() => {
+                dga()
+                  .then((d: any) => {
+                    const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+                    const u = URL.createObjectURL(b);
+                    const a = document.createElement('a');
+                    a.href = u;
+                    a.download = 'babybloom-backup-' + today() + '.json';
+                    a.click();
+                    URL.revokeObjectURL(u);
+                  });
+              }}
+              color={C.s}
+              full
+            />
+            <Button
+              label="Import Backup"
+              onClick={() => fileRef.current?.click()}
+              color={C.s}
+              outline
+              full
+            />
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const r = new FileReader();
+                r.onload = (ev) => {
+                  try {
+                    const d = JSON.parse(ev.target?.result as string);
+                    odb()
+                      .then((db: any) => {
+                        const tx = db.transaction(ST, 'readwrite');
+                        const s = tx.objectStore(ST);
+                        s.clear();
+                        Object.entries(d).forEach(([k, v]: any) => {
+                          s.put({ key: k, value: v });
+                        });
+                        tx.oncomplete = () => {
+                          setTimeout(() => {
+                            location.reload();
+                          }, 600);
+                        };
                       });
-                      tx.oncomplete = () => {
-                        // toast('Restored!');
-                        setTimeout(() => {
-                          location.reload();
-                        }, 600);
-                      };
-                    });
-                } catch (err) {
-                  // toast('Invalid file');
-                }
-              };
-              r.readAsText(f);
-            }}
-            style={{ display: 'none' }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <Button
-            label="Generate Pediatrician Report"
-            onClick={() => {
-              const w = window.open('', '_blank');
-              if (!w) return;
-
-              const babyName = (profiles && profiles.find((p: any) => p.id === activeProfile))?.name || 'Baby';
-              const genDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-              // Calculate age
-              let ageStr = '';
-              if (birth) {
-                const b = new Date(birth + 'T00:00:00');
-                const diffMs = Date.now() - b.getTime();
-                const days = Math.floor(diffMs / 86400000);
-                const months = Math.floor(days / 30.44);
-                if (months < 1) ageStr = days + ' days old';
-                else ageStr = months + ' month' + (months !== 1 ? 's' : '') + ' old (' + days + ' days)';
-              }
-
-              // Last 7 days stats
-              const last7: string[] = [];
-              for (let i = 0; i < 7; i++) last7.push(daysAgo(i));
-
-              const feeds7 = (logs.feed || []).filter((e: any) => last7.includes(e.date));
-              const sleeps7 = (logs.sleep || []).filter((e: any) => last7.includes(e.date) && e.type !== 'Wake Up' && e.type !== 'Tummy Time');
-              const diapers7 = (logs.diaper || []).filter((e: any) => last7.includes(e.date));
-
-              let totalOz = 0;
-              let totalFeedMins = 0;
-              feeds7.forEach((e: any) => { if (e.oz) totalOz += e.oz; if (e.mins) totalFeedMins += e.mins; });
-              const avgOzDay = feeds7.length > 0 ? Math.round((totalOz / 7) * 10) / 10 : 0;
-              const avgFeedsDay = Math.round((feeds7.length / 7) * 10) / 10;
-
-              let totalSleepMins = 0;
-              sleeps7.forEach((e: any) => { if (e.mins) totalSleepMins += e.mins; });
-              const avgSleepHrs = Math.round((totalSleepMins / 7 / 60) * 10) / 10;
-
-              const wetCount = diapers7.filter((e: any) => e.type === 'Wet' || e.type === 'Mixed').length;
-              const dirtyCount = diapers7.filter((e: any) => e.type === 'Dirty' || e.type === 'Mixed').length;
-
-              // Growth (latest entries)
-              const growthEntries = logs.growth || [];
-              const latestGrowth = growthEntries.length > 0 ? growthEntries[0] : null;
-
-              // Recent feeds table (last 10)
-              const recentFeeds = (logs.feed || []).slice(0, 10);
-              let feedRows = '';
-              recentFeeds.forEach((e: any) => {
-                feedRows += '<tr><td>' + fmtDate(e.date) + '</td><td>' + fmtTime(e.time) + '</td><td>' + (e.type || '') + '</td><td>' + (e.amount || '') + '</td></tr>';
-              });
-
-              // Milestone count
-              let milestoneTotal = 0;
-              let milestoneDone = 0;
-              if (checked) {
-                Object.keys(checked).forEach((k: string) => {
-                  const group = checked[k];
-                  if (group && typeof group === 'object') {
-                    Object.values(group).forEach((v: any) => {
-                      milestoneTotal++;
-                      if (v) milestoneDone++;
-                    });
+                  } catch {
+                    // invalid file
                   }
+                };
+                r.readAsText(f);
+              }}
+              style={{ display: 'none' }}
+            />
+            <Button
+              label="Generate Pediatrician Report"
+              onClick={() => {
+                const w = window.open('', '_blank');
+                if (!w) return;
+
+                const babyName = (profiles && profiles.find((p: any) => p.id === activeProfile))?.name || 'Baby';
+                const genDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+                let ageStr = '';
+                if (birth) {
+                  const b = new Date(birth + 'T00:00:00');
+                  const diffMs = Date.now() - b.getTime();
+                  const days = Math.floor(diffMs / 86400000);
+                  const months = Math.floor(days / 30.44);
+                  if (months < 1) ageStr = days + ' days old';
+                  else ageStr = months + ' month' + (months !== 1 ? 's' : '') + ' old (' + days + ' days)';
+                }
+
+                const last7: string[] = [];
+                for (let i = 0; i < 7; i++) last7.push(daysAgo(i));
+
+                const feeds7 = (logs.feed || []).filter((e: any) => last7.includes(e.date));
+                const sleeps7 = (logs.sleep || []).filter((e: any) => last7.includes(e.date) && e.type !== 'Wake Up' && e.type !== 'Tummy Time');
+                const diapers7 = (logs.diaper || []).filter((e: any) => last7.includes(e.date));
+
+                let totalOz = 0;
+                let totalFeedMins = 0;
+                feeds7.forEach((e: any) => { if (e.oz) totalOz += e.oz; if (e.mins) totalFeedMins += e.mins; });
+                const avgOzDay = feeds7.length > 0 ? Math.round((totalOz / 7) * 10) / 10 : 0;
+                const avgFeedsDay = Math.round((feeds7.length / 7) * 10) / 10;
+
+                let totalSleepMins = 0;
+                sleeps7.forEach((e: any) => { if (e.mins) totalSleepMins += e.mins; });
+                const avgSleepHrs = Math.round((totalSleepMins / 7 / 60) * 10) / 10;
+
+                const wetCount = diapers7.filter((e: any) => e.type === 'Wet' || e.type === 'Mixed').length;
+                const dirtyCount = diapers7.filter((e: any) => e.type === 'Dirty' || e.type === 'Mixed').length;
+
+                const growthEntries = logs.growth || [];
+                const latestGrowth = growthEntries.length > 0 ? growthEntries[0] : null;
+
+                const recentFeeds = (logs.feed || []).slice(0, 10);
+                let feedRows = '';
+                recentFeeds.forEach((e: any) => {
+                  feedRows += '<tr><td>' + fmtDate(e.date) + '</td><td>' + fmtTime(e.time) + '</td><td>' + (e.type || '') + '</td><td>' + (e.amount || '') + '</td></tr>';
                 });
-              }
 
-              // Vaccine count
-              let vaccinesDone = 0;
-              if (vDone) {
-                Object.values(vDone).forEach((v: any) => { if (v) vaccinesDone++; });
-              }
+                let milestoneTotal = 0;
+                let milestoneDone = 0;
+                if (checked) {
+                  Object.keys(checked).forEach((k: string) => {
+                    const group = checked[k];
+                    if (group && typeof group === 'object') {
+                      Object.values(group).forEach((v: any) => {
+                        milestoneTotal++;
+                        if (v) milestoneDone++;
+                      });
+                    }
+                  });
+                }
 
-              const vUnit = volLabel(volumeUnit);
+                let vaccinesDone = 0;
+                if (vDone) {
+                  Object.values(vDone).forEach((v: any) => { if (v) vaccinesDone++; });
+                }
 
-              w.document.write(
-                '<html><head><title>BabyBloom Health Report — ' + babyName + '</title><style>' +
-                'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:650px;margin:40px auto;padding:20px;color:#333;line-height:1.6;font-size:14px}' +
-                'h1{color:#FF6B8A;border-bottom:2px solid #FF6B8A;padding-bottom:8px;font-size:22px}' +
-                'h2{color:#6C63FF;margin-top:24px;font-size:16px;border-bottom:1px solid #eee;padding-bottom:4px}' +
-                '.info{font-size:13px;color:#666;margin-bottom:4px}' +
-                '.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0}' +
-                '.box{background:#f8f4ef;padding:14px;border-radius:10px;text-align:center}' +
-                '.box b{display:block;font-size:22px;color:#333;margin-bottom:2px}' +
-                '.box span{font-size:11px;color:#888}' +
-                'table{width:100%;border-collapse:collapse;margin:8px 0}' +
-                'th{text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;font-size:12px;color:#666;text-transform:uppercase}' +
-                'td{text-align:left;padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}' +
-                '.notes{border:1px dashed #ccc;padding:20px;border-radius:8px;min-height:80px;color:#888;margin:8px 0}' +
-                '@media print{body{margin:0;padding:10px}.grid{break-inside:avoid}}</style></head><body>' +
-                '<h1>BabyBloom Health Report</h1>' +
-                '<p class="info"><b style="font-size:16px;color:#333">' + babyName + '</b></p>' +
-                (ageStr ? '<p class="info">Age: ' + ageStr + '</p>' : '') +
-                (birth ? '<p class="info">Birth date: ' + fmtDate(birth) + '</p>' : '') +
-                '<p class="info">Report generated: ' + genDate + '</p>' +
+                const vUnit = volLabel(volumeUnit);
 
-                '<h2>7-Day Summary</h2>' +
-                '<div class="grid">' +
-                '<div class="box"><b>' + feeds7.length + '</b><span>Feedings</span></div>' +
-                '<div class="box"><b>' + (avgOzDay > 0 ? fmtVol(avgOzDay, volumeUnit) : avgFeedsDay + '/day') + '</b><span>' + (avgOzDay > 0 ? 'Avg ' + vUnit + '/day' : 'Avg per day') + '</span></div>' +
-                '<div class="box"><b>' + (totalFeedMins > 0 ? Math.round(totalFeedMins / 7) + 'm' : '—') + '</b><span>Avg feed min/day</span></div>' +
-                '</div>' +
-                '<div class="grid">' +
-                '<div class="box"><b>' + avgSleepHrs + 'h</b><span>Avg sleep/day</span></div>' +
-                '<div class="box"><b>' + wetCount + '</b><span>Wet diapers (7d)</span></div>' +
-                '<div class="box"><b>' + dirtyCount + '</b><span>Dirty diapers (7d)</span></div>' +
-                '</div>' +
+                w.document.write(
+                  '<html><head><title>BabyBloom Health Report — ' + babyName + '</title><style>' +
+                  'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:650px;margin:40px auto;padding:20px;color:#333;line-height:1.6;font-size:14px}' +
+                  'h1{color:#FF6B8A;border-bottom:2px solid #FF6B8A;padding-bottom:8px;font-size:22px}' +
+                  'h2{color:#6C63FF;margin-top:24px;font-size:16px;border-bottom:1px solid #eee;padding-bottom:4px}' +
+                  '.info{font-size:13px;color:#666;margin-bottom:4px}' +
+                  '.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0}' +
+                  '.box{background:#f8f4ef;padding:14px;border-radius:10px;text-align:center}' +
+                  '.box b{display:block;font-size:22px;color:#333;margin-bottom:2px}' +
+                  '.box span{font-size:11px;color:#888}' +
+                  'table{width:100%;border-collapse:collapse;margin:8px 0}' +
+                  'th{text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;font-size:12px;color:#666;text-transform:uppercase}' +
+                  'td{text-align:left;padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}' +
+                  '.notes{border:1px dashed #ccc;padding:20px;border-radius:8px;min-height:80px;color:#888;margin:8px 0}' +
+                  '@media print{body{margin:0;padding:10px}.grid{break-inside:avoid}}</style></head><body>' +
+                  '<h1>BabyBloom Health Report</h1>' +
+                  '<p class="info"><b style="font-size:16px;color:#333">' + babyName + '</b></p>' +
+                  (ageStr ? '<p class="info">Age: ' + ageStr + '</p>' : '') +
+                  (birth ? '<p class="info">Birth date: ' + fmtDate(birth) + '</p>' : '') +
+                  '<p class="info">Report generated: ' + genDate + '</p>' +
 
-                (latestGrowth ? (
-                  '<h2>Latest Growth</h2>' +
+                  '<h2>7-Day Summary</h2>' +
                   '<div class="grid">' +
-                  (latestGrowth.weight ? '<div class="box"><b>' + latestGrowth.weight + '</b><span>Weight</span></div>' : '') +
-                  (latestGrowth.height ? '<div class="box"><b>' + latestGrowth.height + '</b><span>Height</span></div>' : '') +
-                  (latestGrowth.head ? '<div class="box"><b>' + latestGrowth.head + '</b><span>Head circ.</span></div>' : '') +
+                  '<div class="box"><b>' + feeds7.length + '</b><span>Feedings</span></div>' +
+                  '<div class="box"><b>' + (avgOzDay > 0 ? fmtVol(avgOzDay, volumeUnit) : avgFeedsDay + '/day') + '</b><span>' + (avgOzDay > 0 ? 'Avg ' + vUnit + '/day' : 'Avg per day') + '</span></div>' +
+                  '<div class="box"><b>' + (totalFeedMins > 0 ? Math.round(totalFeedMins / 7) + 'm' : '—') + '</b><span>Avg feed min/day</span></div>' +
                   '</div>' +
-                  '<p class="info">Recorded: ' + fmtDate(latestGrowth.date) + '</p>'
-                ) : '') +
+                  '<div class="grid">' +
+                  '<div class="box"><b>' + avgSleepHrs + 'h</b><span>Avg sleep/day</span></div>' +
+                  '<div class="box"><b>' + wetCount + '</b><span>Wet diapers (7d)</span></div>' +
+                  '<div class="box"><b>' + dirtyCount + '</b><span>Dirty diapers (7d)</span></div>' +
+                  '</div>' +
 
-                '<h2>Milestones & Vaccines</h2>' +
-                '<div class="grid">' +
-                '<div class="box"><b>' + milestoneDone + '</b><span>Milestones done</span></div>' +
-                '<div class="box"><b>' + vaccinesDone + '</b><span>Vaccines done</span></div>' +
-                '<div class="box"><b>' + (milestoneTotal > 0 ? Math.round((milestoneDone / milestoneTotal) * 100) + '%' : '—') + '</b><span>Progress</span></div>' +
-                '</div>' +
+                  (latestGrowth ? (
+                    '<h2>Latest Growth</h2>' +
+                    '<div class="grid">' +
+                    (latestGrowth.weight ? '<div class="box"><b>' + latestGrowth.weight + '</b><span>Weight</span></div>' : '') +
+                    (latestGrowth.height ? '<div class="box"><b>' + latestGrowth.height + '</b><span>Height</span></div>' : '') +
+                    (latestGrowth.head ? '<div class="box"><b>' + latestGrowth.head + '</b><span>Head circ.</span></div>' : '') +
+                    '</div>' +
+                    '<p class="info">Recorded: ' + fmtDate(latestGrowth.date) + '</p>'
+                  ) : '') +
 
-                (feedRows ? (
-                  '<h2>Recent Feedings</h2>' +
-                  '<table><tr><th>Date</th><th>Time</th><th>Type</th><th>Amount</th></tr>' +
-                  feedRows +
-                  '</table>'
-                ) : '') +
+                  '<h2>Milestones & Vaccines</h2>' +
+                  '<div class="grid">' +
+                  '<div class="box"><b>' + milestoneDone + '</b><span>Milestones done</span></div>' +
+                  '<div class="box"><b>' + vaccinesDone + '</b><span>Vaccines done</span></div>' +
+                  '<div class="box"><b>' + (milestoneTotal > 0 ? Math.round((milestoneDone / milestoneTotal) * 100) + '%' : '—') + '</b><span>Progress</span></div>' +
+                  '</div>' +
 
-                '<h2>Notes for Pediatrician</h2>' +
-                '<div class="notes" contenteditable="true">Click here to type notes before your visit...</div>' +
+                  (feedRows ? (
+                    '<h2>Recent Feedings</h2>' +
+                    '<table><tr><th>Date</th><th>Time</th><th>Type</th><th>Amount</th></tr>' +
+                    feedRows +
+                    '</table>'
+                  ) : '') +
 
-                '<div style="text-align:center;margin-top:30px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px">' +
-                'Generated by BabyBloom — Based on AAP, CDC & WHO guidelines — ' + genDate +
-                '</div></body></html>'
-              );
-              w.document.close();
-              setTimeout(() => { w.print(); }, 500);
-            }}
-            color={C.a}
-            full
-          />
-        </div>
+                  '<h2>Notes for Pediatrician</h2>' +
+                  '<div class="notes" contenteditable="true">Click here to type notes before your visit...</div>' +
 
-        <SiriShortcutsSetup volumeUnit={volumeUnit} />
+                  '<div style="text-align:center;margin-top:30px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px">' +
+                  'Generated by BabyBloom — Based on AAP, CDC & WHO guidelines — ' + genDate +
+                  '</div></body></html>'
+                );
+                w.document.close();
+                setTimeout(() => { w.print(); }, 500);
+              }}
+              color={C.a}
+              full
+            />
+          </div>
+        </Section>
 
-        <div style={{ marginTop: 12 }}>
+        {/* Danger Zone */}
+        <Section title="Reset" icon="⚠️">
+          <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
+            This will permanently delete all profiles, logs, milestones, and vaccine records from this device.
+          </div>
           <Button
             label="Reset All Data"
             onClick={() => {
               if (window.confirm('Delete ALL data?')) {
                 dcl().then(() => {
-                  // toast('Cleared');
                   setTimeout(() => {
                     location.reload();
                   }, 500);
@@ -394,16 +442,16 @@ export default function Settings({
             outline
             full
           />
-        </div>
+        </Section>
 
         {/* Ko-fi support */}
         <div
           style={{
-            marginTop: 24,
-            padding: '16px',
+            marginBottom: 20,
+            padding: 16,
             background: C.cd,
             borderRadius: 16,
-            border: `1px solid ${C.b}`,
+            border: '1px solid ' + C.b,
             textAlign: 'center',
           }}
         >
@@ -437,13 +485,14 @@ export default function Settings({
           </div>
         </div>
 
+        {/* Footer */}
         <div
           style={{
             textAlign: 'center',
-            marginTop: 16,
             padding: '16px 12px',
             background: `linear-gradient(135deg, ${C.pl}, ${C.al})`,
             borderRadius: 16,
+            marginBottom: 16,
           }}
         >
           <div style={{ fontSize: 20, marginBottom: 4 }}>💗</div>
@@ -455,7 +504,7 @@ export default function Settings({
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: C.tl }}>
+        <div style={{ textAlign: 'center', fontSize: 11, color: C.tl }}>
           BabyBloom v2.1 — AAP/CDC/WHO 2026
         </div>
       </div>
