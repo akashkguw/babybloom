@@ -53,6 +53,56 @@ if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
   exit $?
 fi
 
+# ─── Always: notify any rejected issues first ───
+QUEUE_FILE="$BOT_DIR/pending-issues.json"
+if [ -f "$QUEUE_FILE" ]; then
+  REJECTED=$(python3 -c "
+import sys,json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='rejected':
+      print(i['number'],'|',i.get('title',''),'|',i.get('rejection_reason','No reason given'))
+except: pass
+" 2>/dev/null || true)
+
+  while IFS='|' read -r num title reason; do
+    num=$(echo "$num" | tr -d ' ')
+    title=$(echo "$title" | xargs)
+    reason=$(echo "$reason" | xargs)
+    [ -z "$num" ] && continue
+
+    curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"body\":\"🚫 Request rejected by automated safety review.\\n\\n**Reason:** $reason\"}" \
+      "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
+
+    curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d '{"state":"closed","state_reason":"not_planned"}' \
+      "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1
+
+    send_telegram "🚫 *BabyBloom: Request Rejected*
+
+🔢 Issue: #$num
+📌 Title: $title
+❌ Reason: $reason
+
+This request was blocked by the safety review and will not be implemented.
+🔗 [View issue](https://github.com/$REPO/issues/$num)"
+
+    echo "🚫 Rejected & notified: #$num — $title"
+  done <<< "$REJECTED"
+
+  # Remove rejected issues from queue
+  python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  remaining=[i for i in q if i.get('status')!='rejected']
+  json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
+except: pass
+" 2>/dev/null || true
+fi
+
 # ─── Check for unpushed commits ───
 UNPUSHED=$(git log origin/main..HEAD --oneline 2>/dev/null)
 if [ -z "$UNPUSHED" ]; then
