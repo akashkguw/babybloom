@@ -77,13 +77,20 @@ export const C: Colors = Object.assign({}, C_LIGHT);
 export function applyTheme(dark: boolean): void {
   Object.assign(C, dark ? C_DARK : C_LIGHT);
 
-  // Update document background
+  // Update document background and text color
   document.body.style.background = C.bg;
+  document.body.style.color = C.t;
 
   // Update theme color meta tag to match nav gradient start
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) {
     themeColorMeta.setAttribute('content', dark ? C.sl : C.a);
+  }
+
+  // Make status bar transparent so the header gradient shows through
+  const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (statusBarMeta) {
+    statusBarMeta.setAttribute('content', 'black-translucent');
   }
 
   // Update CSS custom properties for modal background

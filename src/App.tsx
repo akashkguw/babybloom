@@ -471,7 +471,7 @@ function App() {
 
   return (
     <div style={{ maxWidth: 430, margin: '0 auto', background: C.bg, minHeight: '100vh', position: 'relative' }}>
-      <div style={{ height: showAnyBanner ? 88 : 44 }} />
+      <div style={{ height: showAnyBanner ? 88 : 44, paddingTop: 'env(safe-area-inset-top, 0px)' }} />
 
       {/* ═══ PERSISTENT RESUME BANNER — visible when a timer is active on a different tab ═══ */}
       {showAnyBanner && (
@@ -485,7 +485,7 @@ function App() {
             maxWidth: 430,
             width: '100%',
             zIndex: 60,
-            padding: '6px 14px',
+            padding: 'calc(6px + env(safe-area-inset-top, 0px)) 14px 6px',
             background: `linear-gradient(135deg, ${C.a}, ${C.p})`,
             display: 'flex',
             alignItems: 'center',
@@ -528,7 +528,7 @@ function App() {
             maxWidth: 430,
             width: '100%',
             zIndex: 50,
-            padding: '8px 12px',
+            padding: 'calc(8px + env(safe-area-inset-top, 0px)) 12px 8px',
             background: darkMode ? `linear-gradient(135deg, ${C.sl}, ${C.pl})` : `linear-gradient(135deg, ${C.a}, ${C.p})`,
             borderBottom: `1px solid ${darkMode ? C.b : 'transparent'}`,
             boxShadow: darkMode ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.1)',
