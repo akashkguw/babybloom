@@ -13,7 +13,7 @@ export const toast = (msg: string) => {
   }
 };
 
-interface ToastProps {}
+type ToastProps = Record<string, never>
 
 export const Toast: React.FC<ToastProps> = () => {
   const [state, setState] = useState<ToastState>({ message: '', visible: false });

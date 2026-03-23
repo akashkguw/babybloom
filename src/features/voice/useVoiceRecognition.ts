@@ -72,7 +72,7 @@ export default function useVoiceRecognition(onResult: (parsed: VoiceParseResult)
     setTimeout(() => {
       try {
         rec.stop();
-      } catch (e) {}
+      } catch (_e) { /* intentionally empty */ }
     }, 8000);
   }
 
@@ -100,7 +100,7 @@ export default function useVoiceRecognition(onResult: (parsed: VoiceParseResult)
     if (recRef.current)
       try {
         recRef.current.stop();
-      } catch (e) {}
+      } catch (_e) { /* intentionally empty */ }
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setParsed(null);
     setTxt('');

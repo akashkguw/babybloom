@@ -1,4 +1,5 @@
 import { ML_PER_OZ } from '@/lib/utils/volume';
+import { autoSleepType } from '@/lib/utils/date';
 
 export interface VoiceParseResult {
   cat: 'feed' | 'diaper' | 'sleep' | 'temp' | 'bath' | 'massage' | 'meds' | 'allergy' | 'growth';
@@ -14,7 +15,7 @@ export default function parseVoice(text: string): VoiceParseResult | null {
   const tm = t.match(/(?:at\s+)?(\d{1,2})[:\s](\d{2})\s*(am|pm|a\.m\.|p\.m\.)?/i);
   if (tm) {
     let hr = parseInt(tm[1]);
-    let mn = parseInt(tm[2]);
+    const mn = parseInt(tm[2]);
     const ap = tm[3] ? tm[3].replace(/\./g, '').toLowerCase() : null;
     if (ap === 'pm' && hr < 12) hr += 12;
     if (ap === 'am' && hr === 12) hr = 0;
@@ -107,10 +108,8 @@ export default function parseVoice(text: string): VoiceParseResult | null {
     // ═══ SLEEP ═══
   } else if (/woke\s*up|wake\s*up|awake|waking/i.test(t)) {
     result = { cat: 'sleep', entry: { type: 'Wake Up' } };
-  } else if (/night\s*sleep|bedtime|bed\s*time|going\s*to\s*(?:bed|sleep)\s*(?:for\s*the\s*)?night/i.test(t)) {
-    result = { cat: 'sleep', entry: { type: 'Night Sleep' } };
-  } else if (/nap|napping|sleeping|fell\s*asleep|dozed/i.test(t)) {
-    result = { cat: 'sleep', entry: { type: 'Nap' } };
+  } else if (/night\s*sleep|bedtime|bed\s*time|going\s*to\s*(?:bed|sleep)\s*(?:for\s*the\s*)?night|nap|napping|sleeping|fell\s*asleep|dozed|sleep/i.test(t)) {
+    result = { cat: 'sleep', entry: { type: autoSleepType() } };
   } else if (/tummy\s*time/i.test(t)) {
     result = { cat: 'sleep', entry: { type: 'Tummy Time' } };
     if (minM) {
