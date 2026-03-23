@@ -518,7 +518,7 @@ function App() {
         </div>
       )}
 
-      {birth ? (
+      {birth && !showSet ? (
         <div
           style={{
             position: 'fixed',
@@ -673,7 +673,7 @@ function App() {
         </>
       )}
 
-      {birth ? <TabBar active={tab} set={setTab} /> : null}
+      {birth ? <TabBar active={tab} set={(t: string) => { setShowSet(false); setTab(t); }} /> : null}
 
       {showSearch ? (
         <SearchModal
