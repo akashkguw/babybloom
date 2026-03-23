@@ -5,6 +5,7 @@ import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
 import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
+import { VACCINES } from '@/lib/constants/vaccines';
 import { toast } from '@/lib/utils/toast';
 import { getEncouragement } from '@/lib/constants/encouragements';
 
@@ -50,6 +51,8 @@ interface HomeTabProps {
   feedTimerApp: FeedTimer | null;
   setFeedTimerApp: (timer: FeedTimer | null) => void;
   volumeUnit: 'oz' | 'ml';
+  vDone: { [key: string]: boolean };
+  setVDone: (updater: (prev: { [key: string]: boolean }) => { [key: string]: boolean }) => void;
 }
 
 export default function HomeTab({
@@ -65,6 +68,8 @@ export default function HomeTab({
   feedTimerApp,
   setFeedTimerApp,
   volumeUnit,
+  vDone,
+  setVDone,
 }: HomeTabProps) {
   const [td2, setTd] = useState('');
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
@@ -391,6 +396,29 @@ export default function HomeTab({
   const diaperTrend =
     weekDiapers > prevWeekDiapers ? '↑' : weekDiapers < prevWeekDiapers ? '↓' : '→';
 
+  // ═══ Next critical action (vaccine) ═══
+  const ageToMonths: { [key: string]: number } = {
+    Birth: 0, '1 Month': 1, '2 Months': 2, '4 Months': 4,
+    '6 Months': 6, '9 Months': 9, '12 Months': 12, '15 Months': 15, '18 Months': 18,
+  };
+
+  const nextAction = (() => {
+    // Find the first undone vaccine that is due (age-appropriate or overdue)
+    for (let ai = 0; ai < VACCINES.length; ai++) {
+      const group = VACCINES[ai];
+      const dueAt = ageToMonths[group.age] ?? 0;
+      // Only show vaccines that are due now or overdue (not far-future ones)
+      if (dueAt > age + 1) continue;
+      for (let vi = 0; vi < group.v.length; vi++) {
+        const key = ai + '_' + vi;
+        if (!vDone[key]) {
+          return { ai, vi, vaccine: group.v[vi], ageLabel: group.age, key, overdue: dueAt < age };
+        }
+      }
+    }
+    return null;
+  })();
+
   // ═══ Format age ═══
   const ageDays = Math.round(age * 30.44);
   const ageWeeks = Math.floor(ageDays / 7);
@@ -437,6 +465,70 @@ export default function HomeTab({
           </div>
         </div>
       </Cd>
+
+      {/* ═══ NEXT CRITICAL ACTION ═══ */}
+      {nextAction && (
+        <Cd
+          style={{
+            marginBottom: 12,
+            padding: '12px 14px',
+            borderLeft: '4px solid ' + (nextAction.overdue ? C.p : C.bl),
+            background: nextAction.overdue ? C.pl + '22' : C.bll + '44',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: nextAction.overdue ? C.p : C.bl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                {nextAction.overdue ? '⚠️ Overdue' : '💉 Don\'t miss'}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.t, lineHeight: 1.3 }}>
+                {nextAction.vaccine.n} — {nextAction.vaccine.d}
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>
+                Due at {nextAction.ageLabel}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+              <div
+                onClick={() => {
+                  setVDone((p) => {
+                    const n = Object.assign({}, p);
+                    n[nextAction.key] = true;
+                    return n;
+                  });
+                  toast('Marked ' + nextAction.vaccine.n + ' as done!');
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 10,
+                  background: C.ok,
+                  color: 'white',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Done
+              </div>
+              <div
+                onClick={() => { setTab('guide', 'vaccines'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 10,
+                  background: C.cd,
+                  border: '1px solid ' + C.b,
+                  color: C.tl,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                View all
+              </div>
+            </div>
+          </div>
+        </Cd>
+      )}
 
       {/* ═══ ACTIVE FEED TIMER — compact banner ═══ */}
       {feedTimer && (

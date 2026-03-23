@@ -613,6 +613,8 @@ function App() {
           feedTimerApp={feedTimerApp}
           setFeedTimerApp={setFeedTimerApp}
           volumeUnit={volumeUnit}
+          vDone={vDone}
+          setVDone={setVDone}
         />
       ) : null}
       {tab === 'log' ? (
