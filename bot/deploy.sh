@@ -42,7 +42,6 @@ cd "$REPO_DIR"
 # ─── Nothing to commit? ───
 if git diff --quiet HEAD && [ -z "$(git status --porcelain)" ]; then
   echo "ℹ️  No changes to commit."
-  send_telegram "ℹ️ *BabyBloom:* No changes to deploy."
   exit 0
 fi
 
