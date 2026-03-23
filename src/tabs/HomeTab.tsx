@@ -577,11 +577,11 @@ export default function HomeTab({
           );
         })()}
 
-      {/* ═══ QUICK LOG — always visible, prominent ═══ */}
+      {/* ═══ QUICK LOG — uniform 4-column grid ═══ */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 5 }}>
-          {/* Row 1: feeding — Breast L/R start inline timer, Formula/Pumped open form */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
+          {/* Row 1: feeding */}
           {[
             {
               e: '🤱',
@@ -619,6 +619,7 @@ export default function HomeTab({
               },
               dis: !!feedTimer,
             },
+            /* Row 2: tummy + diaper + sleep */
             {
               e: '🧒',
               l: 'Tummy',
@@ -626,32 +627,8 @@ export default function HomeTab({
               active: feedTimer && feedTimer.type === 'Tummy Time',
               dis: feedTimer && feedTimer.type !== 'Tummy Time',
             },
-          ].map((q: any) => (
-            <div
-              key={q.l}
-              onClick={q.dis ? null : q.fn}
-              style={{
-                textAlign: 'center',
-                padding: '8px 2px',
-                borderRadius: 12,
-                background: q.active ? C.al : C.cd,
-                border: '1px solid ' + (q.active ? C.a : C.b),
-                cursor: q.dis ? 'default' : 'pointer',
-                opacity: q.dis ? 0.35 : 1,
-              }}
-            >
-              <div style={{ fontSize: 18 }}>{q.e}</div>
-              <div style={{ fontSize: 9, color: q.active ? C.a : C.tl, marginTop: 2, fontWeight: 600 }}>
-                {q.l}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginTop: 5 }}>
-          {/* Row 2: diaper + sleep grouped */}
-          {[
-            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }) },
-            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }) },
+            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }), active: false, dis: false },
+            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }), active: false, dis: false },
             {
               e: isSleeping ? '⏰' : '😴',
               l: isSleeping ? 'Wake Up' : 'Sleep',
@@ -662,29 +639,26 @@ export default function HomeTab({
                   quickLog('sleep', { type: autoSleepType() });
                 }
               },
+              active: false,
+              dis: false,
+              highlight: isSleeping,
             },
           ].map((q: any) => (
             <div
               key={q.l}
-              onClick={q.fn}
+              onClick={q.dis ? null : q.fn}
               style={{
                 textAlign: 'center',
                 padding: '8px 2px',
                 borderRadius: 12,
-                background: q.l === 'Wake Up' ? C.pul : C.cd,
-                border: '1px solid ' + (q.l === 'Wake Up' ? C.pu : C.b),
-                cursor: 'pointer',
+                background: q.active ? C.al : q.highlight ? C.pul : C.cd,
+                border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : C.b),
+                cursor: q.dis ? 'default' : 'pointer',
+                opacity: q.dis ? 0.35 : 1,
               }}
             >
               <div style={{ fontSize: 18 }}>{q.e}</div>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: q.l === 'Wake Up' ? C.pu : C.tl,
-                  marginTop: 2,
-                  fontWeight: 600,
-                }}
-              >
+              <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : C.tl, marginTop: 2, fontWeight: 600 }}>
                 {q.l}
               </div>
             </div>
