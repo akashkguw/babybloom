@@ -88,8 +88,8 @@ export default function StatsView({
           <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>😴 Sleep</div>
           <div style={{ fontSize: 12, color: C.tl }}>Total</div>
         </div>
-        <BarChart data={logs.sleep || []} color={logColors.sleep || C.s} />
-        <StatsSummary entries={logs.sleep || []} label="Sleep" />
+        <BarChart data={(logs.sleep || []).filter((e: any) => e.type !== 'Wake Up' && e.type !== 'Tummy Time')} color={logColors.sleep || C.s} />
+        <StatsSummary entries={(logs.sleep || []).filter((e: any) => e.type !== 'Wake Up' && e.type !== 'Tummy Time')} label="Sleep" />
       </Card>
 
       <Card style={{ marginBottom: 12 }}>

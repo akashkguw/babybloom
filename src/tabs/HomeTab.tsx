@@ -349,7 +349,7 @@ export default function HomeTab({
   const td = today();
   const feedCt = (logs.feed || []).filter((x) => x.date === td).length;
   const diaperCt = (logs.diaper || []).filter((x) => x.date === td).length;
-  const sleepCt = (logs.sleep || []).filter((x) => x.date === td).length;
+  const sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up' && x.type !== 'Tummy Time').length;
 
   let sleepMinsToday = 0;
   (logs.sleep || [])
@@ -404,7 +404,7 @@ export default function HomeTab({
     const dk = daysAgo(i);
     weekFeeds += (logs.feed || []).filter((e) => e.date === dk).length;
     weekDiapers += (logs.diaper || []).filter((e) => e.date === dk).length;
-    weekSleeps += (logs.sleep || []).filter((e) => e.date === dk).length;
+    weekSleeps += (logs.sleep || []).filter((e) => e.date === dk && e.type !== 'Wake Up' && e.type !== 'Tummy Time').length;
   }
   for (let i = 7; i < 14; i++) {
     const dk = daysAgo(i);
