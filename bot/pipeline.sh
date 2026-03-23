@@ -24,11 +24,18 @@ if [ -z "$GITHUB_TOKEN" ] || [ -z "$TELEGRAM_TOKEN" ] || [ -z "$CHAT_ID" ]; then
 fi
 
 send_telegram() {
-  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+  RESULT=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
     -d chat_id="$CHAT_ID" \
     -d parse_mode="Markdown" \
     -d disable_web_page_preview=true \
-    --data-urlencode "text=$1" > /dev/null 2>&1
+    --data-urlencode "text=$1" 2>&1)
+  if echo "$RESULT" | grep -q '"ok":false'; then
+    echo "⚠️  Telegram send failed: $RESULT"
+    # Retry with plain text (in case Markdown parsing failed)
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+      -d chat_id="$CHAT_ID" \
+      --data-urlencode "text=$1" > /dev/null 2>&1
+  fi
 }
 
 cd "$REPO_DIR"
