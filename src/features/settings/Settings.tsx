@@ -286,24 +286,58 @@ export default function Settings({
           />
         </div>
 
+        {/* Ko-fi support */}
+        <div
+          style={{
+            marginTop: 24,
+            padding: '16px',
+            background: C.cd,
+            borderRadius: 16,
+            border: `1px solid ${C.b}`,
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 18, marginBottom: 6 }}>☕</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.t, marginBottom: 4 }}>
+            Enjoying BabyBloom?
+          </div>
+          <div style={{ fontSize: 12, color: C.tl, marginBottom: 12, lineHeight: 1.5 }}>
+            Free, no ads, no tracking. If it's helped during those sleepless nights, a small coffee keeps it going.
+          </div>
+          <div
+            onClick={() => window.open('https://ko-fi.com/babybloom', '_blank')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 24px',
+              borderRadius: 12,
+              background: '#FF5E5B',
+              color: 'white',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <span>☕</span>
+            <span>Buy me a coffee</span>
+          </div>
+          <div style={{ fontSize: 10, color: C.tl, marginTop: 8 }}>
+            No account needed · One-time · Any amount
+          </div>
+        </div>
+
         <div
           style={{
             textAlign: 'center',
-            marginTop: 24,
+            marginTop: 16,
             padding: '16px 12px',
             background: `linear-gradient(135deg, ${C.pl}, ${C.al})`,
             borderRadius: 16,
           }}
         >
           <div style={{ fontSize: 20, marginBottom: 4 }}>💗</div>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.p,
-              letterSpacing: 0.3,
-            }}
-          >
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.p, letterSpacing: 0.3 }}>
             Made with love for Saanvi
           </div>
           <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>
