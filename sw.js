@@ -1,5 +1,5 @@
 // BabyBloom Service Worker — Offline support & caching
-const CACHE_NAME = 'babybloom-v24';
+const CACHE_NAME = 'babybloom-v25';
 const ASSETS = [
   './',
   './index.html',

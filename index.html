@@ -1084,7 +1084,7 @@ function MilestonesTab({age,selMo,setSelMo,checked,setChecked,teeth,setTeeth,fir
     )):null,
 
     // ═══ FIRSTS / MEMORY BOOK ═══
-    Sec("firsts","📸","Baby Firsts",firstsDone+" memories recorded",C.s),
+    Sec("firsts","✨","Baby Firsts",firstsDone+" memories recorded",C.s),
     expanded.firsts?SecBody(h(F,null,
       h(Btn,{label:"+ Record a First",onClick:function(){setFF({});setEditFirstId(null);setShowFirst(true)},color:C.s,full:true}),
       h("div",{style:{marginTop:12}},
@@ -1111,7 +1111,7 @@ function MilestonesTab({age,selMo,setSelMo,checked,setChecked,teeth,setTeeth,fir
     )):null,
 
     // ═══ RED FLAGS ═══
-    Sec("red","⚠️","Red Flags","When to talk to your doctor",C.p),
+    Sec("red","🚩","Red Flags","When to talk to your doctor",C.p),
     expanded.red?SecBody(h(F,null,
       h(Cd,{style:{marginBottom:12,borderLeft:"4px solid "+C.p,background:C.pl+"66"}},h("div",{style:{fontSize:14,fontWeight:700,color:C.p,marginBottom:4}},"Important"),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},"These are signs that warrant a conversation with your pediatrician. Every child develops differently, but early intervention can make a huge difference.")),
       months.map(function(m){var ms2=MILESTONES[m];if(!ms2.red||!ms2.red.length)return null;
@@ -1223,7 +1223,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
     h(SH,{icon:"book",title:"Guide",color:C.a,sub:"Tap any section to explore"}),
 
     // Vaccines
-    Sec("vaccines","💉","Vaccines",doneC+"/"+totalV+" recorded",C.bl,false),
+    Sec("vaccines","🩺","Vaccines",doneC+"/"+totalV+" recorded",C.bl,false),
     expanded.vaccines?SecBody(h(F,null,
       h(Cd,{style:{marginBottom:12,textAlign:"center",padding:16}},h(PR,{pct:Math.round(doneC/totalV*100),sz:70,sw:5,c:C.bl}),h("div",{style:{marginTop:6,fontSize:13,fontWeight:600,color:C.t}},doneC+"/"+totalV+" recorded")),
       VACCINES.map(function(g,ai){var vA=ageMap[g.age]!=null?ageMap[g.age]:0,isPast=vA<age,isCur=vA>=age&&vA<age+3;
@@ -1253,7 +1253,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
         h(Dot,{items:n.tips,color:C.pu}))})):null,
 
     // Feeding
-    Sec("feeding","🍽️","Feeding Guide",FEEDING[curFI].amt,C.a,true),
+    Sec("feeding","👶","Feeding Guide",FEEDING[curFI].amt,C.a,true),
     expanded.feeding?SecBody(FEEDING.map(function(st,i){return h(Cd,{key:i,style:{marginBottom:10,borderLeft:i===curFI?"3px solid "+C.a:"none",opacity:i<curFI?0.5:1}},
       i===curFI?h("span",{style:{fontSize:10,fontWeight:700,color:C.a,background:C.al,padding:"2px 8px",borderRadius:6,marginBottom:6,display:"inline-block"}},"CURRENT"):null,
       h("h3",{style:{fontSize:15,fontWeight:700,color:C.t,margin:"0 0 2px"}},st.e+" "+st.t),h("div",{style:{fontSize:12,color:C.tl,marginBottom:6}},st.age),
@@ -1299,7 +1299,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
           h("div",{style:{fontSize:12,color:C.tl,fontStyle:"italic"}},m.notes))}))):null,
 
     // Bottles
-    Sec("bottles","🍼","Bottle Guide","Types, nipples & tips",C.bl,false),
+    Sec("bottles","🍼","Bottle Guide","Types, nipples & tips",C.bl,age<18),
     expanded.bottles?SecBody(h(F,null,
       [BOTTLE_GUIDE.types,BOTTLE_GUIDE.nipples,BOTTLE_GUIDE.tips].map(function(sec){
         return h(Cd,{key:sec.title,style:{marginBottom:10}},
@@ -1310,7 +1310,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
               typeof item!=="string"&&item.d?h("div",{style:{fontSize:12,color:C.tl,marginTop:2,lineHeight:1.4}},item.d):null)}))}))):null,
 
     // Formula Guide
-    Sec("formulaguide","🧪","Formula Guide","Types, choosing & prep",C.w,false),
+    Sec("formulaguide","🥛","Formula Guide","Types, choosing & prep",C.w,age<12),
     expanded.formulaguide?SecBody(h(F,null,
       h(Cd,{style:{marginBottom:10,borderLeft:"4px solid "+C.w,background:C.wl}},
         h("div",{style:{fontSize:13,fontWeight:700,color:C.w,marginBottom:4}},"Important"),
@@ -1324,7 +1324,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
               h("div",{style:{fontSize:12,color:C.tl,marginTop:2,lineHeight:1.4}},item.d))}))}))):null,
 
     // Growth
-    Sec("growth","📊","Growth Charts","WHO percentile curves",C.p,false),
+    Sec("growth","🌱","Growth Charts","WHO percentile curves",C.p,false),
     expanded.growth?(function(){
       var babyW=(logs&&logs.growth||[]).filter(function(e){return e.weight}).map(function(e){
         var bd=new Date(birth+'T00:00:00'),ed=new Date(e.date+'T00:00:00');
@@ -1345,14 +1345,14 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
     })():null,
 
     // Screen Time
-    Sec("screen","📱","Screen Time","AAP guidelines",C.s,false),
+    Sec("screen","🌈","Screen Time","AAP guidelines",C.s,false),
     expanded.screen?SecBody(h(F,null,
       SCREEN_TIME.map(function(s,i){return h(Cd,{key:i,style:{marginBottom:10}},h("div",{style:{fontSize:15,fontWeight:700,color:C.t,marginBottom:2}},s.age),h("div",{style:{fontSize:14,fontWeight:600,color:C.s,marginBottom:4}},s.rule),h("div",{style:{fontSize:13,color:C.t,lineHeight:1.5}},s.detail))}),
       h(Cd,{style:{borderLeft:"4px solid "+C.a}},h("div",{style:{fontSize:12,fontWeight:600,color:C.a,marginBottom:4}},"Better Alternatives"),h(Dot,{items:["Read books together","Sing songs and nursery rhymes","Play outside","Floor time with toys","Art and sensory play","Talk and describe the world"],color:C.a}))
     )):null,
 
     // Activities
-    Sec("activities","🎨","Activities","Age-appropriate play ideas",C.w,true),
+    Sec("activities","🧸","Activities","Age-appropriate play ideas",C.w,true),
     expanded.activities?SecBody(
       Object.keys(ACTIVITIES).map(Number).sort(function(a,b){return a-b}).map(function(m){
         var isCur=m<=age&&(m===24||Object.keys(ACTIVITIES).map(Number).sort(function(a,b){return a-b}).find(function(x){return x>m})>age);
@@ -1363,7 +1363,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
     ):null,
 
     // Remedies
-    Sec("remedies","🩹","Common Remedies","Gas, reflux, low milk & more",C.p,false),
+    Sec("remedies","🌿","Common Remedies","Gas, reflux, low milk & more",C.p,false),
     expanded.remedies?SecBody(
       Object.keys(REMEDIES).map(function(key){var sec=REMEDIES[key];
         return h(Cd,{key:key,style:{marginBottom:12}},
@@ -1425,7 +1425,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
     )):null,
 
     // Well-Child Visits
-    Sec("visits","📋","Well-Child Visits","Recommended check-up schedule",C.a,false),
+    Sec("visits","🏥","Well-Child Visits","Recommended check-up schedule",C.a,false),
     expanded.visits?SecBody(VISITS.map(function(v,i){var vm=parseFloat(v.a)||0,isPast=vm<age,isCur=vm>=age&&(i===0||parseFloat(VISITS[i-1].a)<age);
       return h(Cd,{key:i,style:{marginBottom:8,padding:14,opacity:isPast&&!isCur?0.5:1,borderLeft:isCur?"3px solid "+C.a:"none"}},
         h("div",{style:{display:"flex",gap:10,alignItems:"center"}},
@@ -1433,7 +1433,7 @@ function GuideTab({age,vDone,setVDone,subNavRef,logs,birth}){
           h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},v.a),h("div",{style:{fontSize:12,color:C.tl}},v.f))))})):null,
 
     // Medicine Dosage Calculator
-    Sec("medcalc","💊","Meds Calculator","Tylenol & Motrin dosing by weight",C.bl,false),
+    Sec("medcalc","⚖️","Meds Calculator","Tylenol & Motrin dosing by weight",C.bl,false),
     expanded.medcalc?SecBody(h(MedCalc,{})):null
   );
 }
@@ -1473,7 +1473,7 @@ function SafetyTab({subNavRef,emergencyContacts,setEmergencyContacts}){
     h(Cd,{style:{marginBottom:12,background:"linear-gradient(135deg,#FF5252,#FF1744)",border:"none",color:"white",textAlign:"center",padding:16}},h(Ic,{n:"alert-triangle",s:24,c:"white"}),h("div",{style:{fontSize:16,fontWeight:700,marginTop:6}},"Emergency: Call 911"),h("div",{style:{fontSize:12,opacity:0.9}},"Poison Control: 1-800-222-1222")),
 
     // Safety Tips
-    Sec("tips","🛡️","Safety Tips",SAFETY.length+" categories",C.p),
+    Sec("tips","🏠","Safety Tips",SAFETY.length+" categories",C.p),
     expanded.tips?SecBody(SAFETY.map(function(sec,i){return h(Cd,{key:i,onClick:function(){setTipExp(tipExp===i?-1:i)},style:{marginBottom:10,cursor:"pointer"}},
       h("div",{style:{display:"flex",alignItems:"center",gap:10}},h("div",{style:{width:36,height:36,borderRadius:10,background:sec.c+"15",display:"flex",alignItems:"center",justifyContent:"center"}},h(Ic,{n:sec.icon,s:18,c:sec.c})),h("div",{style:{flex:1,fontSize:14,fontWeight:600,color:C.t}},sec.t),h(Ic,{n:"chevron-right",s:16,c:C.tl,st:{transform:tipExp===i?"rotate(90deg)":"none",transition:"transform 0.2s"}})),
       tipExp===i?h("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.b}},h(Dot,{items:sec.items,color:sec.c})):null)})):null,
@@ -1510,7 +1510,7 @@ function SafetyTab({subNavRef,emergencyContacts,setEmergencyContacts}){
     )):null,
 
     // Emergency Contacts
-    Sec("contacts","📞","Emergency Contacts",emergencyContacts.length+" saved",C.s),
+    Sec("contacts","🆘","Emergency Contacts",emergencyContacts.length+" saved",C.s),
     expanded.contacts?SecBody(h(F,null,
       emergencyContacts.map(function(c){
         return h(Cd,{key:c.id,style:{marginBottom:8,padding:14}},
