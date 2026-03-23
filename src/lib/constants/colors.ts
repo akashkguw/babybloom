@@ -80,10 +80,10 @@ export function applyTheme(dark: boolean): void {
   // Update document background
   document.body.style.background = C.bg;
 
-  // Update theme color meta tag
+  // Update theme color meta tag to match nav gradient start
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) {
-    themeColorMeta.setAttribute('content', C.bg);
+    themeColorMeta.setAttribute('content', dark ? C.sl : C.a);
   }
 
   // Update CSS custom properties for modal background
