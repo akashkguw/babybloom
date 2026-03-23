@@ -578,7 +578,7 @@ export default function HomeTab({
         })()}
 
       {/* ═══ QUICK LOG — uniform 4-column grid ═══ */}
-      <div style={{ marginBottom: 12 }}>
+      <Cd style={{ marginBottom: 12, padding: '14px 14px 12px' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
           {/* Row 1: feeding */}
@@ -651,7 +651,7 @@ export default function HomeTab({
                 textAlign: 'center',
                 padding: '8px 2px',
                 borderRadius: 12,
-                background: q.active ? C.al : q.highlight ? C.pul : C.cd,
+                background: q.active ? C.al : q.highlight ? C.pul : C.bg,
                 border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : C.b),
                 cursor: q.dis ? 'default' : 'pointer',
                 opacity: q.dis ? 0.35 : 1,
@@ -664,7 +664,7 @@ export default function HomeTab({
             </div>
           ))}
         </div>
-      </div>
+      </Cd>
 
       {/* ═══ QUICK FEED BOTTOM SHEET — Formula/Pumped amount entry ═══ */}
       {quickFeedType && (
