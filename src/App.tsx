@@ -76,6 +76,7 @@ function App() {
   const [volumeUnit, setVUR] = useState<'ml' | 'oz'>('ml');
   const [feedTimerApp, _setFTA] = useState<FeedTimerApp | null>(null);
   const [siriResult, setSiriResult] = useState<SiriResult | null>(null);
+  const [appTimerElapsed, setAppTimerElapsed] = useState(0);
 
   // Wrapper functions for persistence
   const setEmergencyContacts = (v: EmergencyContact[]) => {
@@ -416,6 +417,24 @@ function App() {
 
   const babyName = profiles.length ? (profiles.find((p) => p.id === activeProfile)?.name || 'Baby') : 'Baby';
 
+  // Active timer elapsed time for the persistent banners
+  const activeTimerSource = feedTimerApp ? feedTimerApp.startTime : (timerState.running && timerState.startTime ? timerState.startTime : null);
+  useEffect(() => {
+    if (!activeTimerSource) {
+      setAppTimerElapsed(0);
+      return;
+    }
+    setAppTimerElapsed(Math.floor((Date.now() - activeTimerSource) / 1000));
+    const iv = setInterval(() => {
+      setAppTimerElapsed(Math.floor((Date.now() - activeTimerSource) / 1000));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [activeTimerSource]);
+
+  const showFeedBanner = feedTimerApp && tab !== 'home';
+  const showTimerBanner = !feedTimerApp && timerState.running && timerState.startTime && tab !== 'log';
+  const showAnyBanner = showFeedBanner || showTimerBanner;
+
   if (loading) {
     return (
       <div
@@ -435,25 +454,6 @@ function App() {
       </div>
     );
   }
-
-  // Active timer elapsed time for the persistent banners
-  const [appTimerElapsed, setAppTimerElapsed] = useState(0);
-  const activeTimerSource = feedTimerApp ? feedTimerApp.startTime : (timerState.running && timerState.startTime ? timerState.startTime : null);
-  useEffect(() => {
-    if (!activeTimerSource) {
-      setAppTimerElapsed(0);
-      return;
-    }
-    setAppTimerElapsed(Math.floor((Date.now() - activeTimerSource) / 1000));
-    const iv = setInterval(() => {
-      setAppTimerElapsed(Math.floor((Date.now() - activeTimerSource) / 1000));
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [activeTimerSource]);
-
-  const showFeedBanner = feedTimerApp && tab !== 'home';
-  const showTimerBanner = !feedTimerApp && timerState.running && timerState.startTime && tab !== 'log';
-  const showAnyBanner = showFeedBanner || showTimerBanner;
 
   return (
     <div style={{ maxWidth: 430, margin: '0 auto', background: C.bg, minHeight: '100vh', position: 'relative' }}>
