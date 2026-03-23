@@ -34,7 +34,6 @@ bot/bot.log
 bot/pipeline.log
 bot/pending-issues.json
 bot/node_modules/
-bot/package-lock.json
 
 # macOS LaunchAgent plists (contain local paths, not portable)
 bot/com.babybloom.*.plist
@@ -49,8 +48,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # ─── Lock files (generated, not needed in repo) ─────────────────
-package-lock.json
-yarn.lock
 pnpm-lock.yaml
 
 # ─── Test & coverage artifacts ──────────────────────────────────
