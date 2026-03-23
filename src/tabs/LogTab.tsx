@@ -8,7 +8,7 @@ import {
   Icon as Ic,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, autoSleepType } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import TimerView from '@/features/feeding/TimerView';
@@ -47,6 +47,7 @@ interface LogEntry {
 }
 
 interface FormData {
+  date?: string;
   time?: string;
   type?: string;
   amount?: string;
@@ -165,7 +166,7 @@ const LogTab: React.FC<LogTabProps> = ({
 
   function addEntry() {
     const entry: LogEntry = {
-      date: td,
+      date: form.date || td,
       time: form.time || now(),
       id: editId || Date.now(),
       ...form,
@@ -527,6 +528,39 @@ const LogTab: React.FC<LogTabProps> = ({
               >
                 <Ic n="x" s={22} c={C.tl} />
               </button>
+            </div>
+
+            {/* Date */}
+            <div style={{ marginBottom: 12 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.tl,
+                  display: 'block',
+                  marginBottom: 4,
+                }}
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                value={form.date || td}
+                min={daysAgo(1)}
+                max={td}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: `1.5px solid ${C.b}`,
+                  fontSize: 16,
+                  color: C.t,
+                  background: C.bg,
+                  outline: 'none',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
             </div>
 
             {/* Time */}
