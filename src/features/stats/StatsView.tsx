@@ -4,6 +4,7 @@ import Pill from '@/components/shared/Pill';
 import Card from '@/components/shared/Card';
 import StatsSummary from './StatsSummary';
 import { today, daysAgo, weekLabel, monthLabel, getWeekStart } from '@/lib/utils/date';
+import { fmtVol, volLabel } from '@/lib/utils/volume';
 
 interface StatsViewProps {
   logs: any;
@@ -77,15 +78,67 @@ function countByBucket(
   return counts;
 }
 
+/** Sum a numeric field per bucket */
+function sumByBucket(
+  entries: any[],
+  field: string,
+  period: 'daily' | 'weekly' | 'monthly',
+  buckets: { key: string; label: string }[]
+): number[] {
+  const sums = buckets.map(() => 0);
+
+  (entries || []).forEach((e: any) => {
+    if (!e.date) return;
+    const val = typeof e[field] === 'number' ? e[field] : parseFloat(e[field]);
+    if (!val || isNaN(val)) return;
+
+    let bucketKey: string;
+
+    if (period === 'daily') {
+      bucketKey = e.date;
+    } else if (period === 'weekly') {
+      bucketKey = getWeekStart(e.date);
+    } else {
+      bucketKey = e.date.slice(0, 7);
+    }
+
+    const idx = buckets.findIndex((b) => b.key === bucketKey);
+    if (idx >= 0) sums[idx] += val;
+  });
+
+  return sums;
+}
+
+/** Format bar label based on metric */
+function fmtBarVal(val: number, metric: string, volumeUnit: 'ml' | 'oz'): string {
+  if (val === 0) return '';
+  if (metric === 'volume') return fmtVol(val, volumeUnit);
+  if (metric === 'hours') {
+    const h = Math.floor(val / 60);
+    const m = Math.round(val % 60);
+    return h > 0 ? h + 'h' + (m > 0 ? m + 'm' : '') : m + 'm';
+  }
+  if (metric === 'minutes') {
+    const h = Math.floor(val / 60);
+    const m = Math.round(val % 60);
+    return h > 0 ? h + 'h' + (m > 0 ? m + 'm' : '') : m + 'm';
+  }
+  return String(Math.round(val * 10) / 10);
+}
+
 /** Pure CSS bar chart */
 function BarChart({
   data,
   labels,
   color,
+  metric,
+  volumeUnit,
 }: {
   data: number[];
   labels: string[];
   color: string;
+  metric?: string;
+  volumeUnit?: 'ml' | 'oz';
 }) {
   const maxVal = Math.max(...data, 1);
 
@@ -101,6 +154,7 @@ function BarChart({
     >
       {data.map((val, i) => {
         const pct = Math.max((val / maxVal) * 100, val > 0 ? 4 : 0);
+        const displayVal = metric && volumeUnit ? fmtBarVal(val, metric, volumeUnit) : (val > 0 ? String(Math.round(val * 10) / 10) : '');
         return (
           <div
             key={i}
@@ -122,7 +176,7 @@ function BarChart({
                   marginBottom: 2,
                 }}
               >
-                {val}
+                {displayVal}
               </div>
             )}
             <div
@@ -154,6 +208,45 @@ function BarChart({
   );
 }
 
+/** Metric selector pill row */
+function MetricPills({
+  options,
+  active,
+  onSelect,
+  color,
+}: {
+  options: { id: string; label: string }[];
+  active: string;
+  onSelect: (id: string) => void;
+  color: string;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+      {options.map((opt) => {
+        const isActive = active === opt.id;
+        return (
+          <div
+            key={opt.id}
+            onClick={() => onSelect(opt.id)}
+            style={{
+              padding: '3px 10px',
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: isActive ? color : 'transparent',
+              color: isActive ? 'white' : C.tl,
+              border: '1px solid ' + (isActive ? 'transparent' : C.b),
+            }}
+          >
+            {opt.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function StatsView({
   logs,
   period,
@@ -161,19 +254,50 @@ export default function StatsView({
   logColors,
   volumeUnit,
 }: StatsViewProps) {
+  const [feedMetric, setFeedMetric] = useState('count');
+  const [sleepMetric, setSleepMetric] = useState('count');
+  const [diaperMetric, setDiaperMetric] = useState('count');
+
   const buckets = getPeriodBuckets(period);
   const labels = buckets.map((b) => b.label);
 
-  const feedData = countByBucket(logs.feed || [], period, buckets);
+  const feedEntries = logs.feed || [];
   const sleepEntries = (logs.sleep || []).filter(
     (e: any) => e.type !== 'Wake Up' && e.type !== 'Tummy Time'
   );
-  const sleepData = countByBucket(sleepEntries, period, buckets);
-  const diaperData = countByBucket(logs.diaper || [], period, buckets);
+  const diaperEntries = logs.diaper || [];
+
+  // Feed data based on selected metric
+  function getFeedData(): number[] {
+    if (feedMetric === 'volume') return sumByBucket(feedEntries, 'oz', period, buckets);
+    if (feedMetric === 'minutes') return sumByBucket(feedEntries, 'mins', period, buckets);
+    return countByBucket(feedEntries, period, buckets);
+  }
+
+  // Sleep data based on selected metric
+  function getSleepData(): number[] {
+    if (sleepMetric === 'hours') return sumByBucket(sleepEntries, 'mins', period, buckets);
+    return countByBucket(sleepEntries, period, buckets);
+  }
+
+  // Diaper data based on selected metric
+  function getDiaperData(): number[] {
+    if (diaperMetric === 'wet') {
+      const wetEntries = diaperEntries.filter((e: any) => e.type === 'Wet' || e.type === 'Mixed');
+      return countByBucket(wetEntries, period, buckets);
+    }
+    if (diaperMetric === 'dirty') {
+      const dirtyEntries = diaperEntries.filter((e: any) => e.type === 'Dirty' || e.type === 'Mixed');
+      return countByBucket(dirtyEntries, period, buckets);
+    }
+    return countByBucket(diaperEntries, period, buckets);
+  }
 
   const hasAnyData = !Object.keys(logs).every(
     (k) => (logs[k] || []).length === 0
   );
+
+  const periodLabel = period === 'daily' ? 'Last 7 days' : period === 'weekly' ? 'Last 4 weeks' : 'Last 6 months';
 
   return (
     <>
@@ -202,11 +326,21 @@ export default function StatsView({
             🍼 Feeding
           </div>
           <div style={{ fontSize: 12, color: C.tl }}>
-            {period === 'daily' ? 'Last 7 days' : period === 'weekly' ? 'Last 4 weeks' : 'Last 6 months'}
+            {periodLabel}
           </div>
         </div>
-        <BarChart data={feedData} labels={labels} color={logColors.feed || C.p} />
-        <StatsSummary entries={logs.feed || []} label="Feedings" />
+        <MetricPills
+          options={[
+            { id: 'count', label: 'Count' },
+            { id: 'volume', label: volLabel(volumeUnit) },
+            { id: 'minutes', label: 'Minutes' },
+          ]}
+          active={feedMetric}
+          onSelect={setFeedMetric}
+          color={logColors.feed || C.p}
+        />
+        <BarChart data={getFeedData()} labels={labels} color={logColors.feed || C.p} metric={feedMetric} volumeUnit={volumeUnit} />
+        <StatsSummary entries={feedEntries} label="Feedings" />
       </Card>
 
       <Card style={{ marginBottom: 12 }}>
@@ -222,10 +356,19 @@ export default function StatsView({
             😴 Sleep
           </div>
           <div style={{ fontSize: 12, color: C.tl }}>
-            {period === 'daily' ? 'Last 7 days' : period === 'weekly' ? 'Last 4 weeks' : 'Last 6 months'}
+            {periodLabel}
           </div>
         </div>
-        <BarChart data={sleepData} labels={labels} color={logColors.sleep || C.pu} />
+        <MetricPills
+          options={[
+            { id: 'count', label: 'Count' },
+            { id: 'hours', label: 'Duration' },
+          ]}
+          active={sleepMetric}
+          onSelect={setSleepMetric}
+          color={logColors.sleep || C.pu}
+        />
+        <BarChart data={getSleepData()} labels={labels} color={logColors.sleep || C.pu} metric={sleepMetric} volumeUnit={volumeUnit} />
         <StatsSummary entries={sleepEntries} label="Sleep" />
       </Card>
 
@@ -242,11 +385,21 @@ export default function StatsView({
             💧 Diapers
           </div>
           <div style={{ fontSize: 12, color: C.tl }}>
-            {period === 'daily' ? 'Last 7 days' : period === 'weekly' ? 'Last 4 weeks' : 'Last 6 months'}
+            {periodLabel}
           </div>
         </div>
-        <BarChart data={diaperData} labels={labels} color={logColors.diaper || C.a} />
-        <StatsSummary entries={logs.diaper || []} label="Diapers" />
+        <MetricPills
+          options={[
+            { id: 'count', label: 'Count' },
+            { id: 'wet', label: 'Wet' },
+            { id: 'dirty', label: 'Dirty' },
+          ]}
+          active={diaperMetric}
+          onSelect={setDiaperMetric}
+          color={logColors.diaper || C.a}
+        />
+        <BarChart data={getDiaperData()} labels={labels} color={logColors.diaper || C.a} metric={diaperMetric} volumeUnit={volumeUnit} />
+        <StatsSummary entries={diaperEntries} label="Diapers" />
       </Card>
 
       {!hasAnyData && (
