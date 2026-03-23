@@ -57,6 +57,7 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
             cursor: 'pointer',
             padding: '4px 8px',
             opacity: active === t.id ? 1 : 0.45,
+            transition: 'opacity 0.2s ease, transform 0.1s ease',
           }}
         >
           <Icon

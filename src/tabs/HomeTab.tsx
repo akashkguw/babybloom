@@ -403,7 +403,7 @@ export default function HomeTab({
         : ageMonths + ' month' + (ageMonths !== 1 ? 's' : '');
 
   return (
-    <div style={{ padding: '16px 16px 120px' }}>
+    <div className="ca" style={{ padding: '16px 16px 120px' }}>
       {/* Hero (compact) — age + milestone progress combined */}
       <Cd
         style={{

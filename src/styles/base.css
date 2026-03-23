@@ -26,16 +26,43 @@ body {
   display: none;
 }
 
+/* ═══ Animations ═══ */
+
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.15);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Tab content fade-in */
+.ca {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Subtle tap feedback for interactive elements */
+button:active,
+[role="button"]:active {
+  transform: scale(0.97);
+}
+
+button,
+[role="button"] {
+  transition: transform 0.1s ease;
 }
 
 input,
@@ -53,6 +80,7 @@ textarea {
   -webkit-appearance: none;
   appearance: none;
   font-size: 16px;
+  transition: border-color 0.2s ease;
 }
 
 button {
@@ -74,7 +102,7 @@ button {
   position: fixed;
   top: 60px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(-8px);
   background: #333;
   color: #fff;
   padding: 10px 20px;
@@ -83,14 +111,16 @@ button {
   font-weight: 600;
   z-index: 9999;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
 }
 
 .toast.show {
   opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
+/* Modal overlay with fade */
 .mo {
   position: fixed;
   top: 0;
@@ -102,8 +132,10 @@ button {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  animation: fadeOverlay 0.2s ease-out;
 }
 
+/* Modal sheet with slide-up */
 .ms {
   background: var(--modal-bg, #fff);
   border-radius: 20px 20px 0 0;
@@ -112,4 +144,5 @@ button {
   max-width: 430px;
   max-height: 85vh;
   overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
 }

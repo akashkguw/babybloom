@@ -31,6 +31,7 @@ export const Button: React.FC<ButtonProps> = ({
         fontSize: small ? 13 : 15,
         fontWeight: 600,
         cursor: 'pointer',
+        transition: 'transform 0.1s ease, opacity 0.15s ease',
       }}
     >
       {label}

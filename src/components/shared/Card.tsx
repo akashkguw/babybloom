@@ -18,6 +18,7 @@ export const Card: React.FC<CardProps> = ({ children, style = {}, onClick }) => 
         boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
         border: `1px solid ${C.b}`,
         cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
         ...style,
       }}
     >

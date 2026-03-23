@@ -28,6 +28,7 @@ export const Pill: React.FC<PillProps> = ({
         fontWeight: 600,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
+        transition: 'background 0.15s ease, color 0.15s ease, transform 0.1s ease',
       }}
     >
       {label}
