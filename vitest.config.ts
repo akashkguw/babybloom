@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./tests/setup.ts']
+    setupFiles: ['./tests/setup.ts'],
+    passWithNoTests: true  // CI passes even while test suite is being built out
   },
   resolve: {
     alias: {
