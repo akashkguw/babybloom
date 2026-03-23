@@ -46,7 +46,8 @@ echo "🔄 BabyBloom Pipeline — $(date)"
 git remote set-url origin "https://akashkguw:${GITHUB_TOKEN}@github.com/${REPO}.git"
 
 # ─── Check for uncommitted changes — run deploy.sh if needed ───
-if ! git diff --quiet HEAD || [ -n "$(git status --porcelain)" ]; then
+# Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
+if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
   echo "📝 Uncommitted changes found — running deploy.sh..."
   bash "$BOT_DIR/deploy.sh"
   exit $?

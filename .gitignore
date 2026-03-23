@@ -3,6 +3,7 @@ bot/node_modules/
 bot/.env
 bot/bot.log
 bot/pipeline.log
+bot/pending-issues.json
 bot/com.babybloom.telegram-bot.plist
 bot/com.babybloom.pipeline.plist
 bot/package-lock.json
