@@ -75,6 +75,7 @@ export default function HomeTab({
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
   const [quickFeedVal, setQuickFeedVal] = useState('');
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const touchStartX = useRef<number | null>(null);
   // Merge prompt state kept for type compatibility but auto-merge is used instead
   const mergeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [feedElapsed, setFeedElapsed] = useState(
@@ -521,7 +522,18 @@ export default function HomeTab({
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
         return (
-          <div style={{ marginBottom: 12 }}>
+          <div
+            style={{ marginBottom: 12 }}
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return;
+              const diff = e.changedTouches[0].clientX - touchStartX.current;
+              touchStartX.current = null;
+              if (Math.abs(diff) < 40) return;
+              if (diff < 0 && idx < slides.length - 1) setCarouselIdx(idx + 1);
+              else if (diff > 0 && idx > 0) setCarouselIdx(idx - 1);
+            }}
+          >
             {slides[idx].node}
             {slides.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 6 }}>
@@ -897,7 +909,6 @@ export default function HomeTab({
           },
           { l: 'Diapers', v: diaperCt, sub: '', e: '💧', c: C.bl, s: 'diaper', wk: weekDiapers, tr: diaperTrend },
           { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴', c: C.pu, s: 'sleep', wk: weekSleeps, tr: '' },
-          { l: 'Stats', v: '', sub: '', e: '📊', c: C.s, s: 'stats', wk: 0, tr: '', isLink: true },
         ].map((s: any) => (
           <div
             key={s.l}
@@ -918,27 +929,37 @@ export default function HomeTab({
           >
             <span style={{ fontSize: 16 }}>{s.e}</span>
             <div>
-              {s.isLink ? (
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.s, lineHeight: 1.3 }}>View<br />All</div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: C.t, lineHeight: 1 }}>
-                    {s.v}
-                    {s.sub && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: s.c, marginLeft: 3 }}>
-                        {s.sub}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
-                  <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
-                    wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
-                  </div>
-                </>
-              )}
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.t, lineHeight: 1 }}>
+                {s.v}
+                {s.sub && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: s.c, marginLeft: 3 }}>
+                    {s.sub}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
+              <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
+                wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
+              </div>
             </div>
           </div>
         ))}
+        <div
+          onClick={() => { setTab('log', 'stats'); }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px 6px',
+            background: C.cd,
+            borderRadius: 12,
+            border: '1px solid ' + C.b,
+            cursor: 'pointer',
+            minWidth: 36,
+          }}
+        >
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.s, textAlign: 'center', lineHeight: 1.3 }}>All<br />Stats</div>
+        </div>
       </div>
 
       {/* Next feed reminder */}
