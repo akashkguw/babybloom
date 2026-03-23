@@ -172,17 +172,59 @@ git push origin main || {
 COMMIT_SHA=$(git rev-parse --short HEAD)
 echo "✅ Pushed: $COMMIT_SHA"
 
-# ─── Close implemented issues + comment on GitHub ───
+# ─── Close implemented issues + update description + post detailed comment ───
 ISSUE_LIST=""
 while IFS='|' read -r num title; do
   num=$(echo "$num" | tr -d ' ')
   title=$(echo "$title" | xargs)
   [ -z "$num" ] && continue
 
-  curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
-    -d "{\"body\":\"✅ Implemented and deployed in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA).\"}" \
-    "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
+  # Get enhanced description and implementation notes from pending-issues.json
+  ISSUE_EXTRA=$(python3 -c "
+import json, sys
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if str(i.get('number',''))==str($num):
+      print('DESC:'+i.get('enhanced_description','').replace('\n','\\\\n'))
+      print('NOTES:'+i.get('implementation_notes','').replace('\n','\\\\n'))
+      break
+except: pass
+" 2>/dev/null || true)
 
+  ENHANCED_DESC=$(echo "$ISSUE_EXTRA" | grep '^DESC:' | sed 's/^DESC://' | sed 's/\\\\n/\n/g')
+  IMPL_NOTES=$(echo "$ISSUE_EXTRA" | grep '^NOTES:' | sed 's/^NOTES://' | sed 's/\\\\n/\n/g')
+
+  # Update issue body with enriched description if available
+  if [ -n "$ENHANCED_DESC" ]; then
+    UPDATED_BODY=$(python3 -c "import json; print(json.dumps('$ENHANCED_DESC'))" 2>/dev/null || echo "\"$ENHANCED_DESC\"")
+    curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"body\":$UPDATED_BODY}" \
+      "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1
+  fi
+
+  # Post detailed implementation comment
+  if [ -n "$IMPL_NOTES" ]; then
+    COMMENT_BODY="✅ **Implemented** in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)
+
+**What was done:**
+$IMPL_NOTES"
+  else
+    COMMENT_BODY="✅ Implemented and deployed in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA)."
+  fi
+
+  python3 -c "
+import urllib.request, json
+body = json.dumps({'body': '''$COMMENT_BODY'''})
+req = urllib.request.Request(
+  'https://api.github.com/repos/$REPO/issues/$num/comments',
+  data=body.encode(), method='POST',
+  headers={'Authorization':'Bearer $GITHUB_TOKEN','Content-Type':'application/json'}
+)
+urllib.request.urlopen(req, timeout=10)
+" > /dev/null 2>&1
+
+  # Close the issue
   curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
     -d '{"state":"closed","state_reason":"completed"}' \
     "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1

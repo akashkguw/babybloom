@@ -37,7 +37,7 @@ If 0 pending — print "No pending issues. Exiting." and stop.
 
 ---
 
-## Step 2 — Safety review (BEFORE touching any code)
+## Step 2 — Safety review + description enrichment (BEFORE touching any code)
 
 Read the FIRST pending issue's `title` and `body`. Reject immediately if it contains:
 
@@ -66,6 +66,29 @@ print('Rejected #NUMBER')
 "
 ```
 Then stop — do not implement anything.
+
+If the issue passes safety review, enrich the description and save it back to `pending-issues.json`:
+
+```bash
+python3 -c "
+import json
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path))
+for i in q:
+    if i['number'] == NUMBER:
+        i['enhanced_description'] = '''WRITE A CLEAR 3-5 LINE DESCRIPTION HERE:
+- What the user reported (in plain English)
+- What component/area of the app is affected
+- Expected behaviour vs current behaviour
+- Any edge cases to handle
+- Acceptance criteria'''
+        break
+json.dump(q, open(path, 'w'), indent=2)
+print('Description enriched')
+"
+```
+
+Replace the `enhanced_description` value with a well-written description based on the issue title and body.
 
 ---
 
@@ -121,7 +144,32 @@ TypeScript must have no errors.
 
 ---
 
-## Step 6 — Commit
+## Step 6 — Write implementation notes
+
+Before committing, save a summary of what was done to `pending-issues.json`:
+
+```bash
+python3 -c "
+import json
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path))
+for i in q:
+    if i['number'] == NUMBER:
+        i['implementation_notes'] = '''WRITE WHAT YOU ACTUALLY DID HERE:
+- Files changed: list each file and what was changed
+- Approach taken: brief explanation of the fix/feature
+- Any trade-offs or notes for the reviewer'''
+        break
+json.dump(q, open(path, 'w'), indent=2)
+print('Implementation notes saved')
+"
+```
+
+Replace the `implementation_notes` value with a concise technical summary of the actual changes made.
+
+---
+
+## Step 7 — Commit
 
 ```bash
 cd $REPO_DIR
@@ -135,7 +183,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Step 7 — Mark implemented
+## Step 8 — Mark implemented
 
 ```bash
 python3 -c "
@@ -152,11 +200,11 @@ print('Done')
 
 ---
 
-## Step 8 — Loop
+## Step 9 — Loop
 
 Print: issue number + title, test result (all passed), commit SHA.
 
-Then **repeat Steps 1–7 for the next pending issue** until all are done. Stop when:
+Then **repeat Steps 1–8 for the next pending issue** until all are done. Stop when:
 - No more pending issues, OR
 - Any step fails
 
