@@ -431,7 +431,7 @@ export default function HomeTab({
         )}
       </div>
 
-      {/* Hero (compact) */}
+      {/* Hero (compact) — age + milestone progress combined */}
       <Cd
         style={{
           background: `linear-gradient(135deg,${C.p},${C.s})`,
@@ -450,7 +450,15 @@ export default function HomeTab({
               {ms ? 'Stage: ' + ms.l : ''}
             </div>
           </div>
-          <div style={{ fontSize: 42 }}>{ms ? ms.e : '👶'}</div>
+          <div
+            onClick={() => { setTab('miles', 'dev'); }}
+            style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+          >
+            <PR pct={pct} sz={44} sw={3} color="rgba(255,255,255,0.9)" trackColor="rgba(255,255,255,0.25)" />
+            <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 600 }}>
+              {pct}% milestones
+            </div>
+          </div>
         </div>
       </Cd>
 
@@ -918,8 +926,8 @@ export default function HomeTab({
         })()
       ) : null}
 
-      {/* Quick nav row: Stats + Milestones + Vaccines */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+      {/* Quick nav row: Stats + Vaccines */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
         <Cd
           onClick={() => {
             setTab('log', 'stats');
@@ -928,17 +936,6 @@ export default function HomeTab({
         >
           <div style={{ fontSize: 20 }}>📊</div>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.t, marginTop: 2 }}>Stats</div>
-        </Cd>
-        <Cd
-          onClick={() => {
-            setTab('miles', 'dev');
-          }}
-          style={{ padding: 12, textAlign: 'center', cursor: 'pointer' }}
-        >
-          <div>
-            <PR pct={pct} sz={32} sw={3} color={C.a} />
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.t, marginTop: 2 }}>{pct}% Done</div>
         </Cd>
         <Cd
           onClick={() => {

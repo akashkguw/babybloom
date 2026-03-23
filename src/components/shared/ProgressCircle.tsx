@@ -6,6 +6,7 @@ interface ProgressCircleProps {
   sz?: number;
   sw?: number;
   color?: string;
+  trackColor?: string;
 }
 
 export const ProgressCircle: React.FC<ProgressCircleProps> = ({
@@ -13,6 +14,7 @@ export const ProgressCircle: React.FC<ProgressCircleProps> = ({
   sz = 60,
   sw = 5,
   color = C.p,
+  trackColor = C.b,
 }) => {
   const r = (sz - sw) / 2;
   const circumference = r * 2 * Math.PI;
@@ -29,7 +31,7 @@ export const ProgressCircle: React.FC<ProgressCircleProps> = ({
         cy={sz / 2}
         r={r}
         fill="none"
-        stroke={C.b}
+        stroke={trackColor}
         strokeWidth={sw}
       />
       <circle
