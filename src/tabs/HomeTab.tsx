@@ -75,6 +75,8 @@ export default function HomeTab({
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
   const [quickFeedVal, setQuickFeedVal] = useState('');
   const [mergePrompt, setMergePrompt] = useState<MergePromptState | null>(null);
+  const [mergeCountdown, setMergeCountdown] = useState(0);
+  const mergeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [feedElapsed, setFeedElapsed] = useState(
     feedTimerApp ? Math.floor((Date.now() - feedTimerApp.startTime) / 1000) : 0
   );
@@ -202,6 +204,30 @@ export default function HomeTab({
       setFeedElapsed(0);
     }
   }, [feedTimer, setFeedTimerApp]);
+
+  // Auto-merge countdown: when merge prompt shows, auto-add to previous feed after 5 seconds
+  useEffect(() => {
+    if (mergePrompt) {
+      setMergeCountdown(5);
+      mergeTimerRef.current = setInterval(() => {
+        setMergeCountdown((prev) => {
+          if (prev <= 1) {
+            // Auto-merge into previous feed
+            if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
+            mergeIntoLastFeed(mergePrompt.mins, mergePrompt.type);
+            setMergePrompt(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => {
+        if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
+      };
+    } else {
+      setMergeCountdown(0);
+    }
+  }, [mergePrompt]);
 
   function startFeedTimer(type: string) {
     if (feedTimer) return;
@@ -494,6 +520,55 @@ export default function HomeTab({
         </div>
       )}
 
+      {/* ═══ CONTINUE LAST FEED — shows when recent feed within 30 min, no timer running ═══ */}
+      {!feedTimer &&
+        (() => {
+          const rf = getRecentFeed(null);
+          if (!rf) return null;
+          const elapsed = rf.mins || 0;
+          return (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: '10px 14px',
+                background: C.okl,
+                borderRadius: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 16 }}>🔄</div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.ok || C.t }}>
+                    Continue {rf.type}?
+                  </div>
+                  <div style={{ fontSize: 10, color: C.tl }}>
+                    {elapsed} min so far • tap to resume timer
+                  </div>
+                </div>
+              </div>
+              <div
+                onClick={() => {
+                  startFeedTimer(rf.type);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 10,
+                  background: C.ok || C.a,
+                  color: 'white',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Resume
+              </div>
+            </div>
+          );
+        })()}
+
       {/* ═══ QUICK LOG — always visible, prominent ═══ */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
@@ -701,56 +776,6 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* ═══ CONTINUE LAST FEED — shows when recent feed within 30 min, no timer running ═══ */}
-      {!feedTimer &&
-        (() => {
-          const rf = getRecentFeed(null);
-          if (!rf) return null;
-          const elapsed = rf.mins || 0;
-          return (
-            <div
-              style={{
-                marginTop: 10,
-                marginBottom: 12,
-                padding: '10px 14px',
-                background: C.okl,
-                borderRadius: 12,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontSize: 16 }}>🔄</div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.ok || C.t }}>
-                    Continue {rf.type}?
-                  </div>
-                  <div style={{ fontSize: 10, color: C.tl }}>
-                    {elapsed} min so far • tap to resume timer
-                  </div>
-                </div>
-              </div>
-              <div
-                onClick={() => {
-                  startFeedTimer(rf.type);
-                }}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 10,
-                  background: C.ok || C.a,
-                  color: 'white',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Resume
-              </div>
-            </div>
-          );
-        })()}
-
       {/* Sleep status banner */}
       {isSleeping && lastSleepEntry && (
         <div
@@ -789,7 +814,7 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* Today's Summary (compact inline) */}
+      {/* Today's Summary with weekly context */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, justifyContent: 'space-between' }}>
         {[
           {
@@ -799,9 +824,11 @@ export default function HomeTab({
             e: '🍼',
             c: C.a,
             s: 'feed',
+            wk: weekFeeds,
+            tr: feedTrend,
           },
-          { l: 'Diapers', v: diaperCt, sub: '', e: '💧', c: C.bl, s: 'diaper' },
-          { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴', c: C.pu, s: 'sleep' },
+          { l: 'Diapers', v: diaperCt, sub: '', e: '💧', c: C.bl, s: 'diaper', wk: weekDiapers, tr: diaperTrend },
+          { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴', c: C.pu, s: 'sleep', wk: weekSleeps, tr: '' },
         ].map((s: any) => (
           <div
             key={s.l}
@@ -831,6 +858,9 @@ export default function HomeTab({
                 )}
               </div>
               <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
+              <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
+                wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
+              </div>
             </div>
           </div>
         ))}
@@ -887,43 +917,6 @@ export default function HomeTab({
           );
         })()
       ) : null}
-
-      {/* Weekly Summary (inline compact) */}
-      <div
-        style={{
-          marginBottom: 12,
-          padding: '8px 12px',
-          background: C.cd,
-          borderRadius: 12,
-          border: '1px solid ' + C.b,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <div style={{ fontSize: 11, fontWeight: 600, color: C.tl }}>Week:</div>
-        {[
-          { l: 'Feed', v: weekFeeds, tr: feedTrend, c: C.a },
-          { l: 'Diaper', v: weekDiapers, tr: diaperTrend, c: C.bl },
-          { l: 'Sleep', v: weekSleeps, tr: '', c: C.pu },
-        ].map((s: any) => (
-          <div key={s.l} style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: C.t }}>{s.v}</span>
-            {s.tr && (
-              <span
-                style={{
-                  fontSize: 10,
-                  color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl,
-                  marginLeft: 2,
-                }}
-              >
-                {s.tr}
-              </span>
-            )}
-            <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Quick nav row: Stats + Milestones + Vaccines */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
@@ -1009,64 +1002,67 @@ export default function HomeTab({
       {/* ═══ VOICE LOG BUTTON ═══ */}
       <VoiceButton quickLog={quickLog} babyName={babyName} />
 
-      {/* ═══ FEED MERGE PROMPT ═══ */}
+      {/* ═══ FEED MERGE PROMPT — inline banner with auto-merge countdown ═══ */}
       {mergePrompt && (
         <div
           style={{
             position: 'fixed',
-            top: 0,
             left: 0,
             right: 0,
             bottom: 0,
             zIndex: 250,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            padding: '0 16px 16px',
           }}
         >
           <div
             style={{
               background: C.cd,
-              borderRadius: 20,
-              padding: '28px 24px',
-              maxWidth: 340,
-              width: '88%',
-              textAlign: 'center',
+              borderRadius: 16,
+              padding: '14px 16px',
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+              border: '1px solid ' + C.b,
             }}
           >
-            <div style={{ fontSize: 36, marginBottom: 8 }}>🍼</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: C.t, marginBottom: 6 }}>
-              {mergePrompt.type} — {mergePrompt.mins} min
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 18 }}>🍼</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>
+                    {mergePrompt.type} — {mergePrompt.mins} min
+                  </div>
+                  <div style={{ fontSize: 11, color: C.tl }}>
+                    Last: {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'}) at {fmtTime(mergePrompt.recent.time)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, fontWeight: 600, minWidth: 60, textAlign: 'right' }}>
+                Auto-add in {mergeCountdown}s
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: C.tl, marginBottom: 16, lineHeight: 1.5 }}>
-              Last feed was{' '}
-              <strong>
-                {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'})
-              </strong>{' '}
-              at <strong>{fmtTime(mergePrompt.recent.time)}</strong>. Same session?
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div
                 onClick={() => {
+                  if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
                   mergeIntoLastFeed(mergePrompt.mins, mergePrompt.type);
                   setMergePrompt(null);
                 }}
                 style={{
-                  padding: '14px 20px',
-                  borderRadius: 14,
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 12,
                   background: C.s,
                   color: 'white',
-                  border: 'none',
-                  fontSize: 15,
+                  fontSize: 12,
                   fontWeight: 700,
                   cursor: 'pointer',
+                  textAlign: 'center',
                 }}
               >
-                Add to previous feed ({(mergePrompt.recent.mins || 0) + mergePrompt.mins} min total)
-              </button>
-              <button
+                Add to previous ({(mergePrompt.recent.mins || 0) + mergePrompt.mins}m)
+              </div>
+              <div
                 onClick={() => {
+                  if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
                   const entry: LogEntry = {
                     date: today(),
                     time: now(),
@@ -1083,33 +1079,20 @@ export default function HomeTab({
                   setMergePrompt(null);
                 }}
                 style={{
-                  padding: '12px 20px',
-                  borderRadius: 14,
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: 12,
                   background: C.bg,
                   border: '1px solid ' + C.b,
                   color: C.t,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
+                  textAlign: 'center',
                 }}
               >
-                Log as separate feed
-              </button>
-              <button
-                onClick={() => {
-                  setMergePrompt(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: C.tl,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  padding: 8,
-                }}
-              >
-                Cancel
-              </button>
+                New feed
+              </div>
             </div>
           </div>
         </div>
