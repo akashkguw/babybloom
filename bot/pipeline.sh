@@ -161,6 +161,62 @@ except: pass
 " 2>/dev/null || true
 fi
 
+# ─── Post analysis results as GitHub comments (leave issue open) ───
+if [ -f "$QUEUE_FILE" ]; then
+  ANALYZED=$(python3 -c "
+import sys,json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='analyzed' and i.get('analysis_result'):
+      import base64
+      enc=base64.b64encode(i['analysis_result'].encode()).decode()
+      print(i['number'],'|',i.get('title',''),'|',enc)
+except: pass
+" 2>/dev/null || true)
+
+  while IFS='|' read -r num title enc; do
+    num=$(echo "$num" | tr -d ' ')
+    title=$(echo "$title" | xargs)
+    enc=$(echo "$enc" | tr -d ' ')
+    [ -z "$num" ] && continue
+
+    # Decode and post analysis as GitHub comment
+    python3 -c "
+import urllib.request, json, base64
+analysis = base64.b64decode('$enc').decode()
+body = json.dumps({'body': '🔍 **Analysis by Claude**\n\n' + analysis})
+req = urllib.request.Request(
+  'https://api.github.com/repos/$REPO/issues/$num/comments',
+  data=body.encode(), method='POST',
+  headers={'Authorization':'Bearer $GITHUB_TOKEN','Content-Type':'application/json'}
+)
+urllib.request.urlopen(req, timeout=10)
+print('Posted analysis for #$num')
+" 2>/dev/null || echo "⚠️ Could not post analysis for #$num"
+
+    send_telegram "🔍 *BabyBloom: Analysis Complete*
+
+🔢 Issue: #$num
+📌 Title: $title
+
+Claude has posted findings as a comment on the GitHub issue.
+🔗 [View analysis](https://github.com/$REPO/issues/$num)"
+
+    echo "🔍 Analysis posted: #$num — $title"
+  done <<< "$ANALYZED"
+
+  # Remove analyzed issues from queue
+  python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  remaining=[i for i in q if i.get('status')!='analyzed']
+  json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
+except: pass
+" 2>/dev/null || true
+fi
+
 # ─── Check for unpushed commits ───
 UNPUSHED=$(git log origin/main..HEAD --oneline 2>/dev/null)
 if [ -z "$UNPUSHED" ]; then

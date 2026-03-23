@@ -67,7 +67,9 @@ print('Rejected #NUMBER')
 ```
 Then stop — do not implement anything.
 
-If the issue passes safety review, enrich the description and save it back to `pending-issues.json`:
+**Is this an analysis/audit issue?** If the issue asks to *identify*, *list*, *audit*, *review*, *suggest*, or *comment* rather than implement code — treat it as an **analysis issue**. Do NOT implement anything. Instead go to **Step 2A** below, then skip to Step 9.
+
+If the issue passes safety review and is a normal implementation issue, enrich the description and save it back to `pending-issues.json`:
 
 ```bash
 python3 -c "
@@ -89,6 +91,31 @@ print('Description enriched')
 ```
 
 Replace the `enhanced_description` value with a well-written description based on the issue title and body.
+
+---
+
+## Step 2A — Analysis issues (skip code changes entirely)
+
+For analysis/audit issues: read the relevant source files, form your findings, then save the result:
+
+```bash
+python3 -c "
+import json
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path))
+for i in q:
+    if i['number'] == NUMBER:
+        i['status'] = 'analyzed'
+        i['analysis_result'] = '''WRITE YOUR FULL ANALYSIS HERE.
+Use plain text. Be specific — name the exact components, files, or UI sections.
+Structure it clearly so it reads well as a GitHub comment.'''
+        break
+json.dump(q, open(path, 'w'), indent=2)
+print('Analysis saved for #NUMBER')
+"
+```
+
+Replace `analysis_result` with your actual findings. Then go to Step 9 (loop). Do NOT commit anything.
 
 ---
 
