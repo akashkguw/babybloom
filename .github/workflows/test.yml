@@ -1,134 +1,20 @@
 name: BabyBloom Tests
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Run HTML validation
-        run: |
-          echo "Checking index.html exists and is valid..."
-          test -f index.html || (echo "FAIL: index.html not found" && exit 1)
-          echo "PASS: index.html exists"
-
-          # Check critical features are present
-          node -e "
-          const fs = require('fs');
-          const html = fs.readFileSync('index.html','utf8');
-          const checks = [
-            ['React loaded', 'react/18'],
-            ['Service Worker registration', 'serviceWorker.register'],
-            ['IndexedDB storage', 'indexedDB'],
-            ['Voice logging', 'SpeechRecognition'],
-            ['Feed merge feature', 'mergeIntoLastFeed'],
-            ['Siri Shortcuts', 'SiriShortcutsSetup'],
-            ['Massage guide', 'MASSAGE_GUIDE'],
-            ['Profile system', 'switchProfile'],
-            ['Dark mode', 'C_DARK'],
-            ['Notification dedup', 'lastNotifRef'],
-          ];
-          let pass = 0, fail = 0;
-          checks.forEach(([name, pattern]) => {
-            if (html.includes(pattern)) { pass++; console.log('PASS:', name); }
-            else { fail++; console.log('FAIL:', name); }
-          });
-          console.log('\n' + pass + '/' + (pass+fail) + ' feature checks passed');
-          if (fail > 0) process.exit(1);
-          "
-
-      - name: Run unit tests
-        run: |
-          # Extract and test pure logic functions
-          node -e "
-          const fs = require('fs');
-          const vm = require('vm');
-          const html = fs.readFileSync('index.html','utf8');
-          const m = html.match(/<script>([\s\S]*?)<\/script>/);
-          const code = m[1];
-
-          // Extract getRecentFeed + mergeIntoLastFeed
-          const start = code.indexOf('function getRecentFeed(');
-          const end = code.indexOf('var _mergePrompt=');
-          const mergeSrc = code.substring(start, end);
-
-          // Extract parseVoice
-          const pvStart = code.indexOf('function parseVoice(');
-          const pvEnd = code.indexOf('// end parseVoice');
-          let pvSrc = '';
-          if (pvStart > -1 && pvEnd > -1) {
-            pvSrc = code.substring(pvStart, pvEnd);
-          } else if (pvStart > -1) {
-            // Find matching closing brace
-            let depth = 0, i = pvStart;
-            for (; i < code.length; i++) {
-              if (code[i] === '{') depth++;
-              if (code[i] === '}') { depth--; if (depth === 0) { i++; break; } }
-            }
-            pvSrc = code.substring(pvStart, i);
-          }
-
-          const testCode = mergeSrc + '\n' + pvSrc + '\n' +
-            'var logs={feed:[]};var toastMessages=[];' +
-            'function toast(m){toastMessages.push(m)}' +
-            'function setLogs(v){logs=v}' +
-            'function today(){return \"2026-03-21\"}' +
-            'function now(){return \"14:30\"}' +
-            'var PASS=0,FAIL=0;' +
-            'function assert(c,m){if(c)PASS++;else{FAIL++;console.log(\"FAIL:\",m)}}' +
-
-            // Merge tests
-            '(function(){' +
-            '  var n=new Date(),h=String(n.getHours()).padStart(2,\"0\"),m=String(n.getMinutes()).padStart(2,\"0\");' +
-            '  var d=n.getFullYear()+\"-\"+String(n.getMonth()+1).padStart(2,\"0\")+\"-\"+String(n.getDate()).padStart(2,\"0\");' +
-            '  logs={feed:[{date:d,time:h+\":\"+m,type:\"Breast L\",mins:5,amount:\"5 min\",id:1}]};' +
-            '  assert(getRecentFeed(null)!==null,\"getRecentFeed finds recent\");' +
-            '  mergeIntoLastFeed(3,\"Breast L\");' +
-            '  assert(logs.feed[0].mins===8,\"merge 5+3=8\");' +
-            '  logs={feed:[]};' +
-            '  assert(getRecentFeed(null)===null,\"empty feed null\");' +
-            '})();' +
-
-            // Voice tests (if available)
-            '(function(){' +
-            '  if(typeof parseVoice!==\"function\")return;' +
-            '  var r=parseVoice(\"bottle 4 ounces\");' +
-            '  assert(r&&r.cat===\"feed\",\"voice: bottle\");' +
-            '  r=parseVoice(\"wet diaper\");' +
-            '  assert(r&&r.cat===\"diaper\",\"voice: diaper\");' +
-            '  r=parseVoice(\"nap\");' +
-            '  assert(r&&r.cat===\"sleep\",\"voice: nap\");' +
-            '  r=parseVoice(\"gibberish xyz\");' +
-            '  assert(r===null,\"voice: gibberish null\");' +
-            '})();' +
-
-            'console.log(\"Tests: \"+PASS+\" passed, \"+FAIL+\" failed\");' +
-            'if(FAIL>0)process.exit(1);';
-
-          const sandbox = {console,Date,Math,parseInt,parseFloat,JSON,Object,Array,String,RegExp,Number,isNaN,isFinite};
-          vm.createContext(sandbox);
-          vm.runInContext(testCode, sandbox, {timeout:10000});
-          "
-
-      - name: Check service worker
-        run: |
-          test -f sw.js || (echo "FAIL: sw.js not found" && exit 1)
-          echo "PASS: sw.js exists"
-          node -e "
-          const sw = require('fs').readFileSync('sw.js','utf8');
-          if (!sw.includes('CACHE_NAME')) { console.log('FAIL: no CACHE_NAME'); process.exit(1); }
-          const v = sw.match(/babybloom-v(\d+)/);
-          if (v) console.log('PASS: Service Worker version', v[1]);
-          else { console.log('FAIL: no version found'); process.exit(1); }
-          "
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
