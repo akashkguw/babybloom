@@ -595,20 +595,41 @@ export default function HomeTab({
             border: '1px solid ' + C.b,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 18 }}>🍼</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>
-                  {mergePrompt.type} — {mergePrompt.mins} min
-                </div>
-                <div style={{ fontSize: 11, color: C.tl }}>
-                  Last: {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'}) at {fmtTime(mergePrompt.recent.time)}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 18 }}>🍼</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>
+                    {mergePrompt.type} — {mergePrompt.mins} min
+                  </div>
+                  <div style={{ fontSize: 11, color: C.tl }}>
+                    Last: {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'}) at {fmtTime(mergePrompt.recent.time)}
+                  </div>
                 </div>
               </div>
+              <div style={{ fontSize: 11, color: C.tl, fontWeight: 600 }}>
+                Auto-add in {mergeCountdown}s
+              </div>
             </div>
-            <div style={{ fontSize: 11, color: C.tl, fontWeight: 600, minWidth: 60, textAlign: 'right' }}>
-              Auto-add in {mergeCountdown}s
+            <div
+              style={{
+                width: '100%',
+                height: 4,
+                borderRadius: 2,
+                background: C.b,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: ((mergeCountdown / 5) * 100) + '%',
+                  height: '100%',
+                  borderRadius: 2,
+                  background: C.s,
+                  transition: 'width 1s linear',
+                }}
+              />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
