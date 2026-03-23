@@ -1776,6 +1776,8 @@ function VoiceButton({onResult,quickLog,babyName}){
 // ═══ HOME TAB ═══
 function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,reminders,feedTimerApp,setFeedTimerApp,volumeUnit}){
   var _td=us(""),td2=_td[0],setTd=_td[1];
+  var _qf=us(null),quickFeedType=_qf[0],setQuickFeedType=_qf[1];
+  var _qfv=us(""),quickFeedVal=_qfv[0],setQuickFeedVal=_qfv[1];
   if(!birth){return h("div",{style:{padding:"60px 20px",textAlign:"center"}},
     h("div",{style:{fontSize:64,marginBottom:16}},"🍼"),h("h1",{style:{fontSize:28,fontWeight:800,color:C.t,marginBottom:8}},"Welcome to BabyBloom"),
     h("p",{style:{color:C.tl,fontSize:15,marginBottom:40,lineHeight:1.5}},"Your complete baby care companion\npowered by AAP, CDC & WHO guidelines"),
@@ -1941,9 +1943,9 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
         // Row 1: feeding — Breast L/R start inline timer, Formula/Pumped open form
         [{e:"🤱",l:"Breast L",fn:function(){startFeedTimer("Breast L")},active:feedTimer&&feedTimer.type==="Breast L",dis:feedTimer&&feedTimer.type!=="Breast L"},
          {e:"🤱",l:"Breast R",fn:function(){startFeedTimer("Breast R")},active:feedTimer&&feedTimer.type==="Breast R",dis:feedTimer&&feedTimer.type!=="Breast R"},
-         {e:"🍼",l:"Formula",fn:function(){if(!feedTimer)setTab("log","feed",{type:"Formula"})},dis:!!feedTimer},
-         {e:"🫙",l:"Pumped",fn:function(){if(!feedTimer)setTab("log","feed",{type:"Pumped Milk"})},dis:!!feedTimer},
-         {e:"⏱️",l:"Timer",fn:function(){if(!feedTimer)setTab("log","timer")},dis:!!feedTimer}
+         {e:"🍼",l:"Formula",fn:function(){if(!feedTimer){setQuickFeedType("Formula");setQuickFeedVal("")}},dis:!!feedTimer},
+         {e:"🫙",l:"Pumped",fn:function(){if(!feedTimer){setQuickFeedType("Pumped Milk");setQuickFeedVal("")}},dis:!!feedTimer},
+         {e:"🧒",l:"Tummy",fn:function(){if(!feedTimer)quickLog("sleep",{type:"Tummy Time"})},dis:!!feedTimer}
         ].map(function(q){return h("div",{key:q.l,onClick:q.dis?null:q.fn,style:{textAlign:"center",padding:"8px 2px",borderRadius:12,background:q.active?C.al:C.cd,border:"1px solid "+(q.active?C.a:C.b),cursor:q.dis?"default":"pointer",opacity:q.dis?0.35:1}},
           h("div",{style:{fontSize:18}},q.e),h("div",{style:{fontSize:9,color:q.active?C.a:C.tl,marginTop:2,fontWeight:600}},q.l))})),
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5,marginTop:5}},
@@ -1954,6 +1956,20 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
          {e:"🌙",l:"Night",fn:function(){quickLog("sleep",{type:"Night Sleep"})}}
         ].map(function(q){return h("div",{key:q.l,onClick:q.fn,style:{textAlign:"center",padding:"8px 2px",borderRadius:12,background:q.l==="Wake Up"?C.pul:C.cd,border:"1px solid "+(q.l==="Wake Up"?C.pu:C.b),cursor:"pointer"}},
           h("div",{style:{fontSize:18}},q.e),h("div",{style:{fontSize:9,color:q.l==="Wake Up"?C.pu:C.tl,marginTop:2,fontWeight:600}},q.l))}))),
+
+    // ═══ QUICK FEED BOTTOM SHEET — Formula/Pumped amount entry ═══
+    quickFeedType?h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget){setQuickFeedType(null);setQuickFeedVal("")}}},
+      h("div",{className:"ms"},
+        h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+          h("h3",{style:{fontSize:18,fontWeight:700,color:C.t}},"Log "+quickFeedType),
+          h("button",{onClick:function(){setQuickFeedType(null);setQuickFeedVal("")},style:{background:"none",border:"none",cursor:"pointer"}},h(Ic,{n:"x",s:22,c:C.tl}))),
+        h("div",{style:{marginBottom:16}},
+          h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount ("+volLabel(volumeUnit)+")"),
+          h(Input,{type:"number",value:quickFeedVal,onChange:setQuickFeedVal,placeholder:volumeUnit==="ml"?"e.g. 120":"e.g. 4"})),
+        h("div",{style:{display:"flex",gap:8}},
+          h(Btn,{label:"Save",onClick:function(){var num=parseFloat(quickFeedVal)||0;var ozVal=volumeUnit==="ml"?mlToOz(num):num;quickLog("feed",{type:quickFeedType,oz:ozVal,amount:(quickFeedVal||"0")+" "+volLabel(volumeUnit)});setQuickFeedType(null);setQuickFeedVal("")},color:C.a,full:true}),
+          h(Btn,{label:"Cancel",onClick:function(){setQuickFeedType(null);setQuickFeedVal("")},outline:true}))
+      )):null,
 
     // ═══ CONTINUE LAST FEED — shows when recent feed within 30 min, no timer running ═══
     !feedTimer&&(function(){var rf=getRecentFeed(null);if(!rf)return null;var elapsed=rf.mins||0;return h("div",{style:{marginTop:10,marginBottom:12,padding:"10px 14px",background:C.okl,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between"}},
