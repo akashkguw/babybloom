@@ -1,0 +1,4 @@
+node_modules/
+.env
+bot.log
+com.babybloom.telegram-bot.plist

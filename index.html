@@ -974,7 +974,11 @@ function MilestonesTab({age,selMo,setSelMo,checked,setChecked,teeth,setTeeth,fir
   var cats=[{k:"motor",l:"Motor Skills",icon:"activity",c:C.p},{k:"cog",l:"Cognitive",icon:"brain",c:C.s},{k:"soc",l:"Social & Emotional",icon:"heart",c:C.a},{k:"lang",l:"Language",icon:"smile",c:C.w}];
   function toggle(cat,i){setChecked(function(prev){var n=Object.assign({},prev);var md=Object.assign({},n[selMo]||{});md[cat+"_"+i]=!md[cat+"_"+i];n[selMo]=md;return n})}
   function toggleTooth(i){setTeeth(function(prev){var n=Object.assign({},prev);n[i]=n[i]?null:today();return n})}
-  function addFirst(){var e=Object.assign({id:Date.now(),date:today()},ff);setFirsts(function(p){return[e].concat(p)});setShowFirst(false);setFF({});toast("Memory saved!")}
+  var _editFirstId=us(null),editFirstId=_editFirstId[0],setEditFirstId=_editFirstId[1];
+  function addFirst(){var e=Object.assign({id:Date.now(),date:today()},ff);setFirsts(function(p){return[e].concat(p)});setShowFirst(false);setFF({});setEditFirstId(null);toast("Memory saved!")}
+  function updateFirst(){if(!editFirstId)return;setFirsts(function(p){return p.map(function(f){return f.id===editFirstId?Object.assign({},f,{title:ff.title,date:ff.date,notes:ff.notes}):f})});setShowFirst(false);setFF({});setEditFirstId(null);toast("Memory updated!")}
+  function deleteFirst(id){setFirsts(function(p){return p.filter(function(f){return f.id!==id})});setShowFirst(false);setFF({});setEditFirstId(null);toast("Memory deleted")}
+  function openEditFirst(f){setFF({title:f.title,date:f.date,notes:f.notes||""});setEditFirstId(f.id);setShowFirst(true)}
 
   var totalAll=0,doneAll=0;months.forEach(function(m){var msd=MILESTONES[m];var items=[].concat(msd.motor||[],msd.cog||[],msd.soc||[],msd.lang||[]);totalAll+=items.length;if(checked[m])doneAll+=Object.values(checked[m]).filter(Boolean).length});
   var teethDone=Object.values(teeth).filter(Boolean).length;
@@ -1015,25 +1019,28 @@ function MilestonesTab({age,selMo,setSelMo,checked,setChecked,teeth,setTeeth,fir
     // ═══ FIRSTS / MEMORY BOOK ═══
     Sec("firsts","📸","Baby Firsts",firstsDone+" memories recorded",C.s),
     expanded.firsts?SecBody(h(F,null,
-      h(Btn,{label:"+ Record a First",onClick:function(){setFF({});setShowFirst(true)},color:C.s,full:true}),
+      h(Btn,{label:"+ Record a First",onClick:function(){setFF({});setEditFirstId(null);setShowFirst(true)},color:C.s,full:true}),
       h("div",{style:{marginTop:12}},
         ["First Smile","First Laugh","First Roll Over","First Solid Food","First Tooth","First Word","First Steps","First Haircut","First Trip","First Birthday"].map(function(milestone){
           var existing=firsts.find(function(f){return f.title===milestone});
-          return h(Cd,{key:milestone,style:{marginBottom:8,padding:14,opacity:existing?1:0.6,borderLeft:existing?"4px solid "+C.ok:"none"},onClick:function(){if(!existing){setFF({title:milestone});setShowFirst(true)}}},
+          return h(Cd,{key:milestone,style:{marginBottom:8,padding:14,opacity:existing?1:0.6,borderLeft:existing?"4px solid "+C.ok:"none",cursor:"pointer"},onClick:function(){if(existing){openEditFirst(existing)}else{setFF({title:milestone});setEditFirstId(null);setShowFirst(true)}}},
             h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
               h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},milestone),existing?h("div",{style:{fontSize:12,color:C.tl}},fmtDate(existing.date)+(existing.notes?" — "+existing.notes:"")):h("div",{style:{fontSize:12,color:C.tl}},"Tap to record")),
-              existing?h("div",{style:{color:C.ok,fontSize:20}},"✓"):null))}),
+              existing?h("div",{style:{display:"flex",alignItems:"center",gap:6}},h("div",{style:{fontSize:10,color:C.tl}},"tap to edit"),h("div",{style:{color:C.ok,fontSize:20}},"✓")):null))}),
         firsts.filter(function(f){return!["First Smile","First Laugh","First Roll Over","First Solid Food","First Tooth","First Word","First Steps","First Haircut","First Trip","First Birthday"].includes(f.title)}).map(function(f){
-          return h(Cd,{key:f.id,style:{marginBottom:8,padding:14,borderLeft:"4px solid "+C.s}},
-            h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},f.title),
-            h("div",{style:{fontSize:12,color:C.tl}},fmtDate(f.date)+(f.notes?" — "+f.notes:"")))})),
-      showFirst?h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)setShowFirst(false)}},
+          return h(Cd,{key:f.id,style:{marginBottom:8,padding:14,borderLeft:"4px solid "+C.s,cursor:"pointer"},onClick:function(){openEditFirst(f)}},
+            h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              h("div",null,h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},f.title),
+                h("div",{style:{fontSize:12,color:C.tl}},fmtDate(f.date)+(f.notes?" — "+f.notes:""))),
+              h("div",{style:{fontSize:10,color:C.tl}},"tap to edit")))})),
+      showFirst?h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget){setShowFirst(false);setEditFirstId(null);setFF({})}}},
         h("div",{className:"ms"},
-          h("h3",{style:{fontSize:18,fontWeight:700,color:C.t,marginBottom:16}},"Record a First"),
+          h("h3",{style:{fontSize:18,fontWeight:700,color:C.t,marginBottom:16}},editFirstId?"Edit Memory":"Record a First"),
           h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"What happened?"),h(Input,{value:ff.title||"",onChange:function(v){setFF(Object.assign({},ff,{title:v}))},placeholder:"e.g. First Laugh"})),
           h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Date"),h(Input,{type:"date",value:ff.date||today(),onChange:function(v){setFF(Object.assign({},ff,{date:v}))}})),
           h("div",{style:{marginBottom:16}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Notes"),h(Input,{value:ff.notes||"",onChange:function(v){setFF(Object.assign({},ff,{notes:v}))},placeholder:"How it happened..."})),
-          h(Btn,{label:"Save Memory",onClick:addFirst,color:C.s,full:true}))):null
+          h(Btn,{label:editFirstId?"Update Memory":"Save Memory",onClick:editFirstId?updateFirst:addFirst,color:C.s,full:true}),
+          editFirstId?h("div",{onClick:function(){deleteFirst(editFirstId)},style:{textAlign:"center",padding:"12px 0",marginTop:8,color:C.p,fontSize:13,fontWeight:600,cursor:"pointer"}},"Delete this memory"):null)):null
     )):null,
 
     // ═══ RED FLAGS ═══
