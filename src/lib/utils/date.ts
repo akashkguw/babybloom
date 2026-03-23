@@ -109,6 +109,23 @@ export function monthLabel(dateStr: string): string {
  * @param dateStr Date string like "2024-03-23"
  * @returns Week start date as YYYY-MM-DD
  */
+/**
+ * Auto-detect sleep type based on time of day
+ * Night Sleep: 7:00 PM (19:00) to 6:59 AM (06:59)
+ * Nap: 7:00 AM (07:00) to 6:59 PM (18:59)
+ * @param time Optional HH:MM string; defaults to current time
+ * @returns 'Nap' or 'Night Sleep'
+ */
+export function autoSleepType(time?: string): "Nap" | "Night Sleep" {
+  let hour: number;
+  if (time) {
+    hour = parseInt(time.split(":")[0]);
+  } else {
+    hour = new Date().getHours();
+  }
+  return hour >= 19 || hour < 7 ? "Night Sleep" : "Nap";
+}
+
 export function getWeekStart(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   const day = d.getDay();

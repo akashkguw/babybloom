@@ -3,7 +3,7 @@ import { C } from '@/lib/constants/colors';
 import Button from '@/components/shared/Button';
 import Pill from '@/components/shared/Pill';
 import Card from '@/components/shared/Card';
-import { today } from '@/lib/utils/date';
+import { today, autoSleepType } from '@/lib/utils/date';
 
 interface TimerViewProps {
   logs: any;
@@ -70,12 +70,13 @@ export default function TimerView({
     const secs = elapsed % 60;
     const dur = mins + 'm ' + secs + 's';
     const totalMins = Math.round((elapsed / 60) * 10) / 10;
-    const isSleep = ['Nap', 'Night Sleep', 'Tummy Time'].includes(timerType);
+    const resolvedType = timerType === 'Sleep' ? autoSleepType() : timerType;
+    const isSleep = ['Nap', 'Night Sleep', 'Sleep', 'Tummy Time'].includes(timerType);
     const entry = {
       date: today(),
       time: new Date().toTimeString().slice(0, 5),
       id: Date.now(),
-      type: timerType,
+      type: resolvedType,
       amount: dur,
       mins: totalMins,
       notes: 'Timed',
@@ -108,7 +109,7 @@ export default function TimerView({
     });
 
   const ttGoal = age < 3 ? 15 : age < 6 ? 30 : 45;
-  const types = ['Breast L', 'Breast R', 'Formula', 'Pumped Milk', 'Nap', 'Night Sleep', 'Tummy Time'];
+  const types = ['Breast L', 'Breast R', 'Formula', 'Pumped Milk', 'Sleep', 'Tummy Time'];
 
   return (
     <div>

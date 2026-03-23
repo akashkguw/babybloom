@@ -8,7 +8,7 @@ import {
   Icon as Ic,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, autoSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import TimerView from '@/features/feeding/TimerView';
@@ -577,7 +577,12 @@ const LogTab: React.FC<LogTabProps> = ({
                       }
                     }
                   }
-                  setForm({ ...form, time: v });
+                  // Auto-update sleep type when time changes for Sleep entries
+                  if (sub === 'sleep' && (form.type === 'Nap' || form.type === 'Night Sleep')) {
+                    setForm({ ...form, time: v, type: autoSleepType(v) });
+                  } else {
+                    setForm({ ...form, time: v });
+                  }
                 }}
               />
             </div>
@@ -953,12 +958,16 @@ const LogTab: React.FC<LogTabProps> = ({
                         Type
                       </label>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {['Nap', 'Night Sleep', 'Wake Up', 'Tummy Time'].map(
+                        {['Sleep', 'Wake Up', 'Tummy Time'].map(
                           (t) => (
                             <Pill
                               key={t}
                               label={t}
-                              active={form.type === t}
+                              active={
+                                t === 'Sleep'
+                                  ? form.type === 'Nap' || form.type === 'Night Sleep'
+                                  : form.type === t
+                              }
                               onClick={() => {
                                 if (t === 'Wake Up') {
                                   // Auto-calc from last sleep entry
@@ -1009,6 +1018,18 @@ const LogTab: React.FC<LogTabProps> = ({
                                     mins: 0,
                                     autoSleep: '',
                                   });
+                                } else if (t === 'Sleep') {
+                                  // Auto-detect Nap vs Night Sleep based on time
+                                  const sleepType = autoSleepType(form.time || now());
+                                  setForm({
+                                    ...form,
+                                    type: sleepType,
+                                    sleepHrs: '',
+                                    sleepMins: '',
+                                    amount: '',
+                                    mins: 0,
+                                    autoSleep: '',
+                                  });
                                 } else {
                                   setForm({
                                     ...form,
@@ -1045,7 +1066,7 @@ const LogTab: React.FC<LogTabProps> = ({
                             fontWeight: 600,
                           }}
                         >
-                          Recording: baby fell asleep
+                          Recording: baby fell asleep ({form.type === 'Night Sleep' ? '🌙 Night' : '😴 Nap'})
                         </div>
                         <div
                           style={{

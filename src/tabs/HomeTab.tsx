@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { toast } from '@/lib/utils/toast';
@@ -564,23 +564,22 @@ export default function HomeTab({
             </div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5, marginTop: 5 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginTop: 5 }}>
           {/* Row 2: diaper + sleep grouped */}
           {[
             { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }) },
             { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }) },
             {
-              e: '😴',
-              l: isSleeping ? 'Wake Up' : 'Nap',
+              e: isSleeping ? '⏰' : '😴',
+              l: isSleeping ? 'Wake Up' : 'Sleep',
               fn: () => {
                 if (isSleeping) {
                   quickLog('sleep', { type: 'Wake Up' });
                 } else {
-                  quickLog('sleep', { type: 'Nap' });
+                  quickLog('sleep', { type: autoSleepType() });
                 }
               },
             },
-            { e: '🌙', l: 'Night', fn: () => quickLog('sleep', { type: 'Night Sleep' }) },
           ].map((q: any) => (
             <div
               key={q.l}
