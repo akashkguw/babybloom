@@ -529,10 +529,11 @@ function App() {
             width: '100%',
             zIndex: 50,
             padding: '8px 12px',
-            background: darkMode ? 'rgba(26,26,46,0.92)' : 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderBottom: `1px solid ${C.b}`,
+            background: darkMode ? 'rgba(26,26,46,0.95)' : `linear-gradient(135deg, ${C.a}, ${C.p})`,
+            backdropFilter: darkMode ? 'blur(20px)' : undefined,
+            WebkitBackdropFilter: darkMode ? 'blur(20px)' : undefined,
+            borderBottom: darkMode ? `1px solid ${C.b}` : 'none',
+            boxShadow: darkMode ? 'none' : '0 2px 12px rgba(0,0,0,0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -541,9 +542,9 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 22 }}>🍼</span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.t, lineHeight: 1.2 }}>BabyBloom</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: darkMode ? C.t : '#fff', lineHeight: 1.2 }}>BabyBloom</div>
               {babyName !== 'Baby' && (
-                <div style={{ fontSize: 11, color: C.p, fontWeight: 600, lineHeight: 1.2 }}>{babyName}</div>
+                <div style={{ fontSize: 11, color: darkMode ? C.p : 'rgba(255,255,255,0.85)', fontWeight: 600, lineHeight: 1.2 }}>{babyName}</div>
               )}
             </div>
           </div>
@@ -562,7 +563,7 @@ function App() {
                 cursor: 'pointer',
               }}
             >
-              <Ic n={darkMode ? 'sun' : 'moon'} s={18} c={C.tl} />
+              <Ic n={darkMode ? 'sun' : 'moon'} s={18} c={darkMode ? C.tl : 'rgba(255,255,255,0.9)'} />
             </button>
             <button
               onClick={() => setShowSearch(true)}
@@ -578,7 +579,7 @@ function App() {
                 cursor: 'pointer',
               }}
             >
-              <Ic n="search" s={18} c={C.tl} />
+              <Ic n="search" s={18} c={darkMode ? C.tl : 'rgba(255,255,255,0.9)'} />
             </button>
             <button
               onClick={() => setShowSet(true)}
@@ -594,7 +595,7 @@ function App() {
                 cursor: 'pointer',
               }}
             >
-              <Ic n="settings" s={18} c={C.tl} />
+              <Ic n="settings" s={18} c={darkMode ? C.tl : 'rgba(255,255,255,0.9)'} />
             </button>
           </div>
         </div>
