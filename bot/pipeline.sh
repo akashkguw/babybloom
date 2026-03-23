@@ -232,9 +232,48 @@ except: pass
 " 2>/dev/null || true
 fi
 
-# ─── Gather extra context for notification ───
+# ─── Wait for GitHub Actions result ───
+echo "⏳ Waiting for GitHub Actions to complete..."
 DEPLOY_TIME=$(date "+%b %d, %Y at %I:%M %p")
-# Sanitize commit messages — strip backticks and escape underscores
+ACTIONS_STATUS="unknown"
+ACTIONS_URL="https://github.com/$REPO/actions"
+RUN_URL=""
+
+# Poll for up to 5 minutes (30 attempts × 10s)
+for i in $(seq 1 30); do
+  sleep 10
+  RUNS=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/$REPO/actions/runs?branch=main&per_page=5" 2>/dev/null)
+
+  STATUS=$(echo "$RUNS" | python3 -c "
+import sys,json
+try:
+  runs=json.loads(sys.stdin.read()).get('workflow_runs',[])
+  for r in runs:
+    if r.get('head_sha','').startswith('$COMMIT_SHA') or r.get('head_sha','')=='$(git rev-parse HEAD)':
+      print(r['status']+'|'+r['conclusion']+'|'+r['html_url'])
+      break
+except: pass
+" 2>/dev/null)
+
+  if [ -n "$STATUS" ]; then
+    RUN_STATUS=$(echo "$STATUS" | cut -d'|' -f1)
+    RUN_CONCLUSION=$(echo "$STATUS" | cut -d'|' -f2)
+    RUN_URL=$(echo "$STATUS" | cut -d'|' -f3)
+    if [ "$RUN_STATUS" = "completed" ]; then
+      ACTIONS_STATUS="$RUN_CONCLUSION"
+      echo "✅ GitHub Actions completed: $RUN_CONCLUSION"
+      break
+    else
+      echo "⏳ Build in progress ($i/30)... status: $RUN_STATUS"
+    fi
+  else
+    echo "⏳ Waiting for run to appear ($i/30)..."
+  fi
+done
+
+# ─── Gather extra context for notification ───
 COMMIT_MSGS=$(git log origin/main~${COMMIT_COUNT}..origin/main --pretty=format:"• %s" 2>/dev/null | head -5 | sanitize)
 PENDING_COUNT=$(python3 -c "
 import json
@@ -244,12 +283,24 @@ try:
 except: print(0)
 " 2>/dev/null || echo 0)
 
-# ─── Telegram notification ───
-MSG="🍼 *BabyBloom Update Deployed!*
+# ─── Telegram notification with real CI result ───
+if [ "$ACTIONS_STATUS" = "success" ]; then
+  STATUS_LINE="✅ *Build & Deploy: PASSED*"
+  LIVE_LINE="🌐 [Open Live App](https://akashkguw.github.io/babybloom/)"
+elif [ "$ACTIONS_STATUS" = "failure" ]; then
+  STATUS_LINE="❌ *Build & Deploy: FAILED*"
+  LIVE_LINE="🔗 [View failed run]($RUN_URL)"
+else
+  STATUS_LINE="⚠️ *Build status: unknown (timed out waiting)*"
+  LIVE_LINE="🔗 [Check Actions]($ACTIONS_URL)"
+fi
+
+MSG="🍼 *BabyBloom Pipeline Complete*
 ━━━━━━━━━━━━━━━━━━━━
+$STATUS_LINE
 🕐 *Time:* $DEPLOY_TIME
-📦 *Commit:* $COMMIT_SHA
-📝 *Changes pushed:* $COMMIT_COUNT commit(s)"
+📦 *Commit:* \`$COMMIT_SHA\`
+📝 *Pushed:* $COMMIT_COUNT commit(s)"
 
 [ -n "$COMMIT_MSGS" ] && MSG="$MSG
 
@@ -258,17 +309,17 @@ $COMMIT_MSGS"
 
 [ -n "$ISSUE_LIST" ] && MSG="$MSG
 
-✅ *Issues resolved:*
+*Issues resolved:*
 $(echo -e "$ISSUE_LIST" | sanitize)"
 
 [ "$PENDING_COUNT" -gt "0" ] 2>/dev/null && MSG="$MSG
 
-⏳ *Still pending:* $PENDING_COUNT issue(s) in queue — Claude will implement next cycle."
+⏳ *Still pending:* $PENDING_COUNT issue(s) — Claude will implement next cycle."
 
 MSG="$MSG
 
-🔗 [View commit on GitHub](https://github.com/$REPO/commit/$COMMIT_SHA)
+$LIVE_LINE
 📊 [All issues](https://github.com/$REPO/issues)"
 
 send_telegram "$MSG"
-echo "🎉 Pipeline complete! Telegram notified."
+echo "🎉 Pipeline complete! Telegram notified with CI result: $ACTIONS_STATUS"
