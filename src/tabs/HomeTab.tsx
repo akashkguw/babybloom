@@ -618,7 +618,7 @@ export default function HomeTab({
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 100,
+            zIndex: 150,
             background: 'rgba(0,0,0,0.5)',
             display: 'flex',
             alignItems: 'flex-end',
