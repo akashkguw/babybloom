@@ -732,7 +732,8 @@ export default function HomeTab({
           ].map((q: any) => (
             <div
               key={q.l}
-              onClick={q.dis ? null : q.fn}
+              className={'ql-btn' + (q.dis ? ' ql-dis' : '')}
+              onClick={q.dis ? undefined : q.fn}
               style={{
                 textAlign: 'center',
                 padding: '8px 2px',
