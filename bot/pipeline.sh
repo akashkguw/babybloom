@@ -9,6 +9,9 @@ REPO_DIR="/Users/akashkg/saanvi/babybloom"
 BOT_DIR="$REPO_DIR/bot"
 REPO="akashkguw/babybloom"
 
+# ─── Clean up stale git lock files ───
+rm -f "$REPO_DIR/.git/HEAD.lock" "$REPO_DIR/.git/index.lock" "$REPO_DIR/.git/MERGE_HEAD.lock" 2>/dev/null
+
 # ─── Load secrets from .env ───
 if [ -f "$BOT_DIR/.env" ]; then
   export $(grep -v '^#' "$BOT_DIR/.env" | xargs)
