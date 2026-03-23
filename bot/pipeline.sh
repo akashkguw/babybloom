@@ -62,7 +62,14 @@ COMMIT_COUNT=$(echo "$UNPUSHED" | wc -l | tr -d ' ')
 # ─── Push ───
 echo "📤 Pushing $COMMIT_COUNT commit(s) to main..."
 if ! git push origin main 2>&1; then
-  send_telegram "❌ *BabyBloom Deploy FAILED:* git push rejected. Check auth or secret scan."
+  send_telegram "❌ *BabyBloom Deploy FAILED*
+
+📦 Commit: \`$COMMIT_SHA\`
+🕐 Time: $(date '+%b %d at %I:%M %p')
+💥 Reason: git push rejected
+
+Check GitHub token permissions or secret scan logs.
+🔗 [View repo](https://github.com/$REPO)"
   exit 1
 fi
 echo "✅ Push successful: $COMMIT_SHA"
@@ -110,17 +117,42 @@ except: pass
 " 2>/dev/null || true
 fi
 
-# ─── Telegram notification ───
-MSG="🚀 *BabyBloom Deployed!*
+# ─── Gather extra context for notification ───
+DEPLOY_TIME=$(date "+%b %d, %Y at %I:%M %p")
+COMMIT_MSGS=$(git log origin/main~${COMMIT_COUNT}..origin/main --pretty=format:"• %s" 2>/dev/null | head -5)
+PENDING_COUNT=$(python3 -c "
+import json
+try:
+  q=json.load(open('$BOT_DIR/pending-issues.json'))
+  print(len([i for i in q if i.get('status')=='pending']))
+except: print(0)
+" 2>/dev/null || echo 0)
 
-📦 Commit: \`$COMMIT_SHA\` ($COMMIT_COUNT commit(s))"
+# ─── Telegram notification ───
+MSG="🍼 *BabyBloom Update Deployed!*
+━━━━━━━━━━━━━━━━━━━━
+🕐 *Time:* $DEPLOY_TIME
+📦 *Commit:* \`$COMMIT_SHA\`
+📝 *Changes pushed:* $COMMIT_COUNT commit(s)"
+
+[ -n "$COMMIT_MSGS" ] && MSG="$MSG
+
+*What changed:*
+$COMMIT_MSGS"
+
 [ -n "$ISSUE_LIST" ] && MSG="$MSG
 
-Issues resolved:
+✅ *Issues resolved:*
 $(echo -e "$ISSUE_LIST")"
+
+[ "$PENDING_COUNT" -gt "0" ] 2>/dev/null && MSG="$MSG
+
+⏳ *Still pending:* $PENDING_COUNT issue(s) in queue — Claude will implement next cycle."
+
 MSG="$MSG
 
-[View on GitHub](https://github.com/$REPO/commit/$COMMIT_SHA)"
+🔗 [View commit on GitHub](https://github.com/$REPO/commit/$COMMIT_SHA)
+📊 [All issues](https://github.com/$REPO/issues)"
 
 send_telegram "$MSG"
 echo "🎉 Pipeline complete! Telegram notified."
