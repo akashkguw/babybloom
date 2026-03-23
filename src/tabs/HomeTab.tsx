@@ -464,32 +464,22 @@ export default function HomeTab({
             </div>
           </div>
         </div>
-        {/* Today's stats — compact row inside hero */}
+        {/* Stats link */}
         <div
           onClick={() => { setTab('log', 'stats'); }}
           style={{
             marginTop: 10,
-            padding: '8px 0 0',
+            paddingTop: 8,
             borderTop: '1px solid rgba(255,255,255,0.2)',
             display: 'flex',
-            justifyContent: 'space-around',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
             cursor: 'pointer',
           }}
         >
-          {[
-            { l: 'Feeds', v: feedCt, sub: feedOzToday > 0 ? fmtVol(feedOzToday, volumeUnit) : feedMinToday > 0 ? feedMinToday + 'm' : '', e: '🍼' },
-            { l: 'Diapers', v: diaperCt, sub: '', e: '💧' },
-            { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴' },
-          ].map((s) => (
-            <div key={s.l} style={{ textAlign: 'center', minWidth: 56 }}>
-              <div style={{ fontSize: 11 }}>{s.e}</div>
-              <div style={{ color: 'white', fontSize: 16, fontWeight: 800, lineHeight: 1.1 }}>
-                {s.v}
-                {s.sub && <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 2, opacity: 0.85 }}>{s.sub}</span>}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9 }}>{s.l}</div>
-            </div>
-          ))}
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 600 }}>View Stats</span>
+          <Ic n="chevron-right" s={14} c="rgba(255,255,255,0.7)" />
         </div>
       </Cd>
 
