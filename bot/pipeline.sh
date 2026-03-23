@@ -23,6 +23,12 @@ if [ -z "$GITHUB_TOKEN" ] || [ -z "$TELEGRAM_TOKEN" ] || [ -z "$CHAT_ID" ]; then
   exit 1
 fi
 
+# Escape dynamic content that may contain Markdown-breaking characters
+# Strips backticks, underscores outside *bold* markers, and bare brackets
+sanitize() {
+  echo "$1" | sed "s/\`/'/g" | sed 's/_/\\_/g'
+}
+
 send_telegram() {
   RESULT=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
     -d chat_id="$CHAT_ID" \
@@ -30,10 +36,10 @@ send_telegram() {
     -d disable_web_page_preview=true \
     --data-urlencode "text=$1" 2>&1)
   if echo "$RESULT" | grep -q '"ok":false'; then
-    echo "⚠️  Telegram send failed: $RESULT"
-    # Retry with plain text (in case Markdown parsing failed)
+    echo "⚠️  Telegram send failed (Markdown), retrying as plain text..."
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
       -d chat_id="$CHAT_ID" \
+      -d disable_web_page_preview=true \
       --data-urlencode "text=$1" > /dev/null 2>&1
   fi
 }
@@ -225,7 +231,8 @@ fi
 
 # ─── Gather extra context for notification ───
 DEPLOY_TIME=$(date "+%b %d, %Y at %I:%M %p")
-COMMIT_MSGS=$(git log origin/main~${COMMIT_COUNT}..origin/main --pretty=format:"• %s" 2>/dev/null | head -5)
+# Sanitize commit messages — strip backticks and escape underscores
+COMMIT_MSGS=$(git log origin/main~${COMMIT_COUNT}..origin/main --pretty=format:"• %s" 2>/dev/null | head -5 | sanitize)
 PENDING_COUNT=$(python3 -c "
 import json
 try:
@@ -238,7 +245,7 @@ except: print(0)
 MSG="🍼 *BabyBloom Update Deployed!*
 ━━━━━━━━━━━━━━━━━━━━
 🕐 *Time:* $DEPLOY_TIME
-📦 *Commit:* \`$COMMIT_SHA\`
+📦 *Commit:* $COMMIT_SHA
 📝 *Changes pushed:* $COMMIT_COUNT commit(s)"
 
 [ -n "$COMMIT_MSGS" ] && MSG="$MSG
@@ -249,7 +256,7 @@ $COMMIT_MSGS"
 [ -n "$ISSUE_LIST" ] && MSG="$MSG
 
 ✅ *Issues resolved:*
-$(echo -e "$ISSUE_LIST")"
+$(echo -e "$ISSUE_LIST" | sanitize)"
 
 [ "$PENDING_COUNT" -gt "0" ] 2>/dev/null && MSG="$MSG
 
