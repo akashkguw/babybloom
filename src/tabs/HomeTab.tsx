@@ -432,13 +432,13 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      {/* Hero — age + milestone + today's stats */}
+      {/* Hero — age + milestone progress */}
       <Cd
         style={{
           background: `linear-gradient(135deg,${C.p},${C.s})`,
           border: 'none',
           marginBottom: 12,
-          padding: '14px 20px 12px',
+          padding: '14px 20px',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -463,23 +463,6 @@ export default function HomeTab({
               {pct}% milestones
             </div>
           </div>
-        </div>
-        {/* Stats link */}
-        <div
-          onClick={() => { setTab('log', 'stats'); }}
-          style={{
-            marginTop: 10,
-            paddingTop: 8,
-            borderTop: '1px solid rgba(255,255,255,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 600 }}>View Stats</span>
-          <Ic n="chevron-right" s={14} c="rgba(255,255,255,0.7)" />
         </div>
       </Cd>
 
@@ -899,6 +882,7 @@ export default function HomeTab({
           },
           { l: 'Diapers', v: diaperCt, sub: '', e: '💧', c: C.bl, s: 'diaper', wk: weekDiapers, tr: diaperTrend },
           { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴', c: C.pu, s: 'sleep', wk: weekSleeps, tr: '' },
+          { l: 'Stats', v: '', sub: '', e: '📊', c: C.s, s: 'stats', wk: 0, tr: '', isLink: true },
         ].map((s: any) => (
           <div
             key={s.l}
@@ -919,18 +903,24 @@ export default function HomeTab({
           >
             <span style={{ fontSize: 16 }}>{s.e}</span>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: C.t, lineHeight: 1 }}>
-                {s.v}
-                {s.sub && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: s.c, marginLeft: 3 }}>
-                    {s.sub}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
-              <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
-                wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
-              </div>
+              {s.isLink ? (
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.s, lineHeight: 1.3 }}>View<br />All</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: C.t, lineHeight: 1 }}>
+                    {s.v}
+                    {s.sub && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: s.c, marginLeft: 3 }}>
+                        {s.sub}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
+                  <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
+                    wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ))}
