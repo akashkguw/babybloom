@@ -105,10 +105,13 @@ EOF
 
 # ─── Check for uncommitted changes — run deploy.sh if needed ───
 # Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
+DEPLOY_PUSHED_SHA=""
 if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
   echo "📝 Uncommitted changes found — running deploy.sh..."
   bash "$BOT_DIR/deploy.sh"
-  # Don't exit — continue to handle issue closing + Telegram notification below
+  # Capture the SHA deploy.sh just pushed so we can wait for CI below
+  DEPLOY_PUSHED_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "")
+  echo "📌 deploy.sh pushed: $DEPLOY_PUSHED_SHA"
 fi
 
 # ─── Always: notify any rejected issues first ───
@@ -217,24 +220,21 @@ except: pass
 " 2>/dev/null || true
 fi
 
-# ─── Check for unpushed commits ───
+# ─── Check for unpushed commits (or use SHA already pushed by deploy.sh) ───
 UNPUSHED=$(git log origin/main..HEAD --oneline 2>/dev/null)
-if [ -z "$UNPUSHED" ]; then
-  echo "ℹ️  Nothing to push."
-  exit 0
-fi
+COMMIT_SHA=""
+COMMIT_COUNT=0
 
-echo "📤 Found unpushed commits:"
-echo "$UNPUSHED"
+if [ -n "$UNPUSHED" ]; then
+  echo "📤 Found unpushed commits:"
+  echo "$UNPUSHED"
+  COMMIT_SHA=$(git rev-parse --short HEAD)
+  COMMIT_COUNT=$(echo "$UNPUSHED" | wc -l | tr -d ' ')
 
-# ─── Get commit SHAs and messages for notification ───
-COMMIT_SHA=$(git rev-parse --short HEAD)
-COMMIT_COUNT=$(echo "$UNPUSHED" | wc -l | tr -d ' ')
-
-# ─── Push ───
-echo "📤 Pushing $COMMIT_COUNT commit(s) to main..."
-if ! git push origin main 2>&1; then
-  send_telegram "❌ *BabyBloom Deploy FAILED*
+  # ─── Push ───
+  echo "📤 Pushing $COMMIT_COUNT commit(s) to main..."
+  if ! git push origin main 2>&1; then
+    send_telegram "❌ *BabyBloom Deploy FAILED*
 
 📦 Commit: \`$COMMIT_SHA\`
 🕐 Time: $(date '+%b %d at %I:%M %p')
@@ -242,9 +242,18 @@ if ! git push origin main 2>&1; then
 
 Check GitHub token permissions or secret scan logs.
 🔗 [View repo](https://github.com/$REPO)"
-  exit 1
+    exit 1
+  fi
+  echo "✅ Push successful: $COMMIT_SHA"
+elif [ -n "$DEPLOY_PUSHED_SHA" ]; then
+  # deploy.sh already pushed — use its SHA for CI wait + notification
+  COMMIT_SHA="$DEPLOY_PUSHED_SHA"
+  COMMIT_COUNT=1
+  echo "ℹ️  deploy.sh already pushed $COMMIT_SHA — checking CI status..."
+else
+  echo "ℹ️  Nothing to push."
+  exit 0
 fi
-echo "✅ Push successful: $COMMIT_SHA"
 
 # ─── Read local issue queue (written by bot.js, no API needed) ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"
