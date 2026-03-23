@@ -67,37 +67,48 @@ if ! git push origin main 2>&1; then
 fi
 echo "✅ Push successful: $COMMIT_SHA"
 
-# ─── Fetch open telegram-labeled issues ───
-ISSUES=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-  "https://api.github.com/repos/$REPO/issues?labels=telegram&state=open&per_page=10")
+# ─── Read local issue queue (written by bot.js, no API needed) ───
+QUEUE_FILE="$BOT_DIR/pending-issues.json"
+ISSUE_LIST=""
 
-ISSUE_NUMBERS=$(echo "$ISSUES" | python3 -c "
+if [ -f "$QUEUE_FILE" ]; then
+  # Get all "implemented" issues (Claude marked them after coding)
+  IMPLEMENTED=$(python3 -c "
 import sys,json
-issues=json.load(sys.stdin)
-for i in issues: print(i['number'])
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='implemented': print(i['number'],'|',i.get('title',''))
+except: pass
 " 2>/dev/null || true)
 
-# ─── Close issues + comment ───
-ISSUE_LIST=""
-for num in $ISSUE_NUMBERS; do
-  TITLE=$(echo "$ISSUES" | python3 -c "
-import sys,json
-issues=json.load(sys.stdin)
-for i in issues:
-    if i['number']==$num: print(i['title']); break
-" 2>/dev/null || echo "Issue #$num")
+  while IFS='|' read -r num title; do
+    num=$(echo "$num" | tr -d ' ')
+    title=$(echo "$title" | xargs)
+    [ -z "$num" ] && continue
 
-  curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
-    -d "{\"body\":\"✅ Implemented and deployed in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA).\"}" \
-    "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
+    curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"body\":\"✅ Implemented and deployed in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA).\"}" \
+      "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
 
-  curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
-    -d '{"state":"closed","state_reason":"completed"}' \
-    "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1
+    curl -s -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d '{"state":"closed","state_reason":"completed"}' \
+      "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1
 
-  echo "✅ Closed #$num: $TITLE"
-  ISSUE_LIST="$ISSUE_LIST\n✅ #$num — $TITLE"
-done
+    echo "✅ Closed #$num: $title"
+    ISSUE_LIST="$ISSUE_LIST\n✅ #$num — $title"
+  done <<< "$IMPLEMENTED"
+
+  # Remove deployed issues from queue
+  python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  remaining=[i for i in q if i.get('status')!='implemented']
+  json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
+except: pass
+" 2>/dev/null || true
+fi
 
 # ─── Telegram notification ───
 MSG="🚀 *BabyBloom Deployed!*

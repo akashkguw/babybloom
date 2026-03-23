@@ -117,6 +117,32 @@ function isAllowed(username) {
   return ALLOWED_USERS.includes((username || "").toLowerCase());
 }
 
+// ─── Local issue queue (sandbox reads this — no network needed) ───
+const QUEUE_PATH = path.join(__dirname, "pending-issues.json");
+
+function readQueue() {
+  try { return JSON.parse(fs.readFileSync(QUEUE_PATH, "utf8")); }
+  catch { return []; }
+}
+
+function writeQueue(items) {
+  fs.writeFileSync(QUEUE_PATH, JSON.stringify(items, null, 2));
+}
+
+function addToQueue(issue, labels) {
+  const queue = readQueue();
+  queue.push({
+    number: issue.number,
+    title: issue.title,
+    body: issue.body,
+    labels,
+    url: issue.html_url,
+    created_at: new Date().toISOString(),
+    status: "pending",
+  });
+  writeQueue(queue);
+}
+
 // ─── Track pending issues for multi-message context ───
 const pendingIssues = {};
 
@@ -305,6 +331,9 @@ async function createIssue(chatId, text, forceLabels, customBody) {
       body,
       labels: allLabels,
     });
+
+    // Write to local queue so Claude's scheduled task can pick it up
+    addToQueue(issue, allLabels);
 
     const labelStr = allLabels
       .map((l) => `\`${l}\``)
