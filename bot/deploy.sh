@@ -66,6 +66,8 @@ BOT_SAFE_FILES=(
   bot/README.md
   bot/deploy.sh
   bot/WORKER_SKILL.md
+  bot/pending-issues.json
+  bot/pipeline.sh
 )
 for f in "${BOT_SAFE_FILES[@]}"; do
   [ -f "$f" ] && git add "$f" 2>/dev/null || true
@@ -131,18 +133,24 @@ console.log('All '+checks.length+' feature checks passed');
   exit 1
 }
 
-# ─── Fetch open telegram issues ───
-ISSUES=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-  "https://api.github.com/repos/$REPO/issues?labels=telegram&state=open&per_page=10")
-
-ISSUE_NUMBERS=$(echo "$ISSUES" | python3 -c "
-import sys,json
-issues=json.load(sys.stdin)
-for i in issues: print(i['number'])
+# ─── Read implemented issues from pending-issues.json ───
+QUEUE_FILE="$BOT_DIR/pending-issues.json"
+IMPLEMENTED_DATA=$(python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='implemented':
+      print(str(i['number'])+'|'+i.get('title','').replace('|',' '))
+except: pass
 " 2>/dev/null || true)
 
 CLOSES=""
-for num in $ISSUE_NUMBERS; do CLOSES="$CLOSES closes #$num"; done
+while IFS='|' read -r num title; do
+  num=$(echo "$num" | tr -d ' ')
+  [ -z "$num" ] && continue
+  CLOSES="$CLOSES closes #$num"
+done <<< "$IMPLEMENTED_DATA"
 
 # ─── Commit ───
 COMMIT_MSG="Auto-deploy: update BabyBloom${CLOSES:+ —$CLOSES}"
@@ -164,15 +172,12 @@ git push origin main || {
 COMMIT_SHA=$(git rev-parse --short HEAD)
 echo "✅ Pushed: $COMMIT_SHA"
 
-# ─── Close issues + comment on GitHub ───
+# ─── Close implemented issues + comment on GitHub ───
 ISSUE_LIST=""
-for num in $ISSUE_NUMBERS; do
-  TITLE=$(echo "$ISSUES" | python3 -c "
-import sys,json
-issues=json.load(sys.stdin)
-for i in issues:
-    if i['number']==$num: print(i['title']); break
-" 2>/dev/null || echo "Issue #$num")
+while IFS='|' read -r num title; do
+  num=$(echo "$num" | tr -d ' ')
+  title=$(echo "$title" | xargs)
+  [ -z "$num" ] && continue
 
   curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
     -d "{\"body\":\"✅ Implemented and deployed in [\`$COMMIT_SHA\`](https://github.com/$REPO/commit/$COMMIT_SHA).\"}" \
@@ -182,9 +187,9 @@ for i in issues:
     -d '{"state":"closed","state_reason":"completed"}' \
     "https://api.github.com/repos/$REPO/issues/$num" > /dev/null 2>&1
 
-  echo "✅ Closed #$num: $TITLE"
-  ISSUE_LIST="$ISSUE_LIST\n✅ #$num — $TITLE"
-done
+  echo "✅ Closed #$num: $title"
+  ISSUE_LIST="$ISSUE_LIST\n✅ #$num — $title"
+done <<< "$IMPLEMENTED_DATA"
 
 # ─── Telegram notification ───
 MSG="🚀 *BabyBloom Deployed!*

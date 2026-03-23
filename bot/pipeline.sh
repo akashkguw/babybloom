@@ -29,7 +29,8 @@ fi
 # Escape dynamic content that may contain Markdown-breaking characters
 # Strips backticks, underscores outside *bold* markers, and bare brackets
 sanitize() {
-  echo "$1" | sed "s/\`/'/g" | sed 's/_/\\_/g'
+  local input="${1:-$(cat)}"
+  echo "$input" | sed "s/\`/'/g" | sed 's/_/\\_/g'
 }
 
 send_telegram() {
@@ -107,7 +108,7 @@ EOF
 if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
   echo "📝 Uncommitted changes found — running deploy.sh..."
   bash "$BOT_DIR/deploy.sh"
-  exit $?
+  # Don't exit — continue to handle issue closing + Telegram notification below
 fi
 
 # ─── Always: notify any rejected issues first ───
