@@ -577,6 +577,91 @@ export default function HomeTab({
           );
         })()}
 
+      {/* ═══ FEED MERGE PROMPT — inline banner ═══ */}
+      {mergePrompt && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: '12px 14px',
+            background: C.cd,
+            borderRadius: 12,
+            border: '1px solid ' + C.b,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 18 }}>🍼</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>
+                  {mergePrompt.type} — {mergePrompt.mins} min
+                </div>
+                <div style={{ fontSize: 11, color: C.tl }}>
+                  Last: {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'}) at {fmtTime(mergePrompt.recent.time)}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.tl, fontWeight: 600, minWidth: 60, textAlign: 'right' }}>
+              Auto-add in {mergeCountdown}s
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div
+              onClick={() => {
+                if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
+                mergeIntoLastFeed(mergePrompt.mins, mergePrompt.type);
+                setMergePrompt(null);
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 10,
+                background: C.s,
+                color: 'white',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              Add to previous ({(mergePrompt.recent.mins || 0) + mergePrompt.mins}m)
+            </div>
+            <div
+              onClick={() => {
+                if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
+                const entry: LogEntry = {
+                  date: today(),
+                  time: now(),
+                  id: Date.now(),
+                  type: mergePrompt.type,
+                  amount: mergePrompt.mins + ' min',
+                  mins: mergePrompt.mins,
+                  notes: 'Timed',
+                };
+                const next = Object.assign({}, logs);
+                next.feed = [entry].concat(logs.feed || []);
+                setLogs(next);
+                toast(mergePrompt.type + ' — ' + mergePrompt.mins + ' min logged as new');
+                setMergePrompt(null);
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 10,
+                background: C.bg,
+                border: '1px solid ' + C.b,
+                color: C.t,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              New feed
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ QUICK LOG — uniform 4-column grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
@@ -973,101 +1058,6 @@ export default function HomeTab({
       {/* ═══ VOICE LOG BUTTON ═══ */}
       <VoiceButton quickLog={quickLog} babyName={babyName} />
 
-      {/* ═══ FEED MERGE PROMPT — inline banner with auto-merge countdown ═══ */}
-      {mergePrompt && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 250,
-            padding: '0 16px 16px',
-          }}
-        >
-          <div
-            style={{
-              background: C.cd,
-              borderRadius: 16,
-              padding: '14px 16px',
-              boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
-              border: '1px solid ' + C.b,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontSize: 18 }}>🍼</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>
-                    {mergePrompt.type} — {mergePrompt.mins} min
-                  </div>
-                  <div style={{ fontSize: 11, color: C.tl }}>
-                    Last: {mergePrompt.recent.type} ({mergePrompt.recent.amount || '?'}) at {fmtTime(mergePrompt.recent.time)}
-                  </div>
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: C.tl, fontWeight: 600, minWidth: 60, textAlign: 'right' }}>
-                Auto-add in {mergeCountdown}s
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div
-                onClick={() => {
-                  if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
-                  mergeIntoLastFeed(mergePrompt.mins, mergePrompt.type);
-                  setMergePrompt(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  background: C.s,
-                  color: 'white',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                }}
-              >
-                Add to previous ({(mergePrompt.recent.mins || 0) + mergePrompt.mins}m)
-              </div>
-              <div
-                onClick={() => {
-                  if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
-                  const entry: LogEntry = {
-                    date: today(),
-                    time: now(),
-                    id: Date.now(),
-                    type: mergePrompt.type,
-                    amount: mergePrompt.mins + ' min',
-                    mins: mergePrompt.mins,
-                    notes: 'Timed',
-                  };
-                  const next = Object.assign({}, logs);
-                  next.feed = [entry].concat(logs.feed || []);
-                  setLogs(next);
-                  toast(mergePrompt.type + ' — ' + mergePrompt.mins + ' min logged as new');
-                  setMergePrompt(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  background: C.bg,
-                  border: '1px solid ' + C.b,
-                  color: C.t,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                }}
-              >
-                New feed
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
