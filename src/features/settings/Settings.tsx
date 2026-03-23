@@ -286,7 +286,32 @@ export default function Settings({
           />
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: C.tl }}>
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: 24,
+            padding: '16px 12px',
+            background: `linear-gradient(135deg, ${C.pl}, ${C.al})`,
+            borderRadius: 16,
+          }}
+        >
+          <div style={{ fontSize: 20, marginBottom: 4 }}>💗</div>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: C.p,
+              letterSpacing: 0.3,
+            }}
+          >
+            Made with love for Saanvi
+          </div>
+          <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>
+            Every feature, crafted with care
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: C.tl }}>
           BabyBloom v2.1 — AAP/CDC/WHO 2026
         </div>
       </div>
