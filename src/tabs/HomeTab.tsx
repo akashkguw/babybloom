@@ -558,23 +558,36 @@ export default function HomeTab({
       })()}
 
       {/* ═══ ACTIVE FEED TIMER — compact banner ═══ */}
-      {feedTimer && (
+      {feedTimer && (() => {
+        const nudgeThresholds: { [key: string]: number } = {
+          'Breast L': 35 * 60, 'Breast R': 35 * 60,
+          'Tummy Time': 20 * 60,
+        };
+        const threshold = nudgeThresholds[feedTimer.type] || 45 * 60;
+        const isLong = feedElapsed >= threshold;
+        return (
         <div
           style={{
             marginBottom: 12,
             padding: '10px 14px',
-            background: C.al,
+            background: isLong ? C.wl : C.al,
             borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            border: isLong ? '1px solid ' + C.w : 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ fontSize: 18 }}>{feedTimer.type === 'Tummy Time' ? '🧒' : '🤱'}</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.a }}>{feedTimer.type}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: isLong ? C.w : C.a }}>{feedTimer.type}</div>
               <div style={{ fontSize: 11, color: C.tl }}>since {fmtTime(feedTimer.startTimeStr)}</div>
+              {isLong && (
+                <div style={{ fontSize: 10, color: C.w, fontWeight: 600, marginTop: 2 }}>
+                  Still going? Tap Done if finished
+                </div>
+              )}
             </div>
           </div>
           <div
@@ -621,7 +634,8 @@ export default function HomeTab({
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══ CONTINUE / ADD TO PREVIOUS — shows when recent feed within 30 min, no timer running ═══ */}
       {!feedTimer &&
