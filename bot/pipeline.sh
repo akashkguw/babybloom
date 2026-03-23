@@ -45,6 +45,54 @@ echo "🔄 BabyBloom Pipeline — $(date)"
 # ─── Ensure remote URL has token for HTTPS push ───
 git remote set-url origin "https://akashkguw:${GITHUB_TOKEN}@github.com/${REPO}.git"
 
+# ─── Sync open GitHub issues → pending-issues.json (auto-backfill) ───
+QUEUE_FILE="$BOT_DIR/pending-issues.json"
+python3 - <<EOF
+import urllib.request, json, os
+
+token = "$GITHUB_TOKEN"
+repo  = "$REPO"
+queue_path = "$QUEUE_FILE"
+
+# Fetch open telegram-labeled issues from GitHub
+try:
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/issues?labels=telegram&state=open&per_page=50",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+    )
+    gh_issues = json.loads(urllib.request.urlopen(req, timeout=10).read())
+except Exception as e:
+    print(f"⚠️  GitHub sync skipped: {e}")
+    gh_issues = []
+
+# Load existing queue
+try:
+    queue = json.load(open(queue_path))
+except:
+    queue = []
+
+existing_nums = {i["number"] for i in queue}
+added = 0
+for i in gh_issues:
+    if i["number"] not in existing_nums:
+        queue.append({
+            "number": i["number"],
+            "title": i["title"],
+            "body": i["body"] or "",
+            "labels": [l["name"] for l in i["labels"]],
+            "url": i["html_url"],
+            "created_at": i["created_at"],
+            "status": "pending"
+        })
+        added += 1
+
+if added:
+    json.dump(queue, open(queue_path, "w"), indent=2)
+    print(f"📥 Synced {added} new issue(s) into queue")
+else:
+    print("✅ Queue already up to date")
+EOF
+
 # ─── Check for uncommitted changes — run deploy.sh if needed ───
 # Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
 if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
