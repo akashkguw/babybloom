@@ -446,7 +446,10 @@ export default function HomeTab({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>Your baby is</div>
+            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>{age < 3 ? '🍼' : age < 8 ? '👶' : age < 14 ? '🧒' : '🌟'}</span>
+              <span>Your baby is</span>
+            </div>
             <div style={{ color: 'white', fontSize: 28, fontWeight: 800, lineHeight: 1.2 }}>
               {ageStr}
             </div>
@@ -782,6 +785,7 @@ export default function HomeTab({
               background: C.bg,
               borderRadius: '20px 20px 0 0',
               padding: '20px 16px 30px',
+              minHeight: '50vh',
               maxHeight: '80vh',
               overflowY: 'auto',
             }}
