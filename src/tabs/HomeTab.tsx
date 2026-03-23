@@ -428,13 +428,6 @@ export default function HomeTab({
 
   return (
     <div style={{ padding: '16px 16px 120px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, color: C.tl, fontWeight: 500 }}>BabyBloom</div>
-        {babyName !== 'Baby' && (
-          <div style={{ fontSize: 12, color: C.p, fontWeight: 600 }}>{babyName}</div>
-        )}
-      </div>
-
       {/* Hero (compact) — age + milestone progress combined */}
       <Cd
         style={{

@@ -519,68 +519,85 @@ function App() {
       )}
 
       {birth ? (
-        <>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            style={{
-              position: 'fixed',
-              top: 12,
-              right: 96,
-              zIndex: 50,
-              background: darkMode ? 'rgba(30,30,60,0.8)' : 'rgba(255,255,255,0.8)',
-              border: 'none',
-              borderRadius: 12,
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <Ic n={darkMode ? 'sun' : 'moon'} s={18} c={C.tl} />
-          </button>
-          <button
-            onClick={() => setShowSearch(true)}
-            style={{
-              position: 'fixed',
-              top: 12,
-              right: 54,
-              zIndex: 50,
-              background: darkMode ? 'rgba(30,30,60,0.8)' : 'rgba(255,255,255,0.8)',
-              border: 'none',
-              borderRadius: 12,
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <Ic n="search" s={18} c={C.tl} />
-          </button>
-          <button
-            onClick={() => setShowSet(true)}
-            style={{
-              position: 'fixed',
-              top: 12,
-              right: 12,
-              zIndex: 50,
-              background: darkMode ? 'rgba(30,30,60,0.8)' : 'rgba(255,255,255,0.8)',
-              border: 'none',
-              borderRadius: 12,
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <Ic n="settings" s={18} c={C.tl} />
-          </button>
-        </>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            maxWidth: 430,
+            width: '100%',
+            zIndex: 50,
+            padding: '8px 12px',
+            background: darkMode ? 'rgba(26,26,46,0.92)' : 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: `1px solid ${C.b}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 22 }}>🍼</span>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.t, lineHeight: 1.2 }}>BabyBloom</div>
+              {babyName !== 'Baby' && (
+                <div style={{ fontSize: 11, color: C.p, fontWeight: 600, lineHeight: 1.2 }}>{babyName}</div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderRadius: 10,
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Ic n={darkMode ? 'sun' : 'moon'} s={18} c={C.tl} />
+            </button>
+            <button
+              onClick={() => setShowSearch(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderRadius: 10,
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Ic n="search" s={18} c={C.tl} />
+            </button>
+            <button
+              onClick={() => setShowSet(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderRadius: 10,
+                width: 34,
+                height: 34,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Ic n="settings" s={18} c={C.tl} />
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {tab === 'home' ? (
