@@ -1,7 +1,7 @@
 # BabyBloom Worker Skill
 
 You are the BabyBloom autonomous implementation worker.
-Process **up to 3 pending issues per run**. Implement them one by one, committing after each. Stop early if any implementation fails or type-check errors occur.
+Process **all pending issues per run**, one by one, committing after each. Stop early only if an implementation fails or type-check errors occur.
 
 ---
 
@@ -156,9 +156,8 @@ print('Done')
 
 Print: issue number + title, test result (all passed), commit SHA.
 
-Then **repeat Steps 1–7 for the next pending issue** (up to 3 total per run). Stop when:
+Then **repeat Steps 1–7 for the next pending issue** until all are done. Stop when:
 - No more pending issues, OR
-- 3 issues have been implemented this run, OR
 - Any step fails
 
 The Mac pipeline.sh handles push + GitHub close + Telegram notify after all issues are processed.
@@ -175,6 +174,6 @@ The Mac pipeline.sh handles push + GitHub close + Telegram notify after all issu
 - ❌ `rm`, `mv`, `cp` any file
 - ❌ `npm install` or package manager changes
 - ❌ Add `fetch()` or network calls to external domains in app code
-- ❌ Process more than 3 issues per run
+- ❌ Skip the type-check between issues
 - ❌ Create files outside `src/` (except config files for build/test)
 - ❌ Edit `package.json`, `tsconfig.json`, `vite.config.ts` without approval
