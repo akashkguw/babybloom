@@ -95,7 +95,7 @@ const checks = [
   ['IndexedDB','indexedDB'],['Voice logging','SpeechRecognition'],
   ['Feed merge','mergeIntoLastFeed'],['Siri Shortcuts','SiriShortcutsSetup'],
   ['Massage guide','MASSAGE_GUIDE'],['Profile system','switchProfile'],
-  ['Dark mode','C_DARK'],['Firsts edit','updateFirst'],
+  ['Dark mode','C_DARK'],['Firsts edit','updateFirst'],['Volume unit','volumeUnit'],
 ];
 let fail=0;
 checks.forEach(([n,p])=>{if(!html.includes(p)){console.log('FAIL:',n);fail++;}});

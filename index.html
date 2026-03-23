@@ -49,6 +49,13 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.class
 
 var R=React,h=R.createElement,F=R.Fragment,us=R.useState,ue=R.useEffect,um=R.useMemo,ur=R.useRef,uc=R.useCallback;
 
+// ═══ VOLUME UNIT HELPERS ═══
+var ML_PER_OZ=29.5735;
+function ozToMl(oz){return Math.round(parseFloat(oz||0)*ML_PER_OZ*10)/10}
+function mlToOz(ml){return Math.round(parseFloat(ml||0)/ML_PER_OZ*10)/10}
+function fmtVol(oz,unit){if(!oz&&oz!==0)return"";if(unit==="ml")return Math.round(ozToMl(oz))+" ml";return Math.round(oz*10)/10+" oz"}
+function volLabel(unit){return unit==="ml"?"ml":"oz"}
+
 // ═══ COLORS ═══
 var C_LIGHT={bg:"#FFF8F0",cd:"#FFFFFF",p:"#FF6B8A",pl:"#FFE0E8",s:"#6C63FF",sl:"#E8E6FF",a:"#00C9A7",al:"#E0FFF8",w:"#FFB347",wl:"#FFF3E0",t:"#2D2D3A",tl:"#8E8E9A",b:"#F0EBE3",ok:"#4CAF50",okl:"#E8F5E9",bl:"#42A5F5",bll:"#E3F2FD",pu:"#AB47BC",pul:"#F3E5F5"};
 var C_DARK={bg:"#1A1A2E",cd:"#16213E",p:"#FF6B8A",pl:"#3D1F2E",s:"#8B83FF",sl:"#2A2654",a:"#00C9A7",al:"#1A3330",w:"#FFB347",wl:"#3D2E1A",t:"#E8E8F0",tl:"#7A7A8E",b:"#2A2A4A",ok:"#4CAF50",okl:"#1A3320",bl:"#42A5F5",bll:"#1A2A3E",pu:"#CE93D8",pul:"#2E1F3E"};
@@ -181,7 +188,7 @@ function StatsView({logs,period,setPeriod,logColors}){
   // Determine available feed metrics
   var feedMetrics=[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.a}];
   if((logs.feed||[]).some(function(e){return e.mins&&!e.oz}))feedMetrics.push({id:"breast_min",label:"Breast Min",unit:"min",getData:function(e,p){return aggregateSum(e.filter(function(x){return x.mins&&!x.oz}),"mins",p,1)},color:C.a});
-  if((logs.feed||[]).some(function(e){return e.oz}))feedMetrics.push({id:"bottle_oz",label:"Bottle Oz",unit:"oz",getData:function(e,p){return aggregateSum(e.filter(function(x){return x.oz}),"oz",p,1)},color:C.bl});
+  if((logs.feed||[]).some(function(e){return e.oz}))feedMetrics.push({id:"bottle_vol",label:volumeUnit==="ml"?"Bottle ml":"Bottle Oz",unit:volLabel(volumeUnit),getData:function(e,p){var raw=aggregateSum(e.filter(function(x){return x.oz}),"oz",p,1);return volumeUnit==="ml"?raw.map(function(pt){return{date:pt.date,value:Math.round(ozToMl(pt.value))}}):raw},color:C.bl});
 
   var sleepMetrics=[{id:"count",label:"Count",getData:function(e,p){return aggregateLogs(e,p)},color:C.pu}];
   if((logs.sleep||[]).some(function(e){return e.mins}))sleepMetrics.push({id:"hours",label:"Total Hrs",unit:"hrs",getData:function(e,p){return aggregateSum(e,"mins",p,60)},color:C.pu});
@@ -709,7 +716,7 @@ var MOM_NUTRITION={
 };
 
 // ═══ LOG TAB ═══
-function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerState}){
+function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerState,volumeUnit}){
   var _st=us(subNavRef&&subNavRef.current||"feed"),sub=_st[0],setSub=_st[1];
   ue(function(){if(subNavRef&&subNavRef.current){setSub(subNavRef.current);subNavRef.current=null}},[]);
   var _show=us(false),showAdd=_show[0],setShowAdd=_show[1];
@@ -778,7 +785,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
         return h(Cd,{key:entry.id,style:{marginBottom:8,padding:14}},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
             h("div",null,
-              h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},fmtTime(entry.time)+(entry.type?" — "+entry.type:"")+(entry.amount?" — "+entry.amount:"")),
+              h("div",{style:{fontSize:14,fontWeight:600,color:C.t}},fmtTime(entry.time)+(entry.type?" — "+entry.type:"")+(entry.oz?" — "+fmtVol(entry.oz,volumeUnit):entry.amount?" — "+entry.amount:"")),
               entry.notes?h("div",{style:{fontSize:12,color:C.tl,marginTop:2}},entry.notes):null,
               entry.weight?h("div",{style:{fontSize:13,color:C.t}},"Weight: "+entry.weight+" lbs"):null,
               entry.height?h("div",{style:{fontSize:13,color:C.t}},"Height: "+entry.height+" in"):null,
@@ -794,7 +801,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
               entry.oil?h("div",{style:{fontSize:13,color:C.t}},"Oil: "+entry.oil):null,
               entry.mood?h("div",{style:{fontSize:13,color:C.t}},"Mood: "+entry.mood):null),
             h("div",{style:{display:"flex",gap:4}},
-              h("button",{onClick:function(){var e=Object.assign({},entry);if(sub==='sleep'&&typeof e.mins==='number'){e.sleepHrs=String(Math.floor(e.mins/60));e.sleepMins=String(Math.round(e.mins%60))}if(sub==='feed'){if(e.mins&&!e.oz)e.feedMins=String(e.mins);if(e.oz)e.feedOz=String(e.oz)}setForm(e);setEditId(e.id);setShowAdd(true)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"edit",s:14,c:C.bl})),
+              h("button",{onClick:function(){var e=Object.assign({},entry);if(sub==='sleep'&&typeof e.mins==='number'){e.sleepHrs=String(Math.floor(e.mins/60));e.sleepMins=String(Math.round(e.mins%60))}if(sub==='feed'){if(e.mins&&!e.oz)e.feedMins=String(e.mins);if(e.oz){e.feedOz=String(e.oz);e.feedVal=String(volumeUnit==="ml"?Math.round(ozToMl(e.oz)):e.oz)}}if(sub==='pump'&&e.pumpOz){e.pumpVal=String(volumeUnit==="ml"?Math.round(ozToMl(e.pumpOz)):e.pumpOz)}setForm(e);setEditId(e.id);setShowAdd(true)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"edit",s:14,c:C.bl})),
               h("button",{onClick:function(){removeEntry(entry.id)},style:{background:"none",border:"none",cursor:"pointer",padding:4}},h(Ic,{n:"x",s:16,c:C.tl})))))}),
       allItems.length>items.length?h("div",{style:{textAlign:"center",padding:12,fontSize:12,color:C.tl}},allItems.length+" total entries"):null
     ):null,
@@ -826,8 +833,8 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
             h("div",{style:{display:"flex",gap:8}},["Breast L","Breast R","Bottle","Solids"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
           form.type==="Breast L"||form.type==="Breast R"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (minutes)"),
             h(Input,{type:"number",value:form.feedMins||"",onChange:function(v){var m=parseInt(v)||0;setForm(Object.assign({},form,{feedMins:v,amount:m+" min",mins:m}))},placeholder:"e.g. 15"})):
-          form.type==="Bottle"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount (oz)"),
-            h(Input,{type:"number",value:form.feedOz||"",onChange:function(v){var o=parseFloat(v)||0;setForm(Object.assign({},form,{feedOz:v,amount:v+" oz",oz:o}))},placeholder:"e.g. 4"})):
+          form.type==="Bottle"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount ("+volLabel(volumeUnit)+")"),
+            h(Input,{type:"number",value:form.feedVal||"",onChange:function(v){var num=parseFloat(v)||0;var ozVal=volumeUnit==="ml"?mlToOz(num):num;setForm(Object.assign({},form,{feedVal:v,feedOz:String(ozVal),amount:v+" "+volLabel(volumeUnit),oz:ozVal}))},placeholder:volumeUnit==="ml"?"e.g. 120":"e.g. 4"})):
           form.type==="Solids"?h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Food / Description"),
             h(Input,{value:form.amount||"",onChange:function(v){setForm(Object.assign({},form,{amount:v}))},placeholder:"e.g. Sweet potato puree, 2 tbsp"})):
           null
@@ -837,7 +844,7 @@ function LogTab({logs,setLogs,age,subNavRef,quickFormRef,timerState,setTimerStat
         sub==="pump"?h(F,null,
           h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Side"),
             h("div",{style:{display:"flex",gap:8}},["Left","Right","Both"].map(function(t){return h(Pill,{key:t,label:t,active:form.type===t,onClick:function(){setForm(Object.assign({},form,{type:t}))},color:C.a})}))),
-          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount (oz)"),h(Input,{type:"number",value:form.amount||"",onChange:function(v){setForm(Object.assign({},form,{amount:v+" oz"}))},placeholder:"e.g. 4"})),
+          h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Amount ("+volLabel(volumeUnit)+")"),h(Input,{type:"number",value:form.pumpVal||"",onChange:function(v){var num=parseFloat(v)||0;var ozVal=volumeUnit==="ml"?mlToOz(num):num;setForm(Object.assign({},form,{pumpVal:v,amount:v+" "+volLabel(volumeUnit),pumpOz:ozVal}))},placeholder:volumeUnit==="ml"?"e.g. 120":"e.g. 4"})),
           h("div",{style:{marginBottom:12}},h("label",{style:{fontSize:13,fontWeight:600,color:C.tl,display:"block",marginBottom:4}},"Duration (min)"),h(Input,{type:"number",value:form.duration||"",onChange:function(v){setForm(Object.assign({},form,{duration:v}))},placeholder:"e.g. 20"}))
         ):null,
 
@@ -1673,7 +1680,7 @@ function VoiceButton({onResult,quickLog,babyName}){
 }
 
 // ═══ HOME TAB ═══
-function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,reminders,feedTimerApp,setFeedTimerApp}){
+function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,reminders,feedTimerApp,setFeedTimerApp,volumeUnit}){
   var _td=us(""),td2=_td[0],setTd=_td[1];
   if(!birth){return h("div",{style:{padding:"60px 20px",textAlign:"center"}},
     h("div",{style:{fontSize:64,marginBottom:16}},"🍼"),h("h1",{style:{fontSize:28,fontWeight:800,color:C.t,marginBottom:8}},"Welcome to BabyBloom"),
@@ -1868,7 +1875,7 @@ function HomeTab({age,setTab,checked,birth,setBirth,logs,setLogs,babyName,remind
 
     // Today's Summary
     h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}},
-      [{l:"Feeds",v:feedCt,sub:feedOzToday>0?feedOzToday+" oz":feedMinToday>0?feedMinToday+" min":"",e:"🍼",c:C.a,s:"feed"},{l:"Diapers",v:diaperCt,sub:"",e:"💧",c:C.bl,s:"diaper"},{l:"Sleep",v:sleepCt,sub:sleepHrsToday>0?sleepHrsToday+"h":"",e:"😴",c:C.pu,s:"sleep"}].map(function(s){return h(Cd,{key:s.l,onClick:function(){setTab("log",s.s)},style:{padding:10,textAlign:"center",cursor:"pointer"}},h("div",{style:{fontSize:18}},s.e),h("div",{style:{fontSize:20,fontWeight:800,color:C.t}},s.v),s.sub?h("div",{style:{fontSize:11,fontWeight:600,color:s.c}},s.sub):null,h("div",{style:{fontSize:10,color:C.tl}},s.l))})),
+      [{l:"Feeds",v:feedCt,sub:feedOzToday>0?fmtVol(feedOzToday,volumeUnit):feedMinToday>0?feedMinToday+" min":"",e:"🍼",c:C.a,s:"feed"},{l:"Diapers",v:diaperCt,sub:"",e:"💧",c:C.bl,s:"diaper"},{l:"Sleep",v:sleepCt,sub:sleepHrsToday>0?sleepHrsToday+"h":"",e:"😴",c:C.pu,s:"sleep"}].map(function(s){return h(Cd,{key:s.l,onClick:function(){setTab("log",s.s)},style:{padding:10,textAlign:"center",cursor:"pointer"}},h("div",{style:{fontSize:18}},s.e),h("div",{style:{fontSize:20,fontWeight:800,color:C.t}},s.v),s.sub?h("div",{style:{fontSize:11,fontWeight:600,color:s.c}},s.sub):null,h("div",{style:{fontSize:10,color:C.tl}},s.l))})),
 
     // Next feed reminder
     reminders&&reminders.enabled&&reminders.feedInterval?
@@ -1977,7 +1984,7 @@ function ProfileManager({profiles,activeProfile,onSwitch,onAdd,onDelete,onRename
 }
 
 // ═══ SIRI SHORTCUTS SETUP ═══
-function SiriShortcutsSetup(){
+function SiriShortcutsSetup({volumeUnit}){
   var _show=us(false),show=_show[0],setShow=_show[1];
   var _copied=us(""),copied=_copied[0],setCopied=_copied[1];
 
@@ -1986,7 +1993,7 @@ function SiriShortcutsSetup(){
   var shortcuts=[
     {name:"Baby Breast L",icon:"🤱",param:"quick=breast_l",desc:"Log left breast feed"},
     {name:"Baby Breast R",icon:"🤱",param:"quick=breast_r",desc:"Log right breast feed"},
-    {name:"Baby Bottle",icon:"🍼",param:"quick=bottle_4",desc:"Log bottle feed (4 oz)"},
+    {name:"Baby Bottle",icon:"🍼",param:"quick=bottle_4",desc:"Log bottle feed ("+fmtVol(4,volumeUnit)+")"},
     {name:"Baby Wet",icon:"💧",param:"quick=wet",desc:"Log wet diaper"},
     {name:"Baby Dirty",icon:"💩",param:"quick=dirty",desc:"Log dirty diaper"},
     {name:"Baby Nap",icon:"😴",param:"quick=nap",desc:"Log nap start"},
@@ -2059,7 +2066,7 @@ function SiriShortcutsSetup(){
 }
 
 // ═══ SETTINGS ═══
-function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,onRenameProfile,logs,checked,vDone,reminders,setReminders}){
+function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddProfile,onDeleteProfile,onRenameProfile,logs,checked,vDone,reminders,setReminders,volumeUnit,setVolumeUnit}){
   var fileRef=ur(null);
   return h("div",{className:"mo",onClick:function(e){if(e.target===e.currentTarget)onClose()}},
     h("div",{className:"ms"},
@@ -2080,6 +2087,10 @@ function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddPro
           h("div",{style:{fontSize:12,color:C.tl,marginBottom:4}},"Remind after (hours)"),
           h("div",{style:{display:"flex",gap:6}},
             [2,2.5,3,4].map(function(hr){return h(Pill,{key:hr,label:hr+"h",active:reminders.feedInterval===hr,onClick:function(){setReminders(Object.assign({},reminders,{feedInterval:hr}))},color:C.a})}))):null),
+      h("div",{style:{marginBottom:16}},
+        h("div",{style:{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}},"Volume Unit"),
+        h("div",{style:{display:"flex",gap:8}},
+          ["ml","oz"].map(function(u){return h(Pill,{key:u,label:u==="ml"?"Milliliters (ml)":"Ounces (oz)",active:volumeUnit===u,onClick:function(){setVolumeUnit(u)},color:C.a})}))),
       h("div",{style:{marginBottom:12}},
         h(Btn,{label:"Export Backup",onClick:function(){dga().then(function(d){var b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='babybloom-backup-'+today()+'.json';a.click();URL.revokeObjectURL(u);toast('Saved!')})},color:C.s,full:true}),
         h("div",{style:{height:8}}),
@@ -2133,7 +2144,7 @@ function Settings({onClose,birth,profiles,activeProfile,onSwitchProfile,onAddPro
           setTimeout(function(){w.print()},500);
         },color:C.a,full:true})),
       // ═══ SIRI SHORTCUTS SETUP ═══
-      h(SiriShortcutsSetup,null),
+      h(SiriShortcutsSetup,{volumeUnit:volumeUnit}),
 
       h("div",{style:{marginTop:12}},h(Btn,{label:"Reset All Data",onClick:function(){if(confirm('Delete ALL data?'))dcl().then(function(){toast('Cleared');setTimeout(function(){location.reload()},500)})},color:"#FF5252",outline:true,full:true})),
       h("div",{style:{textAlign:"center",marginTop:16,fontSize:11,color:C.tl}},"BabyBloom v2.1 — AAP/CDC/WHO 2026")));
@@ -2164,6 +2175,8 @@ function App(){
   function setTimerState(v){setTSR(v);ds("timerState",v)}
   var _rem=us({feedInterval:0,enabled:false}),reminders=_rem[0],setRemR=_rem[1];
   function setReminders(v){setRemR(v);ds("reminders",v)}
+  var _vu=us("ml"),volumeUnit=_vu[0],setVUR=_vu[1];
+  function setVolumeUnit(v){setVUR(v);ds("volumeUnit",v)}
   var _ftApp=us(null),feedTimerApp=_ftApp[0],_setFTA=_ftApp[1];
   function setFeedTimerApp(v){_setFTA(v);ds("feedTimerApp",v)}
   var subNavRef=ur(null);
@@ -2239,8 +2252,8 @@ function App(){
   }
 
   ue(function(){
-    Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders"),dg("feedTimerApp")]).then(function(r){
-      if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);if(r[12]!=null)_setFTA(r[12]);
+    Promise.all([dg("birthDate"),dg("milestones"),dg("vaccines"),dg("logs"),dg("teeth"),dg("firsts"),dg("darkMode"),dg("timerState"),dg("emergencyContacts"),dg("profiles"),dg("activeProfile"),dg("reminders"),dg("feedTimerApp"),dg("volumeUnit")]).then(function(r){
+      if(r[6])applyTheme(true);if(r[6])setDarkModeR(true);if(r[7]!=null)setTSR(r[7]);if(r[8]!=null)setECR(r[8]);if(r[11]!=null)setRemR(r[11]);if(r[12]!=null)_setFTA(r[12]);if(r[13])setVUR(r[13]);
       var loadedProfiles=r[9],loadedActiveProfile=r[10];
       var activeId;
       if(!loadedProfiles||loadedProfiles.length===0){
@@ -2295,11 +2308,11 @@ function App(){
       breast_l:{cat:"feed",entry:{type:"Breast L"}},
       breast_r:{cat:"feed",entry:{type:"Breast R"}},
       bottle:{cat:"feed",entry:{type:"Bottle"}},
-      bottle_2:{cat:"feed",entry:{type:"Bottle",oz:2,amount:"2 oz"}},
-      bottle_3:{cat:"feed",entry:{type:"Bottle",oz:3,amount:"3 oz"}},
-      bottle_4:{cat:"feed",entry:{type:"Bottle",oz:4,amount:"4 oz"}},
-      bottle_5:{cat:"feed",entry:{type:"Bottle",oz:5,amount:"5 oz"}},
-      bottle_6:{cat:"feed",entry:{type:"Bottle",oz:6,amount:"6 oz"}},
+      bottle_2:{cat:"feed",entry:{type:"Bottle",oz:2,amount:fmtVol(2,volumeUnit)}},
+      bottle_3:{cat:"feed",entry:{type:"Bottle",oz:3,amount:fmtVol(3,volumeUnit)}},
+      bottle_4:{cat:"feed",entry:{type:"Bottle",oz:4,amount:fmtVol(4,volumeUnit)}},
+      bottle_5:{cat:"feed",entry:{type:"Bottle",oz:5,amount:fmtVol(5,volumeUnit)}},
+      bottle_6:{cat:"feed",entry:{type:"Bottle",oz:6,amount:fmtVol(6,volumeUnit)}},
       wet:{cat:"diaper",entry:{type:"Wet"}},
       dirty:{cat:"diaper",entry:{type:"Dirty"}},
       both:{cat:"diaper",entry:{type:"Both"}},
@@ -2318,7 +2331,7 @@ function App(){
       // Check for extra params
       var oz=params.get("oz");if(oz)result.entry.oz=parseFloat(oz);
       var min=params.get("min");if(min){result.entry.mins=parseFloat(min);result.entry.amount=min+" min"}
-      if(oz)result.entry.amount=oz+" oz";
+      if(oz)result.entry.amount=fmtVol(parseFloat(oz),volumeUnit);
     } else if(voice){
       result=parseVoice(decodeURIComponent(voice));
     }
@@ -2383,13 +2396,13 @@ function App(){
       h("button",{onClick:function(){setDarkMode(!darkMode)},style:{position:"fixed",top:12,right:96,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:darkMode?"sun":"moon",s:18,c:C.tl})),
       h("button",{onClick:function(){setShowSearch(true)},style:{position:"fixed",top:12,right:54,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:"search",s:18,c:C.tl})),
       h("button",{onClick:function(){setShowSet(true)},style:{position:"fixed",top:12,right:12,zIndex:50,background:darkMode?"rgba(30,30,60,0.8)":"rgba(255,255,255,0.8)",border:"none",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}},h(Ic,{n:"settings",s:18,c:C.tl}))):null,
-    tab==="home"?h(HomeTab,{age:age,setTab:navTo,checked:checked,birth:birth,setBirth:setBirth,logs:logs,setLogs:setLogs,babyName:babyName,reminders:reminders,feedTimerApp:feedTimerApp,setFeedTimerApp:setFeedTimerApp}):null,
-    tab==="log"?h(LogTab,{logs:logs,setLogs:setLogs,age:age,subNavRef:subNavRef,quickFormRef:quickFormRef,timerState:timerState,setTimerState:setTimerState}):null,
+    tab==="home"?h(HomeTab,{age:age,setTab:navTo,checked:checked,birth:birth,setBirth:setBirth,logs:logs,setLogs:setLogs,babyName:babyName,reminders:reminders,feedTimerApp:feedTimerApp,setFeedTimerApp:setFeedTimerApp,volumeUnit:volumeUnit}):null,
+    tab==="log"?h(LogTab,{logs:logs,setLogs:setLogs,age:age,subNavRef:subNavRef,quickFormRef:quickFormRef,timerState:timerState,setTimerState:setTimerState,volumeUnit:volumeUnit}):null,
     tab==="miles"?h(MilestonesTab,{age:age,selMo:selMo,setSelMo:setSelMo,checked:checked,setChecked:setChecked,teeth:teeth,setTeeth:setTeeth,firsts:firsts,setFirsts:setFirsts,subNavRef:subNavRef}):null,
     tab==="guide"?h(GuideTab,{age:age,vDone:vDone,setVDone:setVDone,subNavRef:subNavRef,logs:logs,birth:birth}):null,
     tab==="safety"?h(SafetyTab,{subNavRef:subNavRef,emergencyContacts:emergencyContacts,setEmergencyContacts:setEmergencyContacts}):null,
     birth?h(TabBar,{active:tab,set:setTab}):null,
-    showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:switchProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,onRenameProfile:renameProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders}):null,
+    showSet?h(Settings,{onClose:function(){setShowSet(false)},birth:birth,profiles:profiles,activeProfile:activeProfile,onSwitchProfile:switchProfile,onAddProfile:addProfile,onDeleteProfile:deleteProfile,onRenameProfile:renameProfile,logs:logs,checked:checked,vDone:vDone,reminders:reminders,setReminders:setReminders,volumeUnit:volumeUnit,setVolumeUnit:setVolumeUnit}):null,
     showSearch?h(SearchModal,{onClose:function(){setShowSearch(false)},logs:logs,firsts:firsts,checked:checked}):null,
 
     // ═══ SIRI SHORTCUT CONFIRMATION OVERLAY ═══
