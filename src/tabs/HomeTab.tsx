@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Card as Cd, Button as Btn, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
+import { Card as Cd, Button as Btn, ProgressCircle as PR } from '@/components/shared';
 import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
@@ -76,7 +76,8 @@ export default function HomeTab({
 }: HomeTabProps) {
   const [td2, setTd] = useState('');
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
-  const [quickFeedVal, setQuickFeedVal] = useState('');
+  const [sliderVal, setSliderVal] = useState(0);
+  const [showSlider, setShowSlider] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const touchStartX = useRef<number | null>(null);
   // Merge prompt state kept for type compatibility but auto-merge is used instead
@@ -1030,190 +1031,222 @@ export default function HomeTab({
           );
         })()}
 
-      {/* ═══ QUICK LOG — uniform 4-column grid ═══ */}
-      <Cd style={{ marginBottom: 12, padding: '14px 14px 12px' }}>
+      {/* ═══ QUICK LOG — uniform 4-column grid with inline quantity expand ═══ */}
+      <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
-          {/* Row 1: feeding */}
-          {[
+        {(() => {
+          const isMl = volumeUnit === 'ml';
+          const presets = isMl ? [30, 60, 90, 120, 150, 180] : [1, 2, 3, 4, 5, 6];
+          const unit = volLabel(volumeUnit);
+          const sliderMax = isMl ? 300 : 10;
+          const sliderStep = isMl ? 10 : 0.5;
+          const closeQL = () => { setQuickFeedType(null); setShowSlider(false); setSliderVal(0); };
+          const logAmount = (val: number) => {
+            const ozVal = isMl ? mlToOz(val) : val;
+            quickLog('feed', { type: quickFeedType!, oz: ozVal, amount: val + ' ' + unit }, quickFeedType!);
+            closeQL();
+          };
+          const qlItems = [
             {
-              e: '🤱',
-              l: 'Breast L',
+              e: '🤱', l: 'Breast L',
               fn: () => startFeedTimer('Breast L'),
               active: feedTimer && feedTimer.type === 'Breast L',
               dis: feedTimer && feedTimer.type !== 'Breast L',
+              needsQty: false,
             },
             {
-              e: '🤱',
-              l: 'Breast R',
+              e: '🤱', l: 'Breast R',
               fn: () => startFeedTimer('Breast R'),
               active: feedTimer && feedTimer.type === 'Breast R',
               dis: feedTimer && feedTimer.type !== 'Breast R',
+              needsQty: false,
             },
             {
-              e: '🍼',
-              l: 'Formula',
-              fn: () => {
-                if (!feedTimer) {
-                  setQuickFeedType('Formula');
-                  setQuickFeedVal('');
-                }
-              },
-              dis: !!feedTimer,
+              e: '🍼', l: 'Formula',
+              fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setShowSlider(false); setSliderVal(presets[0]); } },
+              dis: !!feedTimer, needsQty: true, qType: 'Formula',
             },
             {
-              e: '🍼',
-              l: 'Breast Milk',
-              fn: () => {
-                if (!feedTimer) {
-                  setQuickFeedType('Pumped Milk');
-                  setQuickFeedVal('');
-                }
-              },
-              dis: !!feedTimer,
+              e: '🍼', l: 'Breast Milk',
+              fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setShowSlider(false); setSliderVal(presets[0]); } },
+              dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk',
             },
-            /* Row 2: tummy + diaper + sleep */
             {
-              e: '🧒',
-              l: 'Tummy',
+              e: '🧒', l: 'Tummy',
               fn: () => startFeedTimer('Tummy Time'),
               active: feedTimer && feedTimer.type === 'Tummy Time',
               dis: feedTimer && feedTimer.type !== 'Tummy Time',
+              needsQty: false,
             },
-            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false },
-            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false },
+            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false },
+            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false },
             {
               e: isSleeping ? '⏰' : '😴',
               l: isSleeping ? 'Wake Up' : 'Sleep',
               fn: () => {
                 const lbl = isSleeping ? 'Wake Up' : 'Sleep';
-                if (isSleeping) {
-                  quickLog('sleep', { type: 'Wake Up' }, lbl);
-                } else {
-                  quickLog('sleep', { type: autoSleepType() }, lbl);
-                }
+                if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, lbl);
+                else quickLog('sleep', { type: autoSleepType() }, lbl);
               },
-              active: false,
-              dis: false,
-              highlight: isSleeping,
+              active: false, dis: false, highlight: isSleeping, needsQty: false,
             },
-          ].map((q: any) => {
-            const warnInfo = quickLogWarnings[q.l] || null;
-            const warn = warnInfo?.level || null;
-            const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
-            const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
-            const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
+          ];
+
+          // ─── Expanded inline quantity selector ───
+          if (quickFeedType) {
+            const activeItem = qlItems.find((q) => q.qType === quickFeedType);
             return (
-            <div
-              key={q.l}
-              className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
-              onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
-              onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
-              onTouchEnd={warnInfo ? () => { clearLongPress(); } : undefined}
-              onTouchCancel={warnInfo ? () => { clearLongPress(); longPressTriggered.current = false; } : undefined}
-              onContextMenu={warnInfo ? (e: React.MouseEvent) => { e.preventDefault(); setQlTooltip(warnInfo.reason); setTimeout(() => setQlTooltip(null), 2500); } : undefined}
-              style={{
-                textAlign: 'center',
-                padding: '8px 2px',
-                borderRadius: 12,
-                background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
-                border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
-                cursor: q.dis ? 'default' : 'pointer',
-                opacity: q.dis ? 0.35 : 1,
-              }}
-            >
-              <div style={{ fontSize: 18 }}>{q.e}</div>
-              <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
-                {q.l}
-              </div>
-            </div>
-            );
-          })}
-        </div>
-        {/* Long-press tooltip */}
-        {qlTooltip && (
-          <div style={{
-            marginTop: 8, padding: '8px 12px', borderRadius: 10,
-            background: C.pl, border: '1px solid ' + C.p + '33',
-            fontSize: 11, color: C.t, lineHeight: 1.4, textAlign: 'center',
-            animation: 'fadeIn 0.15s ease',
-          }}>
-            {qlTooltip}
-          </div>
-        )}
-      </Cd>
-
-      {/* ═══ QUICK FEED — Formula/Pumped compact amount selector ═══ */}
-      {quickFeedType && (() => {
-        const isMl = volumeUnit === 'ml';
-        const presets = isMl ? [30, 60, 90, 120, 150, 180] : [1, 2, 3, 4, 5, 6];
-        const unit = volLabel(volumeUnit);
-        const logAmount = (val: number) => {
-          const ozVal = isMl ? mlToOz(val) : val;
-          quickLog('feed', { type: quickFeedType, oz: ozVal, amount: val + ' ' + unit });
-          setQuickFeedType(null);
-          setQuickFeedVal('');
-        };
-        return (
-          <div
-            onClick={(e) => { if (e.target === e.currentTarget) { setQuickFeedType(null); setQuickFeedVal(''); } }}
-            style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
-          >
-            <div style={{ width: '100%', background: C.cd, borderRadius: '22px 22px 0 0', padding: '16px 16px 28px' }}>
-              {/* Drag handle */}
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b, margin: '0 auto 12px' }} />
-
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 20 }}>🍼</span>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: C.t }}>{quickFeedType}</span>
-                </div>
-                <button onClick={() => { setQuickFeedType(null); setQuickFeedVal(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                  <Ic n="x" s={20} c={C.tl} />
-                </button>
-              </div>
-
-              {/* Preset amount grid — single tap to log */}
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.tl, marginBottom: 8 }}>Quick pick ({unit})</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-                {presets.map((v) => (
+              <div className="ql-expand" style={{ display: 'flex', gap: 10, animation: 'qlSlideIn 0.25s cubic-bezier(0.22,1,0.36,1)' }}>
+                {/* Left: active item + cancel */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 56 }}>
                   <div
-                    key={v}
-                    onClick={() => logAmount(v)}
+                    className="ql-btn"
                     style={{
-                      padding: '14px 8px', textAlign: 'center', cursor: 'pointer',
-                      background: C.bg, borderRadius: 14, border: '1.5px solid ' + C.b,
-                      transition: 'background 0.15s, border-color 0.15s',
+                      textAlign: 'center', padding: '8px 6px', borderRadius: 12, width: 56,
+                      background: C.sl, border: '1.5px solid ' + C.s,
                     }}
                   >
-                    <div style={{ fontSize: 20, fontWeight: 800, color: C.t }}>{v}</div>
-                    <div style={{ fontSize: 10, color: C.tl, marginTop: 2 }}>{unit}</div>
+                    <div style={{ fontSize: 18 }}>{activeItem?.e || '🍼'}</div>
+                    <div style={{ fontSize: 9, color: C.s, marginTop: 2, fontWeight: 700 }}>{activeItem?.l || quickFeedType}</div>
                   </div>
-                ))}
-              </div>
-
-              {/* Custom amount row */}
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.tl, marginBottom: 6 }}>Custom</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <Input
-                    type="number"
-                    value={quickFeedVal}
-                    onChange={setQuickFeedVal}
-                    placeholder={isMl ? 'e.g. 120' : 'e.g. 4'}
-                  />
+                  <div
+                    onClick={closeQL}
+                    style={{
+                      fontSize: 10, fontWeight: 600, color: C.tl, cursor: 'pointer',
+                      padding: '3px 10px', borderRadius: 8, background: C.cd,
+                    }}
+                  >
+                    Cancel
+                  </div>
                 </div>
-                <Btn
-                  label={'Log ' + (quickFeedVal || '0') + ' ' + unit}
-                  onClick={() => { logAmount(parseFloat(quickFeedVal) || 0); }}
-                  color={C.a}
-                />
+
+                {/* Right: presets grid + slider toggle */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {!showSlider ? (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                        {presets.map((v) => (
+                          <div
+                            key={v}
+                            className="ql-btn"
+                            onClick={() => logAmount(v)}
+                            style={{
+                              padding: '7px 4px', textAlign: 'center', cursor: 'pointer',
+                              background: C.bg, borderRadius: 10, border: '1px solid ' + C.b,
+                            }}
+                          >
+                            <div style={{ fontSize: 15, fontWeight: 800, color: C.t }}>{v}</div>
+                            <div style={{ fontSize: 8, color: C.tl }}>{unit}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div
+                        onClick={() => { setShowSlider(true); setSliderVal(presets[0]); }}
+                        style={{
+                          marginTop: 6, fontSize: 10, fontWeight: 600, color: C.s,
+                          cursor: 'pointer', textAlign: 'center',
+                        }}
+                      >
+                        Custom amount...
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ animation: 'fadeIn 0.2s ease' }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: C.t, textAlign: 'center', marginBottom: 4 }}>
+                        {isMl ? Math.round(sliderVal) : sliderVal.toFixed(1)} <span style={{ fontSize: 12, fontWeight: 600, color: C.tl }}>{unit}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={sliderMax}
+                        step={sliderStep}
+                        value={sliderVal}
+                        onChange={(e) => setSliderVal(parseFloat(e.target.value))}
+                        style={{ width: '100%', accentColor: C.s, margin: '4px 0 8px' }}
+                      />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <div
+                          onClick={() => setShowSlider(false)}
+                          style={{
+                            flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 10,
+                            background: C.cd, border: '1px solid ' + C.b,
+                            fontSize: 12, fontWeight: 600, color: C.tl, cursor: 'pointer',
+                          }}
+                        >
+                          Presets
+                        </div>
+                        <div
+                          onClick={() => logAmount(isMl ? Math.round(sliderVal) : parseFloat(sliderVal.toFixed(1)))}
+                          style={{
+                            flex: 2, padding: '8px 0', textAlign: 'center', borderRadius: 10,
+                            background: C.s, border: '1px solid ' + C.s,
+                            fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                          }}
+                        >
+                          Log {isMl ? Math.round(sliderVal) : sliderVal.toFixed(1)} {unit}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        );
-      })()}
+            );
+          }
+
+          // ─── Normal 4-column grid ───
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
+                {qlItems.map((q: any) => {
+                  const warnInfo = quickLogWarnings[q.l] || null;
+                  const warn = warnInfo?.level || null;
+                  const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
+                  const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
+                  const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
+                  return (
+                    <div
+                      key={q.l}
+                      className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
+                      onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
+                      onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
+                      onTouchEnd={warnInfo ? () => { clearLongPress(); } : undefined}
+                      onTouchCancel={warnInfo ? () => { clearLongPress(); longPressTriggered.current = false; } : undefined}
+                      onContextMenu={warnInfo ? (e: React.MouseEvent) => { e.preventDefault(); setQlTooltip(warnInfo.reason); setTimeout(() => setQlTooltip(null), 2500); } : undefined}
+                      style={{
+                        textAlign: 'center',
+                        padding: '8px 2px',
+                        borderRadius: 12,
+                        background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
+                        border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
+                        cursor: q.dis ? 'default' : 'pointer',
+                        opacity: q.dis ? 0.35 : 1,
+                      }}
+                    >
+                      <div style={{ fontSize: 18 }}>{q.e}</div>
+                      <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
+                        {q.l}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Long-press tooltip */}
+              {qlTooltip && (
+                <div style={{
+                  marginTop: 8, padding: '8px 12px', borderRadius: 10,
+                  background: C.pl, border: '1px solid ' + C.p + '33',
+                  fontSize: 11, color: C.t, lineHeight: 1.4, textAlign: 'center',
+                  animation: 'fadeIn 0.15s ease',
+                }}>
+                  {qlTooltip}
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </Cd>
+
+      {/* Quick feed bottom sheet removed — inline selector is now built into the grid */}
 
       {/* Sleep status banner */}
       {isSleeping && lastSleepEntry && (
