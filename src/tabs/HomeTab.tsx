@@ -95,13 +95,7 @@ export default function HomeTab({
   );
   const feedIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [flashBtn, setFlashBtn] = useState<string | null>(null);
-  const [dismissedResumeId, setDismissedResumeId] = useState<number | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load persisted dismissed resume ID on mount
-  useEffect(() => {
-    dg('dismissedResumeId').then((v) => { if (v != null) setDismissedResumeId(v); });
-  }, []);
 
   const triggerFlash = useCallback((label: string) => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -1125,9 +1119,11 @@ export default function HomeTab({
             );
           }
 
-          // ─── Resume prompt (recent feed within 30 min, no timer) ───
-          const resumeFeed = !feedTimer ? getRecentFeed(null) : null;
-          const showResume = resumeFeed && resumeFeed.id !== dismissedResumeId;
+          // ─── Resume prompt (recent timed feed within 30 min, no timer) ───
+          const timedTypes = ['Breast L', 'Breast R', 'Tummy Time'];
+          const resumeFeedRaw = !feedTimer ? getRecentFeed(null) : null;
+          const resumeFeed = resumeFeedRaw && timedTypes.includes(resumeFeedRaw.type) ? resumeFeedRaw : null;
+          const showResume = !!resumeFeed;
           const resumeElapsed = resumeFeed?.mins || 0;
 
           // ─── Normal 4-column grid ───
@@ -1149,26 +1145,15 @@ export default function HomeTab({
                     </span>
                     <span style={{ fontSize: 9, color: C.tl }}>— continue?</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                    <div
-                      onClick={() => { setDismissedResumeId(resumeFeed.id); ds('dismissedResumeId', resumeFeed.id); }}
-                      style={{
-                        padding: '4px 8px', borderRadius: 8, fontSize: 10, fontWeight: 600,
-                        color: C.tl, cursor: 'pointer',
-                      }}
-                    >
-                      ✕
-                    </div>
-                    <div
-                      onClick={() => startFeedTimer(resumeFeed.type)}
-                      style={{
-                        padding: '4px 10px', borderRadius: 8,
-                        background: C.a, color: '#fff',
-                        fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                      }}
-                    >
-                      Resume
-                    </div>
+                  <div
+                    onClick={() => startFeedTimer(resumeFeed.type)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 8, flexShrink: 0,
+                      background: C.a, color: '#fff',
+                      fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Resume
                   </div>
                 </div>
               )}
