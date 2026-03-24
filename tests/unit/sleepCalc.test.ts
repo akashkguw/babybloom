@@ -1,6 +1,7 @@
 /**
  * Tests for calcSleepMins - date-aware sleep duration calculation
  */
+declare const process: { exit(code: number): never };
 
 // Inline the function for testing (avoids vitest/rollup dependency issue)
 function calcSleepMins(
