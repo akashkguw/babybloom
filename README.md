@@ -66,12 +66,17 @@ Vaccines · Sleep · Feeding · Solid Foods · Growth Charts · Activities · Co
 ### Safety Center
 Safe Sleep · Baby-Proofing · Infant CPR · Choking Response · Fever Guide · Emergency Contacts
 
+### Smart Features
+- **Glanceable Dashboard** — Traffic-light status cards (good/watch/action) for feeding, diapers, and sleep with age-based thresholds
+- **Predictive Nudges** — Learns your baby's patterns from the last 7 days and reminds you before the next feed, nap, or diaper change
+- **Partner Sync** — Share data with a co-parent via copy/paste codes — no accounts, no server, fully offline (base64 encoded)
+- **Pediatrician Report** — Generates a printable HTML summary covering feeding, diapers, sleep, growth, temperature, meds, allergies, and vaccines (7/14/30 day periods)
+
 ### Additional Features
 - **Feeding Reminders** — Push notifications at configurable intervals
 - **Dark Mode** — Easy on the eyes during night feeds
 - **Search** — Across logs, milestones, vaccines, and guides
 - **Multiple Profiles** — Separate data per child with one-tap switching
-- **Pediatrician Report** — Printable health summary
 - **Export / Import** — JSON backup and restore
 - **Teeth Tracker** — All 20 baby teeth eruption dates
 - **Baby Firsts** — Record first smile, first steps, first word, and more
@@ -82,16 +87,18 @@ Safe Sleep · Baby-Proofing · Infant CPR · Choking Response · Fever Guide · 
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | React 18 + TypeScript |
+| Framework | React 18 + TypeScript (strict mode) |
 | Build | Vite 5 |
 | PWA | vite-plugin-pwa (auto-update service worker) |
 | Storage | IndexedDB (persistent, device-local) |
 | Styling | Inline styles with light/dark theme tokens |
 | Hosting | GitHub Pages via GitHub Actions CI/CD |
+| Error Tracking | Sentry (production only, privacy-hardened) |
 | Icons | Hand-crafted SVG components |
 | Charts | Custom SVG bar charts and WHO growth curves |
 | Voice | Web Speech API with natural language parser |
 | Testing | Vitest |
+| Automation | Telegram bot + multi-agent Claude pipeline |
 
 ---
 
@@ -110,6 +117,9 @@ babybloom/
 │   │   └── SafetyTab.tsx        # Safety & emergency info
 │   ├── features/                # Feature modules
 │   │   ├── feeding/             # Feed timer, merge logic, quick sheet
+│   │   ├── insights/            # Smart status dashboard, predictive nudges
+│   │   ├── reports/             # Pediatrician report generator
+│   │   ├── sync/                # Partner sync (no-account, offline)
 │   │   ├── profiles/            # Multi-profile management
 │   │   ├── settings/            # App settings & data export
 │   │   ├── shortcuts/           # Siri Shortcuts integration
@@ -117,17 +127,23 @@ babybloom/
 │   │   └── voice/               # Voice recognition & NLP parser
 │   ├── components/
 │   │   ├── shared/              # Button, Input, Card, Icon, Toast, etc.
+│   │   ├── charts/              # Bar charts, WHO growth curves
 │   │   └── modals/              # Search modal
 │   └── lib/
 │       ├── constants/           # Colors, icons, milestones, guides, i18n
 │       ├── db/                  # IndexedDB wrappers (dg/ds)
-│       └── utils/               # Volume, time, date helpers
+│       ├── utils/               # Volume, time, date helpers
+│       └── sentry.ts            # Error tracking (privacy-hardened)
 ├── bot/
 │   ├── bot.js                   # Telegram bot — creates GitHub issues
-│   ├── pipeline.sh              # Mac LaunchAgent — push, close issues, notify
-│   ├── deploy.sh                # Commit, push, and GitHub issue management
-│   ├── WORKER_SKILL.md          # Autonomous Claude worker instructions
-│   └── pending-issues.json      # Issue queue (Telegram → GitHub → Claude)
+│   ├── pipeline.sh              # Issue sync + Claude agent dispatch
+│   ├── deploy.sh                # Commit, push, close issues, notify
+│   ├── TRIAGE_SKILL.md          # Triage agent — classifies and routes issues
+│   ├── IMPL_SKILL.md            # Implementation agent — code changes
+│   ├── INFRA_SKILL.md           # Infrastructure agent — pipeline/deploy/CI
+│   ├── ANALYSIS_SKILL.md        # Analysis agent — read-only investigation
+│   ├── DOCS_SKILL.md            # Documentation agent — docs and JSDoc
+│   └── pending-issues.json      # Issue queue (synced from GitHub)
 ├── .github/workflows/
 │   ├── deploy.yml               # Build & deploy to GitHub Pages
 │   └── test.yml                 # Type check, lint, test, build on push
@@ -179,11 +195,19 @@ Open `http://localhost:5173/babybloom/` in your browser.
 
 ## Autonomous Bot Pipeline
 
-BabyBloom uses a self-contained automation pipeline:
+BabyBloom uses a multi-agent automation pipeline that turns Telegram messages into shipped features:
 
-1. **Telegram Bot** (`bot/bot.js`) — You send feature requests or bug reports via Telegram; the bot creates GitHub issues automatically.
-2. **Claude Worker** (Cowork scheduled task) — Runs every 4 hours, reads open issues, implements them in the codebase one by one with full type-checking.
-3. **Pipeline** (`bot/pipeline.sh`) — Runs via Mac LaunchAgent, pushes commits to GitHub, closes resolved issues, waits for CI, and sends a Telegram notification with the build result.
+1. **Telegram Bot** (`bot/bot.js`) — Send feature requests or bug reports via Telegram; the bot creates labeled GitHub issues automatically.
+2. **Pipeline** (`bot/pipeline.sh`) — Runs every 30 minutes via Mac LaunchAgent. Syncs all open GitHub issues into the local queue.
+3. **Triage Agent** — Classifies each issue and routes it to the right specialist: implementation, infrastructure, analysis, or documentation.
+4. **Specialist Agents** — Each handles its domain with strict boundaries:
+   - **Implementation** — Code changes in `src/` and `tests/` only
+   - **Infrastructure** — Pipeline, deploy scripts, CI workflows
+   - **Analysis** — Read-only investigation, posts findings as GitHub comments
+   - **Documentation** — Markdown files and JSDoc comments
+5. **Deploy** (`bot/deploy.sh`) — Commits changes, pushes to GitHub, closes resolved issues, waits for CI, and sends Telegram notifications with the build result.
+
+See [bot/README.md](bot/README.md) for setup instructions.
 
 ---
 
@@ -192,9 +216,10 @@ BabyBloom uses a self-contained automation pipeline:
 - All data is stored in **IndexedDB on your device only**
 - **No analytics, no tracking, no cookies**
 - **No server, no database, no accounts**
-- **No data ever leaves your browser**
+- **No data ever leaves your browser** (partner sync uses offline copy/paste codes)
 - Works completely offline after first visit
 - Export your data anytime as a JSON file
+- Sentry error tracking is **privacy-hardened**: no PII, no IP collection, no session replay. Baby names, health data, medications, allergies, and contacts are scrubbed before any error report is sent. The app functions normally even if Sentry is unreachable.
 
 ---
 

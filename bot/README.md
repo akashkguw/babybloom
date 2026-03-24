@@ -92,13 +92,60 @@ The bot auto-detects categories from your message:
 
 All issues also get a `telegram` label so you can filter them.
 
+## Multi-Agent Pipeline
+
+Beyond the Telegram bot, BabyBloom includes a full automation pipeline that processes issues using specialized Claude agents:
+
+```
+Telegram message → bot.js → GitHub Issue → pipeline.sh → Triage Agent
+                                                              ↓
+                                          ┌─────────────┬─────┴──────┬──────────────┐
+                                          ↓             ↓            ↓              ↓
+                                    Implementation  Infrastructure  Analysis   Documentation
+                                      (IMPL)          (INFRA)      (read-only)   (DOCS)
+                                          ↓             ↓            ↓              ↓
+                                       deploy.sh → push → close issue → Telegram notify
+```
+
+### Agent skills
+
+| Agent | File | What it does |
+|-------|------|-------------|
+| Triage | `TRIAGE_SKILL.md` | Classifies issues, enriches descriptions, routes to specialist |
+| Implementation | `IMPL_SKILL.md` | Code changes in `src/` and `tests/` only |
+| Infrastructure | `INFRA_SKILL.md` | Pipeline, deploy, CI, bot.js changes |
+| Analysis | `ANALYSIS_SKILL.md` | Read-only investigation, posts findings as comments |
+| Documentation | `DOCS_SKILL.md` | Markdown and JSDoc updates |
+
+### Pipeline scripts
+
+| Script | Trigger | What it does |
+|--------|---------|-------------|
+| `pipeline.sh` | Mac LaunchAgent (every 30 min) | Syncs GitHub issues, dispatches to Claude agents |
+| `deploy.sh` | Called by pipeline after implementation | Commits, pushes, closes issues, notifies via Telegram |
+
+### Environment variables
+
+All secrets are loaded from `bot/.env` (never hardcoded):
+
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather |
+| `GITHUB_TOKEN` | Fine-grained PAT with Issues read/write |
+| `GITHUB_REPO` | Repository in `owner/repo` format |
+| `ALLOWED_USERS` | Comma-separated Telegram usernames |
+| `TELEGRAM_CHAT_ID` | Chat ID for pipeline notifications |
+| `VITE_SENTRY_DSN` | Sentry DSN for error tracking (injected at build time) |
+
 ## Security
 
-Set `ALLOWED_USERS` to restrict who can create issues. Only listed Telegram usernames will be able to use the bot.
+- `ALLOWED_USERS` restricts who can create issues via Telegram
+- `deploy.sh` runs a secret scan before every commit — hard stops if tokens are detected in staged files
+- `.env` and `pending-issues.json` are gitignored
+- GitHub PAT uses fine-grained permissions (Issues only)
 
 ## GitHub Actions CI
 
-The repo includes a CI workflow (`.github/workflows/test.yml`) that runs on every push to `main`:
-- Validates `index.html` has all critical features
-- Runs unit tests for merge logic and voice parser
-- Checks service worker version
+The repo includes CI workflows in `.github/workflows/`:
+- `deploy.yml` — Type check → build → deploy to GitHub Pages (injects `VITE_SENTRY_DSN` from repository secrets)
+- `test.yml` — Validates critical features, runs unit tests
