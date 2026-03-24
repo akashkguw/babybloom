@@ -589,6 +589,87 @@ export default function HomeTab({
           });
         }
 
+        // ── SmartStatus: feed/diaper/sleep cards (inline) ──
+        {
+          const allFeeds = logs.feed || [];
+          const todayFeeds = allFeeds.filter((e) => e.date === td);
+          const lastFeed = allFeeds.length > 0 ? allFeeds[0] : null;
+          const lastFeedMs = lastFeed && lastFeed.date && lastFeed.time
+            ? (() => { const dp = lastFeed.date.split('-'); const tp = lastFeed.time.split(':'); return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime(); })()
+            : 0;
+          const feedHrs = lastFeedMs ? (Date.now() - lastFeedMs) / 3600000 : 999;
+          const feedWarn = age < 3 ? 3 : age < 6 ? 3.5 : 4;
+          const feedDanger = age < 3 ? 4 : age < 6 ? 5 : 6;
+          const fmtAgo = (h: number) => h < 1 ? Math.round(h * 60) + 'm ago' : h < 24 ? Math.round(h * 10) / 10 + 'h ago' : Math.round(h / 24) + 'd ago';
+
+          if (feedHrs >= feedDanger) {
+            slides.push({ id: 'ss-feed', priority: 0, node: (
+              <div style={{ padding: '10px 12px', background: C.pl, borderRadius: 14, borderLeft: '3px solid ' + C.p }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>🍼</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.p }}>Feed now</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{lastFeedMs ? 'Last: ' + fmtAgo(feedHrs) : 'No feeds logged'}</div>
+              </div>
+            )});
+          } else if (feedHrs >= feedWarn) {
+            slides.push({ id: 'ss-feed', priority: 1, node: (
+              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>🍼</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Feed soon</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>Last: {fmtAgo(feedHrs)}</div>
+              </div>
+            )});
+          }
+
+          const allDiapers = logs.diaper || [];
+          const todayDiapers = allDiapers.filter((e) => e.date === td);
+          const lastDiaper = allDiapers.length > 0 ? allDiapers[0] : null;
+          const lastDiaperMs = lastDiaper && lastDiaper.date && lastDiaper.time
+            ? (() => { const dp = lastDiaper.date.split('-'); const tp = lastDiaper.time.split(':'); return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime(); })()
+            : 0;
+          const diaperHrs = lastDiaperMs ? (Date.now() - lastDiaperMs) / 3600000 : 999;
+          const wetToday = todayDiapers.filter((e) => e.type === 'Wet' || e.type === 'Both').length;
+          const wetTarget = age < 3 ? 6 : 4;
+
+          if (diaperHrs >= 8 || (wetToday < Math.floor(wetTarget / 2) && new Date().getHours() >= 14)) {
+            slides.push({ id: 'ss-diaper', priority: 0, node: (
+              <div style={{ padding: '10px 12px', background: C.pl, borderRadius: 14, borderLeft: '3px solid ' + C.p }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>💧</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.p }}>{wetToday < wetTarget ? 'Check hydration' : 'Check diaper'}</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{wetToday} wet today · last {fmtAgo(diaperHrs)}</div>
+              </div>
+            )});
+          } else if (diaperHrs >= 5) {
+            slides.push({ id: 'ss-diaper', priority: 1, node: (
+              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>💧</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Check soon</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{wetToday} wet today</div>
+              </div>
+            )});
+          }
+
+          const sleepTarget = age < 3 ? 16 : age < 6 ? 14 : age < 12 ? 13 : 12;
+          if (!isSleeping && sleepHrsToday < sleepTarget * 0.3 && new Date().getHours() >= 16) {
+            slides.push({ id: 'ss-sleep', priority: 1, node: (
+              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>😴</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Needs more sleep</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{sleepHrsToday}h of ~{sleepTarget}h target</div>
+              </div>
+            )});
+          }
+        }
+
         // ── Overdue vaccine (priority 0 if overdue, 2 if upcoming) ──
         if (nextAction) {
           slides.push({
