@@ -75,10 +75,10 @@ token = "$GITHUB_TOKEN"
 repo  = "$REPO"
 queue_path = "$QUEUE_FILE"
 
-# Fetch open telegram-labeled issues from GitHub
+# Fetch all open issues from GitHub (telegram + manually created)
 try:
     req = urllib.request.Request(
-        f"https://api.github.com/repos/{repo}/issues?labels=telegram&state=open&per_page=50",
+        f"https://api.github.com/repos/{repo}/issues?state=open&per_page=50",
         headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     )
     gh_issues = json.loads(urllib.request.urlopen(req, timeout=10, context=ssl_ctx).read())
