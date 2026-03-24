@@ -32,6 +32,7 @@ bot/.env.*
 !bot/.env.example
 bot/bot.log
 bot/bot.lock
+bot/.deploy_env
 bot/pipeline.log
 bot/pending-issues.json
 bot/node_modules/

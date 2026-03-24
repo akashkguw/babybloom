@@ -117,11 +117,16 @@ EOF
 # ─── Check for uncommitted changes — run deploy.sh if needed ───
 # Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
 DEPLOY_PUSHED_SHA=""
+rm -f "$BOT_DIR/.deploy_env"
 if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
   echo "📝 Uncommitted changes found — running deploy.sh..."
   bash "$BOT_DIR/deploy.sh"
-  # Capture the SHA deploy.sh just pushed so we can wait for CI below
-  DEPLOY_PUSHED_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "")
+  # Read SHA from deploy.sh's env file
+  if [ -f "$BOT_DIR/.deploy_env" ]; then
+    source "$BOT_DIR/.deploy_env"
+    rm -f "$BOT_DIR/.deploy_env"
+  fi
+  [ -z "$DEPLOY_PUSHED_SHA" ] && DEPLOY_PUSHED_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "")
   echo "📌 deploy.sh pushed: $DEPLOY_PUSHED_SHA"
 fi
 

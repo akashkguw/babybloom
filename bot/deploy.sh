@@ -254,19 +254,7 @@ print("\n".join(resolved))
 PYEOF
 )
 
-# ─── Telegram notification ───
-MSG="🚀 *BabyBloom Deployed!*
-
-📦 Commit: \`$COMMIT_SHA\`
-📁 Files: $CHANGED"
-[ -n "$ISSUE_LIST" ] && MSG="$MSG
-
-Issues resolved:
-$(echo -e "$ISSUE_LIST")"
-MSG="$MSG
-
-[View on GitHub](https://github.com/$REPO/commit/$COMMIT_SHA)"
-
-send_telegram "$MSG"
+# ─── Export SHA for pipeline.sh (notification sent there after CI completes) ───
+echo "DEPLOY_PUSHED_SHA=$COMMIT_SHA" >> "$BOT_DIR/.deploy_env"
 echo ""
-echo "🎉 Deploy complete! Telegram notified."
+echo "✅ Deploy complete. SHA=$COMMIT_SHA (notification deferred to pipeline.sh post-CI)"
