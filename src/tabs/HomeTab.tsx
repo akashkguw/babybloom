@@ -106,14 +106,14 @@ export default function HomeTab({
   const quickLogWarnings = useMemo(() => {
     // Thresholds in hours: [warningStart, dangerStart]
     // After warningStart hours → amber tint; after dangerStart hours → red tint
-    const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number }> = {
-      'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6 },
-      'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6 },
-      'Tummy':    { cat: 'sleep', types: ['Tummy Time'], warnH: 48, dangerH: 72 },
-      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10 },
-      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48 },
+    const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
+      'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6, warnMsg: 'Left breast not fed in over {h}h', dangerMsg: 'Left breast not fed in over {h}h — feed soon', neverMsg: 'No left breast feeds logged yet' },
+      'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6, warnMsg: 'Right breast not fed in over {h}h', dangerMsg: 'Right breast not fed in over {h}h — feed soon', neverMsg: 'No right breast feeds logged yet' },
+      'Tummy':    { cat: 'sleep', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' },
+      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — check hydration', neverMsg: 'No wet diapers logged yet' },
+      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — monitor closely', neverMsg: 'No dirty diapers logged yet' },
     };
-    const warnings: Record<string, 'warn' | 'danger' | null> = {};
+    const warnings: Record<string, { level: 'warn' | 'danger'; reason: string } | null> = {};
     const nowMs = Date.now();
     for (const [label, cfg] of Object.entries(thresholds)) {
       const entries = logs[cfg.cat] || [];
@@ -130,16 +130,31 @@ export default function HomeTab({
       }
       if (lastMs === 0) {
         // No log ever — show danger if birth exists (baby needs care)
-        warnings[label] = birth ? 'danger' : null;
+        warnings[label] = birth ? { level: 'danger', reason: cfg.neverMsg } : null;
       } else {
         const hoursAgo = (nowMs - lastMs) / 3600000;
-        if (hoursAgo >= cfg.dangerH) warnings[label] = 'danger';
-        else if (hoursAgo >= cfg.warnH) warnings[label] = 'warn';
+        const hStr = hoursAgo < 1 ? Math.round(hoursAgo * 60) + 'm' : Math.round(hoursAgo) + '';
+        if (hoursAgo >= cfg.dangerH) warnings[label] = { level: 'danger', reason: cfg.dangerMsg.replace('{h}', hStr) };
+        else if (hoursAgo >= cfg.warnH) warnings[label] = { level: 'warn', reason: cfg.warnMsg.replace('{h}', hStr) };
         else warnings[label] = null;
       }
     }
     return warnings;
   }, [logs, birth]);
+
+  // Long-press tooltip state for quick log buttons
+  const [qlTooltip, setQlTooltip] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+  const startLongPress = useCallback((reason: string) => {
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      setQlTooltip(reason);
+      setTimeout(() => setQlTooltip(null), 2500);
+    }, 400);
+  }, [clearLongPress]);
 
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
@@ -1054,7 +1069,8 @@ export default function HomeTab({
               highlight: isSleeping,
             },
           ].map((q: any) => {
-            const warn = quickLogWarnings[q.l] || null;
+            const warnInfo = quickLogWarnings[q.l] || null;
+            const warn = warnInfo?.level || null;
             const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
             const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
             const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
@@ -1063,6 +1079,10 @@ export default function HomeTab({
               key={q.l}
               className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
               onClick={q.dis ? undefined : q.fn}
+              onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
+              onTouchEnd={warnInfo ? clearLongPress : undefined}
+              onTouchCancel={warnInfo ? clearLongPress : undefined}
+              onContextMenu={warnInfo ? (e: React.MouseEvent) => { e.preventDefault(); setQlTooltip(warnInfo.reason); setTimeout(() => setQlTooltip(null), 2500); } : undefined}
               style={{
                 textAlign: 'center',
                 padding: '8px 2px',
@@ -1081,6 +1101,17 @@ export default function HomeTab({
             );
           })}
         </div>
+        {/* Long-press tooltip */}
+        {qlTooltip && (
+          <div style={{
+            marginTop: 8, padding: '8px 12px', borderRadius: 10,
+            background: C.pl, border: '1px solid ' + C.p + '33',
+            fontSize: 11, color: C.t, lineHeight: 1.4, textAlign: 'center',
+            animation: 'fadeIn 0.15s ease',
+          }}>
+            {qlTooltip}
+          </div>
+        )}
       </Cd>
 
       {/* ═══ QUICK FEED BOTTOM SHEET — Formula/Pumped amount entry ═══ */}

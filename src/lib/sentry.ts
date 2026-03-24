@@ -55,28 +55,31 @@ export function initSentry() {
     ],
 
     beforeSend(event) {
-      // Scrub breadcrumb data
-      if (event.breadcrumbs) {
-        event.breadcrumbs = event.breadcrumbs.map((b) => ({
-          ...b,
-          data: b.data ? scrub(b.data) : b.data,
-        }));
+      try {
+        // Scrub breadcrumb data
+        if (event.breadcrumbs) {
+          event.breadcrumbs = event.breadcrumbs.map((b) => ({
+            ...b,
+            data: b.data ? scrub(b.data) : b.data,
+          }));
+        }
+
+        // Scrub extra context
+        if (event.extra) event.extra = scrub(event.extra);
+        if (event.contexts) event.contexts = scrub(event.contexts);
+
+        // Scrub request body/query strings that might contain data
+        if (event.request) {
+          delete event.request.cookies;
+          delete event.request.data;
+          if (event.request.query_string) event.request.query_string = '[Redacted]';
+        }
+
+        // Never attach user identity
+        delete event.user;
+      } catch {
+        // If scrubbing fails, still send the event
       }
-
-      // Scrub extra context
-      if (event.extra) event.extra = scrub(event.extra);
-      if (event.contexts) event.contexts = scrub(event.contexts);
-
-      // Scrub request body/query strings that might contain data
-      if (event.request) {
-        delete event.request.cookies;
-        delete event.request.data;
-        if (event.request.query_string) event.request.query_string = '[Redacted]';
-      }
-
-      // Never attach user identity
-      delete event.user;
-
       return event;
     },
 
