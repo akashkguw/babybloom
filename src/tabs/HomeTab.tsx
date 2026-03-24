@@ -886,85 +886,7 @@ export default function HomeTab({
         );
       })()}
 
-      {/* ═══ ACTIVE FEED TIMER — compact banner ═══ */}
-      {feedTimer && (() => {
-        const nudgeThresholds: { [key: string]: number } = {
-          'Breast L': 35 * 60, 'Breast R': 35 * 60,
-          'Tummy Time': 20 * 60,
-        };
-        const threshold = nudgeThresholds[feedTimer.type] || 45 * 60;
-        const isLong = feedElapsed >= threshold;
-        return (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: '10px 14px',
-            background: isLong ? C.wl : C.al,
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            border: isLong ? '1px solid ' + C.w : 'none',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 18 }}>{feedTimer.type === 'Tummy Time' ? '🧒' : '🤱'}</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: isLong ? C.w : C.a }}>{feedTimer.type}</div>
-              <div style={{ fontSize: 11, color: C.tl }}>since {fmtTime(feedTimer.startTimeStr)}</div>
-              {isLong && (
-                <div style={{ fontSize: 10, color: C.w, fontWeight: 600, marginTop: 2 }}>
-                  Still going? Tap Done if finished
-                </div>
-              )}
-            </div>
-          </div>
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 800,
-              color: C.a,
-              fontVariantNumeric: 'tabular-nums',
-              minWidth: 52,
-              textAlign: 'center',
-            }}
-          >
-            {Math.floor(feedElapsed / 60)}:{String(feedElapsed % 60).padStart(2, '0')}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <div
-              onClick={stopFeedTimer}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 10,
-                background: C.a,
-                color: 'white',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Done
-            </div>
-            <div
-              onClick={cancelFeedTimer}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 10,
-                background: C.cd,
-                border: '1px solid ' + C.b,
-                color: C.tl,
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      {/* Feed timer banner removed — now integrated into Quick Log card */}
 
       {/* ═══ CONTINUE / ADD TO PREVIOUS — shows when recent feed within 30 min, no timer running ═══ */}
       {!feedTimer &&
@@ -1031,7 +953,7 @@ export default function HomeTab({
           );
         })()}
 
-      {/* ═══ QUICK LOG — uniform 4-column grid with inline quantity expand ═══ */}
+      {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
         {(() => {
@@ -1046,6 +968,65 @@ export default function HomeTab({
             quickLog('feed', { type: quickFeedType!, oz: ozVal, amount: val + ' ' + unit }, quickFeedType!);
             closeQL();
           };
+
+          // Whether there's an active timer context (feed timer or sleeping)
+          const hasActiveTimer = !!feedTimer || !!isSleeping;
+          // Timer display info
+          const timerEmoji = feedTimer
+            ? (feedTimer.type === 'Tummy Time' ? '🧒' : '🤱')
+            : '😴';
+          const timerLabel = feedTimer
+            ? feedTimer.type
+            : (lastSleepEntry ? lastSleepEntry.type : 'Sleep');
+          const timerSince = feedTimer
+            ? fmtTime(feedTimer.startTimeStr)
+            : (lastSleepEntry ? fmtTime(lastSleepEntry.time) : '');
+          const timerColor = feedTimer ? C.a : C.pu;
+          const timerBgColor = feedTimer ? C.al : C.pul;
+
+          // Nudge thresholds for feed timer
+          const nudgeThresholds: { [key: string]: number } = {
+            'Breast L': 35 * 60, 'Breast R': 35 * 60, 'Tummy Time': 20 * 60,
+          };
+          const feedThreshold = feedTimer ? (nudgeThresholds[feedTimer.type] || 45 * 60) : 0;
+          const isLong = feedTimer ? feedElapsed >= feedThreshold : false;
+
+          // Companion items — things you can log while a timer is running
+          const companionItems: { e: string; l: string; fn: () => void }[] = [];
+          if (feedTimer) {
+            // During breast/tummy/feed: can log diapers and sleep
+            companionItems.push(
+              { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet') },
+              { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty') },
+            );
+            if (!isSleeping) {
+              companionItems.push({
+                e: '😴', l: 'Sleep',
+                fn: () => quickLog('sleep', { type: autoSleepType() }, 'Sleep'),
+              });
+            }
+            // If breast feeding, offer switch to the other side
+            if (feedTimer.type === 'Breast L') {
+              companionItems.push({
+                e: '🔄', l: 'Switch R',
+                fn: () => { stopFeedTimer(); startFeedTimer('Breast R'); },
+              });
+            } else if (feedTimer.type === 'Breast R') {
+              companionItems.push({
+                e: '🔄', l: 'Switch L',
+                fn: () => { stopFeedTimer(); startFeedTimer('Breast L'); },
+              });
+            }
+          } else if (isSleeping) {
+            // During sleep: can log diapers and feeds
+            companionItems.push(
+              { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet') },
+              { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty') },
+              { e: '🍼', l: 'Formula', fn: () => { setQuickFeedType('Formula'); setSliderVal(presets[0]); } },
+            );
+          }
+
+          // All quick log items for normal grid
           const qlItems = [
             {
               e: '🤱', l: 'Breast L',
@@ -1084,15 +1065,14 @@ export default function HomeTab({
               e: isSleeping ? '⏰' : '😴',
               l: isSleeping ? 'Wake Up' : 'Sleep',
               fn: () => {
-                const lbl = isSleeping ? 'Wake Up' : 'Sleep';
-                if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, lbl);
-                else quickLog('sleep', { type: autoSleepType() }, lbl);
+                if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up');
+                else quickLog('sleep', { type: autoSleepType() }, 'Sleep');
               },
               active: false, dis: false, highlight: isSleeping, needsQty: false,
             },
           ];
 
-          // ─── Expanded inline quantity selector ───
+          // ─── Expanded inline quantity selector (Formula / Breast Milk) ───
           if (quickFeedType) {
             const activeItem = qlItems.find((q) => q.qType === quickFeedType);
             const displayVal = isMl ? Math.round(sliderVal) : sliderVal.toFixed(1);
@@ -1159,6 +1139,91 @@ export default function HomeTab({
             );
           }
 
+          // ─── Active timer view (feed timer or sleeping) ───
+          if (hasActiveTimer) {
+            return (
+              <div style={{ animation: 'qlFadeScale 0.3s cubic-bezier(0.22,1,0.36,1)' }}>
+                {/* Timer header: emoji + label + elapsed + actions */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 14,
+                  background: isLong ? C.wl : timerBgColor,
+                  border: isLong ? '1px solid ' + C.w + '66' : '1px solid ' + timerColor + '33',
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: 22 }}>{timerEmoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: isLong ? C.w : timerColor }}>{timerLabel}</div>
+                    <div style={{ fontSize: 10, color: C.tl }}>since {timerSince}</div>
+                    {isLong && (
+                      <div style={{ fontSize: 9, color: C.w, fontWeight: 600, marginTop: 1 }}>
+                        Still going? Tap Done if finished
+                      </div>
+                    )}
+                  </div>
+                  {feedTimer && (
+                    <div style={{
+                      fontSize: 20, fontWeight: 800, color: isLong ? C.w : C.a,
+                      fontVariantNumeric: 'tabular-nums', minWidth: 48, textAlign: 'center',
+                    }}>
+                      {Math.floor(feedElapsed / 60)}:{String(feedElapsed % 60).padStart(2, '0')}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    <div
+                      onClick={feedTimer ? stopFeedTimer : () => quickLog('sleep', { type: 'Wake Up' }, 'Wake Up')}
+                      style={{
+                        padding: '6px 12px', borderRadius: 10,
+                        background: timerColor, color: '#fff',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {feedTimer ? 'Done' : 'Wake'}
+                    </div>
+                    <div
+                      onClick={feedTimer ? cancelFeedTimer : () => quickLog('sleep', { type: 'Wake Up' }, 'Wake Up')}
+                      style={{
+                        padding: '6px 10px', borderRadius: 10,
+                        background: C.pl, color: C.p,
+                        fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        border: '1px solid ' + C.p + '44',
+                        display: feedTimer ? 'block' : 'none',
+                      }}
+                    >
+                      Cancel
+                    </div>
+                  </div>
+                </div>
+
+                {/* Companion items — things you can still log */}
+                {companionItems.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: C.tl, fontWeight: 600, marginBottom: 5, letterSpacing: 0.3 }}>
+                      ALSO LOG
+                    </div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      {companionItems.map((c) => (
+                        <div
+                          key={c.l}
+                          className={'ql-btn' + (flashBtn === c.l ? ' ql-flash' : '')}
+                          onClick={() => c.fn()}
+                          style={{
+                            flex: 1, textAlign: 'center', padding: '8px 4px',
+                            borderRadius: 12, background: C.bg, border: '1px solid ' + C.b,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ fontSize: 16 }}>{c.e}</div>
+                          <div style={{ fontSize: 9, color: C.tl, marginTop: 2, fontWeight: 600 }}>{c.l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           // ─── Normal 4-column grid ───
           return (
             <>
@@ -1211,46 +1276,6 @@ export default function HomeTab({
           );
         })()}
       </Cd>
-
-      {/* Quick feed bottom sheet removed — inline selector is now built into the grid */}
-
-      {/* Sleep status banner */}
-      {isSleeping && lastSleepEntry && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: '10px 14px',
-            background: C.pul,
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ fontSize: 13, color: C.pu }}>
-            <span style={{ fontWeight: 700 }}>Sleeping</span>
-            <span style={{ marginLeft: 6, fontSize: 11, color: C.tl }}>
-              {lastSleepEntry.type} since {fmtTime(lastSleepEntry.time)}
-            </span>
-          </div>
-          <div
-            onClick={() => {
-              quickLog('sleep', { type: 'Wake Up' });
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 10,
-              background: C.pu,
-              color: 'white',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Wake Up
-          </div>
-        </div>
-      )}
 
       {/* Quick Actions — with stats */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
