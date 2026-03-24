@@ -146,12 +146,15 @@ export default function HomeTab({
   // Long-press tooltip state for quick log buttons
   const [qlTooltip, setQlTooltip] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []);
   const startLongPress = useCallback((reason: string) => {
     clearLongPress();
+    longPressTriggered.current = false;
     longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
       setQlTooltip(reason);
       setTimeout(() => setQlTooltip(null), 2500);
     }, 400);
@@ -1104,10 +1107,10 @@ export default function HomeTab({
             <div
               key={q.l}
               className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
-              onClick={q.dis ? undefined : q.fn}
+              onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
               onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
-              onTouchEnd={warnInfo ? clearLongPress : undefined}
-              onTouchCancel={warnInfo ? clearLongPress : undefined}
+              onTouchEnd={warnInfo ? () => { clearLongPress(); } : undefined}
+              onTouchCancel={warnInfo ? () => { clearLongPress(); longPressTriggered.current = false; } : undefined}
               onContextMenu={warnInfo ? (e: React.MouseEvent) => { e.preventDefault(); setQlTooltip(warnInfo.reason); setTimeout(() => setQlTooltip(null), 2500); } : undefined}
               style={{
                 textAlign: 'center',
