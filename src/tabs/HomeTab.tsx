@@ -653,7 +653,7 @@ export default function HomeTab({
             }}
           >
             {/* Show current slide with peek of next slide (#75) */}
-            <div style={{ display: 'flex', gap: 8, transition: 'transform 0.3s ease', transform: `translateX(-${idx * 100}%)` }}>
+            <div style={{ display: 'flex', gap: 8, transition: 'transform 0.3s ease', transform: slides.length > 1 ? `translateX(calc(-${idx} * (88% + 8px)))` : undefined }}>
               {slides.map((s, i) => (
                 <div
                   key={s.id}
