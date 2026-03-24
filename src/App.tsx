@@ -635,6 +635,7 @@ function App() {
           volumeUnit={volumeUnit}
           setVolumeUnit={setVolumeUnit}
           onShowReport={() => { setShowSet(false); setShowReport(true); }}
+          onSync={() => { setShowSet(false); setShowSync(true); }}
         />
       ) : (
         <>

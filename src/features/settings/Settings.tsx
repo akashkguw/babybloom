@@ -1,14 +1,14 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { C } from '@/lib/constants/colors';
 import Button from '@/components/shared/Button';
 import Pill from '@/components/shared/Pill';
 import Icon from '@/components/shared/Icon';
 import ProfileManager from '@/features/profiles/ProfileManager';
 import SiriShortcutsSetup from '@/features/shortcuts/SiriShortcutsSetup';
-import { today, fmtDate } from '@/lib/utils/date';
+import { today } from '@/lib/utils/date';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
-import { dga, odb, dcl, ST } from '@/lib/db/indexeddb';
+import { dcl } from '@/lib/db/indexeddb';
 
 interface SettingsProps {
   onClose: () => void;
@@ -28,6 +28,7 @@ interface SettingsProps {
   volumeUnit: 'ml' | 'oz';
   setVolumeUnit: (unit: 'ml' | 'oz') => void;
   onShowReport?: () => void;
+  onSync?: () => void;
 }
 
 const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
@@ -52,16 +53,16 @@ export default function Settings({
   onAddProfile,
   onDeleteProfile,
   onRenameProfile,
-  logs,
-  checked,
-  vDone,
+  logs: _logs,
+  checked: _checked,
+  vDone: _vDone,
   reminders,
   setReminders,
   volumeUnit,
   setVolumeUnit,
   onShowReport,
+  onSync,
 }: SettingsProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div
@@ -235,61 +236,10 @@ export default function Settings({
         <Section title="Data" icon="💾">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Button
-              label="Export Backup"
-              onClick={() => {
-                dga()
-                  .then((d: any) => {
-                    const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
-                    const u = URL.createObjectURL(b);
-                    const a = document.createElement('a');
-                    a.href = u;
-                    a.download = 'babybloom-backup-' + today() + '.json';
-                    a.click();
-                    URL.revokeObjectURL(u);
-                  });
-              }}
+              label="Sync / Share Data"
+              onClick={() => { if (onSync) onSync(); }}
               color={C.s}
               full
-            />
-            <Button
-              label="Import Backup"
-              onClick={() => fileRef.current?.click()}
-              color={C.s}
-              outline
-              full
-            />
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                const r = new FileReader();
-                r.onload = (ev) => {
-                  try {
-                    const d = JSON.parse(ev.target?.result as string);
-                    odb()
-                      .then((db: any) => {
-                        const tx = db.transaction(ST, 'readwrite');
-                        const s = tx.objectStore(ST);
-                        s.clear();
-                        Object.entries(d).forEach(([k, v]: any) => {
-                          s.put({ key: k, value: v });
-                        });
-                        tx.oncomplete = () => {
-                          setTimeout(() => {
-                            location.reload();
-                          }, 600);
-                        };
-                      });
-                  } catch {
-                    // invalid file
-                  }
-                };
-                r.readAsText(f);
-              }}
-              style={{ display: 'none' }}
             />
             <Button
               label="Generate Pediatrician Report"
