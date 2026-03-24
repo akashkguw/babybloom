@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
+import { Card as Cd, Button as Btn, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
 import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
-import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
+import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
+import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { VACCINES } from '@/lib/constants/vaccines';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
-import SmartStatus from '@/features/insights/SmartStatus';
-import PredictiveNudges from '@/features/insights/PredictiveNudges';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 
 interface LogEntry {
@@ -468,7 +466,7 @@ export default function HomeTab({
   const td = today();
   const feedCt = (logs.feed || []).filter((x) => x.date === td).length;
   const diaperCt = (logs.diaper || []).filter((x) => x.date === td).length;
-  const sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up').length;
+  const _sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up').length;
 
   let sleepMinsToday = 0;
   (logs.sleep || [])
@@ -485,11 +483,11 @@ export default function HomeTab({
       feedOzToday += x.oz || 0;
     });
 
-  let feedMinToday = 0;
+  let _feedMinToday = 0;
   (logs.feed || [])
     .filter((x) => x.date === td && x.mins && !x.oz)
     .forEach((x) => {
-      feedMinToday += x.mins || 0;
+      _feedMinToday += x.mins || 0;
     });
 
   // ═══ Last sleep status ═══
@@ -515,24 +513,12 @@ export default function HomeTab({
 
   // ═══ Weekly stats ═══
   let weekFeeds = 0,
-    weekDiapers = 0,
-    weekSleeps = 0,
-    prevWeekFeeds = 0,
-    prevWeekDiapers = 0;
+    weekDiapers = 0;
   for (let i = 0; i < 7; i++) {
     const dk = daysAgo(i);
     weekFeeds += (logs.feed || []).filter((e) => e.date === dk).length;
     weekDiapers += (logs.diaper || []).filter((e) => e.date === dk).length;
-    weekSleeps += (logs.sleep || []).filter((e) => e.date === dk && e.type !== 'Wake Up').length;
   }
-  for (let i = 7; i < 14; i++) {
-    const dk = daysAgo(i);
-    prevWeekFeeds += (logs.feed || []).filter((e) => e.date === dk).length;
-    prevWeekDiapers += (logs.diaper || []).filter((e) => e.date === dk).length;
-  }
-  const feedTrend = weekFeeds > prevWeekFeeds ? '↑' : weekFeeds < prevWeekFeeds ? '↓' : '→';
-  const diaperTrend =
-    weekDiapers > prevWeekDiapers ? '↑' : weekDiapers < prevWeekDiapers ? '↓' : '→';
 
   // ═══ Next critical action (vaccine) ═══
   const ageToMonths: { [key: string]: number } = {
@@ -710,7 +696,7 @@ export default function HomeTab({
         // ── SmartStatus: feed/diaper/sleep cards (inline) ──
         {
           const allFeeds = logs.feed || [];
-          const todayFeeds = allFeeds.filter((e) => e.date === td);
+          const _todayFeeds = allFeeds.filter((e) => e.date === td);
           const lastFeed = allFeeds.length > 0 ? allFeeds[0] : null;
           const lastFeedMs = lastFeed && lastFeed.date && lastFeed.time
             ? (() => { const dp = lastFeed.date.split('-'); const tp = lastFeed.time.split(':'); return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime(); })()
