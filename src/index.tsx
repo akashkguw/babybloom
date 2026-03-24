@@ -52,7 +52,7 @@ class AppErrorBoundary extends React.Component<
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // Try to report to Sentry if available, but never throw
     try {
-      import('@sentry/react').then((Sentry) => {
+      import('@/lib/sentry').then(({ Sentry }) => {
         Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
       });
     } catch {
