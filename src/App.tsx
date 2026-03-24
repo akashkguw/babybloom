@@ -60,7 +60,7 @@ function App() {
   const [selMo, setSelMo] = useState<number>(0);
   const [checked, setCkR] = useState<any>({});
   const [vDone, setVDR] = useState<any>({});
-  const [logs, setLgR] = useState<any>({});
+  const [logs, setLgR] = useState<any>({ feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
   const [teeth, setThR] = useState<any>({});
   const [firsts, setFiR] = useState<any[]>([]);
   const [emergencyContacts, setECR] = useState<EmergencyContact[]>([
@@ -340,7 +340,7 @@ function App() {
           if (r[0] != null) setBR(r[0]);
           if (r[1] != null) setCkR(r[1]);
           if (r[2] != null) setVDR(r[2]);
-          if (r[3] != null) setLgR(r[3]);
+          setLgR(r[3] || { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           if (r[4] != null) setThR(r[4]);
           if (r[5] != null) setFiR(r[5]);
           ds(`profileData_${activeId}`, {
@@ -355,11 +355,15 @@ function App() {
         clearTimeout(safetyTimer);
         setLoading(false);
       }).catch(() => {
+        // Ensure logs are properly initialized even on profile data load failure
+        setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
         clearTimeout(safetyTimer);
         setLoading(false);
       });
     }).catch((err: Error) => {
       console.error('BabyBloom load error:', err);
+      // Ensure logs are properly initialized even on full load failure
+      setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
       clearTimeout(safetyTimer);
       setLoading(false);
     });
@@ -630,6 +634,7 @@ function App() {
           setReminders={setReminders}
           volumeUnit={volumeUnit}
           setVolumeUnit={setVolumeUnit}
+          onShowReport={() => { setShowSet(false); setShowReport(true); }}
         />
       ) : (
         <>

@@ -99,22 +99,6 @@
     "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
   },
   {
-    "number": 69,
-    "title": "red flags in the caurasel is static",
-    "body": "## \ud83d\udc1b Bug Report\n\nred flags in the caurasel is static. I want it to be specific given the recent data for p0 log items. If not there don\u2019t show. It should also not reduce the load time for the app so ensure to implement it safely.\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "enhancement"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/69",
-    "created_at": "2026-03-24T11:01:03.415Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "The user reports that the red flags carousel on the dashboard is currently static (hardcoded content). They want it to be dynamic \u2014 showing red flag alerts only when relevant based on recent P0-priority log items (e.g., feeding, sleep, diaper data).\n- Affected component: Dashboard carousel / red flags section\n- Current behaviour: Red flags are always shown with static/hardcoded content regardless of actual baby data\n- Expected behaviour: Red flags should be derived from recent P0 log data; if no concerning data exists, the red flags carousel should not appear at all\n- Edge cases: No log data yet (new user), partial data, ensure lazy/deferred loading so it does not increase initial app load time\n- Acceptance criteria: Red flags are dynamic based on recent logs, hidden when not applicable, and do not degrade app performance",
-    "implementation_notes": "Changes made:\n- Files changed: src/tabs/HomeTab.tsx (moved dynamic red flags block outside milestone guard)\n- The red flag carousel slide was nested inside an `if (ms)` block, meaning it only showed when milestone data existed. Moved it to be a sibling block so data-driven red flags show independently of milestone availability.\n- The useDynamicRedFlags hook (already existed in src/features/insights/useDynamicRedFlags.ts) computes P0 red flags from actual log data: feeding gaps, low wet diaper counts, dirty diaper gaps, week-over-week feeding volume drops, and tummy time gaps.\n- Red flags only render when there are actual concerns (dynamicRedFlags.length > 0) \u2014 carousel slide is hidden otherwise.\n- All computations are memoized (useMemo) so there is no impact on load time.\n- Removed duplicate useDataRedFlags.ts file that was accidentally created."
-  },
-  {
     "number": 70,
     "title": "When recording first, keyboard is going to away after every letter type",
     "body": "## \ud83d\udc1b Bug Report\n\nWhen recording first, keyboard is going to away after every letter type\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
@@ -125,6 +109,89 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/70",
     "created_at": "2026-03-24T11:06:43.557Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that when recording a \"first\" event, the keyboard dismisses after every single keystroke, making text entry impossible. This is likely a state update or re-render issue in the recording/input component that causes the input field to lose focus on each character typed. Affected area: the \"firsts\" recording feature input component in src/. Expected: keyboard stays open while typing. Current: keyboard closes after each letter. Acceptance criteria: user can type full sentences without keyboard dismissing.",
+    "implementation_notes": "Files changed: src/tabs/MilestonesTab.tsx\nApproach: Moved SecBody component definition outside the MilestonesTab component. When defined inside, React treats it as a new component type on every render (since the function reference changes), causing unmount/remount of the entire subtree including input fields. This caused mobile keyboards to dismiss after every keystroke. Moving it outside creates a stable reference."
+  },
+  {
+    "number": 71,
+    "title": "in settings there is outdated pediatrics report",
+    "body": "## \ud83d\udc1b Bug Report\n\nin settings there is outdated pediatrics report. Use the latest one which was created.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/71",
+    "created_at": "2026-03-24T11:30:12.304Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the pediatrics report accessible from Settings is outdated. The app should reference the latest/most recently created pediatrics report instead. Affected area: Settings page, specifically the pediatrics report link or embedded content. Expected: Settings shows the latest pediatrics report. Current: Shows an old/outdated version. Acceptance criteria: Settings page references and displays the most current pediatrics report data.",
+    "implementation_notes": "Files changed: src/features/settings/Settings.tsx, src/App.tsx\nApproach: Replaced the outdated inline HTML report generator in Settings with a callback to the newer PediatrReport component (which has period selection, better formatting, vaccine tracking, and proper data aggregation). Added onShowReport prop to Settings, wired it in App.tsx to close settings and show PediatrReport modal. Removed unused imports (daysAgo, fmtTime, fmtVol, volLabel)."
+  },
+  {
+    "number": 72,
+    "title": "after logging in for the first time, the blank page is shown",
+    "body": "## \ud83d\udc1b Bug Report\n\nafter logging in for the first time, the blank page is shown. After closing the app & then opening it works\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/72",
+    "created_at": "2026-03-24T11:31:47.579Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that after logging in for the first time, a blank page is shown. The app only works correctly after closing and reopening it. This suggests a race condition or missing initialization step on first login \u2014 likely the app state or data isn't fully loaded before rendering. Affected area: authentication flow, initial app load/routing after first login. Expected: app shows the main screen immediately after first login. Current: blank page until app restart. Acceptance criteria: first-time login leads directly to a functional main screen without needing to restart the app.",
+    "implementation_notes": "Files changed: src/App.tsx\nApproach: The blank page on first login was caused by logs state being initialized as {} instead of the expected structure with empty arrays. Changed initial logs state to include all categories (feed, diaper, sleep, growth, temp, bath, massage, meds, allergy) as empty arrays. Also ensured the else branch in profile data loading always sets logs to the proper structure, and both catch handlers initialize logs properly on failure. This prevents any downstream component from receiving an undefined category."
+  },
+  {
+    "number": 73,
+    "title": "when you merge the feeds, if the sides are changed(breast\u2019s), it still shows ...",
+    "body": "## \ud83d\udc1b Bug Report\n\nwhen you merge the feeds, if the sides are changed(breast\u2019s), it still shows risk to the later breast (if L was used initially, R is always red during that time)\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/73",
+    "created_at": "2026-03-24T11:34:57.332Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "When merging feeds where the breast side was changed (e.g., started with L then switched to R), the risk indicator still highlights the later breast incorrectly. If L was used first, R shows as red/risk during that merged time window even though the side was switched. Affected area: feed merging logic and breast-side risk calculation in the feeding module. Expected: after merging feeds with side changes, risk indicator reflects the actual side used at each point. Acceptance criteria: merged feeds correctly track which breast was used and show risk on the correct side.",
+    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx, src/features/feeding/mergeFeedSession.ts\nApproach: When merging feeds with different breast sides (e.g., Breast L then Breast R), the merged feed's type field now updates to the most recent breast side. Previously, the type stayed as the original, causing risk indicators to show danger on the wrong breast. Added isBreastSwitch detection that only applies when both the old and new types are breast feeds. The original side info is preserved in the notes field."
+  },
+  {
+    "number": 74,
+    "title": "feed now, check hydration etc should be part of caurasel",
+    "body": "## \ud83d\udc1b Bug Report\n\nfeed now, check hydration etc should be part of caurasel. If there are similar features club them and remove the bad one on this case\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/74",
+    "created_at": "2026-03-24T11:36:33.756Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User requests that \"Feed Now\", \"Check Hydration\" and similar quick-action features be consolidated into the carousel component. If there are duplicate or similar features, they should be clubbed together and the inferior version removed. Affected area: main dashboard/home screen carousel and quick-action buttons. Expected: related quick actions are part of the carousel, with duplicates consolidated. Acceptance criteria: feed now, check hydration, and similar features appear as carousel items; no redundant/duplicate action buttons remain.",
+    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\nApproach: Added the explore links (Activities, Safety, Report, Sync) as a carousel slide called \"Quick Actions\" with icon buttons. Removed the standalone horizontal explore links row that was previously below the summary cards. This consolidates similar navigation features into the carousel, reducing visual clutter and making the home screen more cohesive."
+  },
+  {
+    "number": 75,
+    "title": "the caurasel is good but how does someone know that scroll is needed, maybe s...",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe caurasel is good but how does someone know that scroll is needed, maybe show 1 & .25 of the next one?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/75",
+    "created_at": "2026-03-24T11:37:28.631Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the carousel has no visual affordance indicating that scrolling is possible. Suggestion: show 1 full card and approximately 0.25 of the next card to hint at scrollable content. Affected area: carousel component on the dashboard/home screen. Expected: carousel visually indicates more content is available by partially showing the next item. Current: no scroll hint, user may not realize they can swipe. Acceptance criteria: carousel shows a partial peek of the next card to indicate scrollability.",
+    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\nApproach: Changed carousel from showing one slide at a time to showing the current slide at 88% width with a visible peek (12%) of the next slide. Used CSS flexbox with overflow:hidden and translateX transform for smooth sliding. Non-active slides are shown at 50% opacity to visually hint that they are swipeable. This provides clear scroll affordance."
   }
 ]

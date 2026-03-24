@@ -309,9 +309,15 @@ export default function HomeTab({
     const last = feeds[0];
     const prevMins = last.mins || 0;
     const totalMins = prevMins + extraMins;
+    // When merging different breast sides, update type to the latest side
+    // so risk indicators reflect the actual last breast used (#73)
+    const isBreastSwitch = type && type !== last.type &&
+      (type === 'Breast L' || type === 'Breast R') &&
+      (last.type === 'Breast L' || last.type === 'Breast R');
     const updated = Object.assign({}, last, {
       mins: totalMins,
       amount: totalMins + ' min',
+      ...(isBreastSwitch ? { type } : {}),
       notes:
         (last.notes ? last.notes + '; ' : '') +
         '+ ' +
@@ -631,11 +637,46 @@ export default function HomeTab({
             ),
           });
         }
+        // Add explore/quick-action links as carousel slides (#74)
+        slides.push({
+          id: 'explore',
+          node: (
+            <div style={{ padding: '12px 14px', background: C.cd, borderRadius: 14, border: '1px solid ' + C.b }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.s, marginBottom: 8 }}>Quick Actions</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { l: 'Activities', e: '🎨', t: 'guide', s: 'activities' },
+                  { l: 'Safety', e: '🛡️', t: 'safety', s: 'tips' },
+                  { l: 'Report', e: '📋', t: '_report', s: '' },
+                  { l: 'Sync', e: '🔄', t: '_sync', s: '' },
+                ].map((q) => (
+                  <div
+                    key={q.l}
+                    onClick={() => setTab(q.t, q.s)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 4px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: C.bg,
+                      borderRadius: 10,
+                      border: '1px solid ' + C.b,
+                    }}
+                  >
+                    <div style={{ fontSize: 18 }}>{q.e}</div>
+                    <div style={{ fontSize: 9, color: C.t, fontWeight: 600, marginTop: 2 }}>{q.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ),
+        });
+
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
         return (
           <div
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: 12, overflow: 'hidden' }}
             onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
             onTouchEnd={(e) => {
               if (touchStartX.current === null) return;
@@ -646,7 +687,21 @@ export default function HomeTab({
               else if (diff > 0 && idx > 0) setCarouselIdx(idx - 1);
             }}
           >
-            {slides[idx].node}
+            {/* Show current slide with peek of next slide (#75) */}
+            <div style={{ display: 'flex', gap: 8, transition: 'transform 0.3s ease', transform: `translateX(-${idx * 100}%)` }}>
+              {slides.map((s, i) => (
+                <div
+                  key={s.id}
+                  style={{
+                    flex: '0 0 ' + (slides.length > 1 ? '88%' : '100%'),
+                    opacity: i === idx ? 1 : 0.5,
+                    transition: 'opacity 0.3s ease',
+                  }}
+                >
+                  {s.node}
+                </div>
+              ))}
+            </div>
             {slides.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 6 }}>
                 {slides.map((s, i) => (
@@ -1115,37 +1170,7 @@ export default function HomeTab({
 
       {/* (Tip is now part of the carousel above) */}
 
-      {/* Explore links (compact row) */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
-        {[
-          { l: 'Activities 🎨', t: 'guide', s: 'activities' },
-          { l: 'Safety 🛡️', t: 'safety', s: 'tips' },
-          { l: 'Report 📋', t: '_report', s: '' },
-          { l: 'Sync 🔄', t: '_sync', s: '' },
-        ].map((q: any) => (
-          <div
-            key={q.l}
-            onClick={() => {
-              setTab(q.t, q.s);
-            }}
-            style={{
-              flex: '1 0 auto',
-              padding: '8px 12px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: C.cd,
-              borderRadius: 10,
-              border: '1px solid ' + C.b,
-              fontSize: 11,
-              fontWeight: 600,
-              color: C.t,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {q.l}
-          </div>
-        ))}
-      </div>
+      {/* Explore links consolidated into carousel (#74) */}
 
       <div style={{ textAlign: 'center', padding: 8, color: C.tl, fontSize: 10 }}>
         Based on AAP, CDC & WHO guidelines

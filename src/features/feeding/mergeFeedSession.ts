@@ -36,9 +36,15 @@ export function mergeIntoLastFeed(logs: Logs, extraMins: number, type: string): 
   const last = feeds[0];
   const prevMins = last.mins || 0;
   const totalMins = prevMins + extraMins;
+  // When merging different breast sides, update type to the latest side
+  // so risk indicators reflect the actual last breast used (#73)
+  const isBreastSwitch = type && type !== last.type &&
+    (type === 'Breast L' || type === 'Breast R') &&
+    (last.type === 'Breast L' || last.type === 'Breast R');
   const updated = Object.assign({}, last, {
     mins: totalMins,
     amount: totalMins + ' min',
+    ...(isBreastSwitch ? { type } : {}),
     notes: ((last.notes || '') ? last.notes + '; ' : '') + '+ ' + extraMins + ' min' + (type && type !== last.type ? ' (' + type + ')' : ''),
   });
   const next = Object.assign({}, logs);

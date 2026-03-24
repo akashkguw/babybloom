@@ -53,6 +53,24 @@ const PRESET_MILESTONES = [
   "First Birthday",
 ];
 
+// Moved outside component to prevent remount on every render (fixes keyboard dismiss bug)
+function SecBody({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: C.cd,
+        borderRadius: "0 0 16px 16px",
+        border: "1px solid " + C.b,
+        borderTop: "none",
+        padding: "12px 16px 16px",
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 const MilestonesTab: React.FC<MilestonesTabProps> = ({
   age,
   selMo,
@@ -252,23 +270,7 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
     );
   }
 
-  // Section body wrapper
-  function SecBody({ children }: { children: React.ReactNode }) {
-    return (
-      <div
-        style={{
-          background: C.cd,
-          borderRadius: "0 0 16px 16px",
-          border: "1px solid " + C.b,
-          borderTop: "none",
-          padding: "12px 16px 16px",
-          marginBottom: 10,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
+  // SecBody moved outside component to fix keyboard dismiss bug (#70)
 
   return (
     <div className="ca" style={{ padding: "16px 16px 120px" }}>
