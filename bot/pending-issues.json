@@ -1,0 +1,133 @@
+[
+  {
+    "number": 8,
+    "title": "give an option to update the exiting GitHub issue info from telegram bot",
+    "body": "give an option to update the exiting GitHub issue info from telegram bot.\n\n---\n_Created via BabyBloom Telegram Bot_\n_Labels auto-detected: enhancement, telegram, bug, content_",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "bug",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/8",
+    "created_at": "2026-03-23T12:11:13.666Z",
+    "status": "skipped",
+    "skip_reason": "Requires changes to bot/bot.js (Telegram bot infrastructure) which is outside allowed file scope (only index.html and sw.js)"
+  },
+  {
+    "number": 9,
+    "title": "the GitHub updates from the bot should have detailed info as part of comment ...",
+    "body": "the GitHub updates from the bot should have detailed info as part of comment ensuring safe info & avoiding private info.\n\n---\n_Created via BabyBloom Telegram Bot_\n_Labels auto-detected: enhancement, telegram, content_",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/9",
+    "created_at": "2026-03-23T12:12:59.788Z",
+    "status": "skipped",
+    "skip_reason": "Requires changes to bot/bot.js (GitHub comment functionality) which is outside allowed file scope (only index.html and sw.js)"
+  },
+  {
+    "number": 30,
+    "title": "issues resolved is not coming in telegram message",
+    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/30",
+    "created_at": "2026-03-23T20:11:44.183Z",
+    "status": "skipped",
+    "skip_reason": "Fix requires editing bot/pipeline.sh which is a prohibited file (hard limit). The ISSUE_LIST variable construction and Telegram message assembly are entirely in pipeline.sh lines 194-324."
+  },
+  {
+    "number": 31,
+    "title": "Chicken is little hard",
+    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "feedback",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/31",
+    "created_at": "2026-03-23T20:31:02.308Z",
+    "status": "skipped",
+    "skip_reason": "Issue is too vague to implement. \"Chicken is little hard\" is general feedback about food texture but does not specify a concrete bug, feature request, or code change. The app already includes chicken in food guides with soft preparation notes (e.g. \"Pureed chicken\", \"Shredded chicken\", \"Turkey/chicken strips (soft)\"). No actionable change can be derived.",
+    "enhanced_description": "Vague user feedback about chicken texture in food guides. No specific bug or feature request identified."
+  },
+  {
+    "number": 34,
+    "title": "identify all the unnecessary features and clutter and help add it as a commen...",
+    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "bug"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/34",
+    "created_at": "2026-03-23T20:38:09.179Z",
+    "status": "skipped",
+    "skip_reason": "Issue requests analysis and a GitHub comment, not a code change. Posting a comment requires an external HTTP request (prohibited by hard limits). Additionally, \"unnecessary features and clutter\" is too vague with no clear acceptance criteria or code implementation path."
+  },
+  {
+    "number": 58,
+    "title": "the arrows for the date navigation for browsing past days is v small and not ...",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/58",
+    "created_at": "2026-03-24T08:45:31.737Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports the date navigation arrows (for browsing past days) are too small and not noticeable.\n- Affected component: Date navigation UI (likely in the daily tracker/feed view header)\n- Current behavior: Arrows are very small and hard to notice\n- Expected behavior: Arrows should be medium-sized and clearly visible\n- Acceptance criteria: Date navigation arrows are visually prominent, easy to tap on mobile, and consistent with the app design system",
+    "implementation_notes": "Files changed: src/tabs/LogTab.tsx\n- Increased date navigation arrow fontSize from 18px to 28px\n- Added fontWeight: 600 for bolder arrows\n- Expanded padding from 4px 8px to 8px 12px for larger tap targets\n- Added lineHeight: 1 for consistent vertical alignment\n- Applied to both previous-day and next-day buttons"
+  },
+  {
+    "number": 59,
+    "title": "the arrows for the date navigation for browsing past days is v small and not ...",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/59",
+    "created_at": "2026-03-24T08:45:33.058Z",
+    "status": "skipped",
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
+  },
+  {
+    "number": 60,
+    "title": "- I want dark mode as default",
+    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "ui"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/60",
+    "created_at": "2026-03-24T08:47:25.513Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User wants dark mode to be the default theme when the app first loads.\n- Affected component: Theme/appearance system (CSS variables, theme toggle logic)\n- Current behavior: App likely defaults to light mode on first visit\n- Expected behavior: App should default to dark mode for new users (first visit). Existing user preference should still be respected if already saved.\n- Edge cases: Users who already have a saved theme preference should not be affected. System preference (prefers-color-scheme) could also be considered.\n- Acceptance criteria: New users see dark mode on first load. Theme toggle still works. Existing user preferences are preserved.",
+    "implementation_notes": "Files changed: src/App.tsx, src/lib/constants/colors.ts\n- Changed darkMode initial state from false to true (src/App.tsx line 73)\n- Updated init logic: dark mode is now the default; only switches to light if user explicitly saved false\n- Changed C object initialization from C_LIGHT to C_DARK to prevent light-mode flash on startup\n- Existing user preferences are fully preserved via the explicit false check"
+  },
+  {
+    "number": 61,
+    "title": "- I want dark mode as default",
+    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "ui"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/61",
+    "created_at": "2026-03-24T08:47:25.646Z",
+    "status": "skipped",
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
+  }
+]
