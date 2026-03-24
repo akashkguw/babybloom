@@ -84,6 +84,7 @@ export default function HomeTab({
   );
   const feedIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [flashBtn, setFlashBtn] = useState<string | null>(null);
+  const [dismissedResumeId, setDismissedResumeId] = useState<number | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerFlash = useCallback((label: string) => {
@@ -647,7 +648,7 @@ export default function HomeTab({
       {!feedTimer &&
         (() => {
           const rf = getRecentFeed(null);
-          if (!rf) return null;
+          if (!rf || rf.id === dismissedResumeId) return null;
           const elapsed = rf.mins || 0;
           return (
             <div
@@ -674,6 +675,21 @@ export default function HomeTab({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <div
+                  onClick={() => setDismissedResumeId(rf.id)}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 8,
+                    background: C.cd,
+                    border: '1px solid ' + C.b,
+                    color: C.tl,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Dismiss
+                </div>
                 <div
                   onClick={() => startFeedTimer(rf.type)}
                   style={{
