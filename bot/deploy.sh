@@ -186,7 +186,12 @@ echo "✅ Pushed: $COMMIT_SHA"
 
 # ─── Close implemented issues + update description + post detailed comment ───
 ISSUE_LIST=$(python3 - <<PYEOF
-import urllib.request, json, sys
+import urllib.request, json, sys, ssl
+
+try:
+    import certifi; ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ssl_ctx = ssl.create_default_context(); ssl_ctx.load_default_certs()
 
 token  = "$GITHUB_TOKEN"
 repo   = "$REPO"
@@ -202,7 +207,7 @@ def gh(method, path, data=None):
         headers=headers
     )
     try:
-        urllib.request.urlopen(req, timeout=10)
+        urllib.request.urlopen(req, timeout=10, context=ssl_ctx)
         return True
     except Exception as e:
         print(f"  ⚠️  GitHub API error: {e}", file=sys.stderr)

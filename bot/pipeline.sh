@@ -61,7 +61,15 @@ git remote set-url origin "https://akashkguw:${GITHUB_TOKEN}@github.com/${REPO}.
 # ─── Sync open GitHub issues → pending-issues.json (auto-backfill) ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"
 python3 - <<EOF
-import urllib.request, json, os
+import urllib.request, json, os, ssl
+
+# Fix macOS Python SSL cert issue
+try:
+    import certifi
+    ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.load_default_certs()
 
 token = "$GITHUB_TOKEN"
 repo  = "$REPO"
@@ -73,7 +81,7 @@ try:
         f"https://api.github.com/repos/{repo}/issues?labels=telegram&state=open&per_page=50",
         headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     )
-    gh_issues = json.loads(urllib.request.urlopen(req, timeout=10).read())
+    gh_issues = json.loads(urllib.request.urlopen(req, timeout=10, context=ssl_ctx).read())
 except Exception as e:
     print(f"⚠️  GitHub sync skipped: {e}")
     gh_issues = []
@@ -234,7 +242,11 @@ except: pass
 
     # Decode and post analysis as GitHub comment
     python3 -c "
-import urllib.request, json, base64
+import urllib.request, json, base64, ssl
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
 analysis = base64.b64decode('$enc').decode()
 body = json.dumps({'body': '🔍 **Analysis by Claude**\n\n' + analysis})
 req = urllib.request.Request(
@@ -242,7 +254,7 @@ req = urllib.request.Request(
   data=body.encode(), method='POST',
   headers={'Authorization':'Bearer $GITHUB_TOKEN','Content-Type':'application/json'}
 )
-urllib.request.urlopen(req, timeout=10)
+urllib.request.urlopen(req, timeout=10, context=ctx)
 print('Posted analysis for #$num')
 " 2>/dev/null || echo "⚠️ Could not post analysis for #$num"
 
