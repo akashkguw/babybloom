@@ -44,15 +44,15 @@ const emptyDay = (d: string): MomDay => ({
 });
 
 const MEAL_ICONS: Record<string, string> = {
-  breakfast: '🌅',
-  lunch: '☀️',
-  dinner: '🌙',
-  snack: '🍎',
+  breakfast: '🥣',
+  lunch: '🥗',
+  dinner: '🍲',
+  snack: '🥜',
 };
 
-const MOOD_FACES = ['', '😔', '😐', '🙂', '😊', '🤩'];
+const MOOD_FACES = ['', '🥀', '🌥️', '🌤️', '☀️', '✨'];
 const MOOD_LABELS = ['', 'Rough', 'Meh', 'OK', 'Good', 'Great'];
-const SLEEP_LABELS = ['', '😵 Poor', '😐 OK', '😴 Good'];
+const SLEEP_LABELS = ['', '🌑 Poor', '🌓 OK', '🌕 Good'];
 
 export default function MomCare({ storageKey }: MomCareProps) {
   const key = storageKey ? `${storageKey}_${STORAGE_KEY}` : STORAGE_KEY;
@@ -104,8 +104,8 @@ export default function MomCare({ storageKey }: MomCareProps) {
     (data.sleep > 0 ? 1 : 0) +
     (data.mood > 0 ? 1 : 0) +
     (data.moved ? 1 : 0);
-  const maxChecks = 6; // meals(1), water(1), vitamin(1), sleep(1), mood(1), moved(1)
-  const progress = Math.round((totalChecks / maxChecks) * 100);
+  const maxChecks = 9; // meals(4), water(1), vitamin(1), sleep(1), mood(1), moved(1)
+  const progress = Math.min(Math.round((totalChecks / maxChecks) * 100), 100);
 
   // ─── Collapsed summary (always visible) ────────────────────────
   const pillStyle = (active: boolean, color?: string): React.CSSProperties => ({
@@ -157,11 +157,11 @@ export default function MomCare({ storageKey }: MomCareProps) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16 }}>💜</span>
+          <span style={{ fontSize: 16 }}>🌿</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: C.t }}>My Wellness</span>
           {!expanded && (
             <span style={{ fontSize: 11, color: C.tl, fontWeight: 500 }}>
-              {mealsCount}/3 meals · {data.water} glasses
+              {mealsCount}/4 meals · {data.water} glasses
               {data.mood > 0 ? ` · ${MOOD_FACES[data.mood]}` : ''}
             </span>
           )}
@@ -303,7 +303,7 @@ export default function MomCare({ storageKey }: MomCareProps) {
               >
                 +
               </div>
-              <span style={{ fontSize: 14, minWidth: 18, textAlign: 'center' }}>💧</span>
+              <span style={{ fontSize: 14, minWidth: 18, textAlign: 'center' }}>🚰</span>
             </div>
           </div>
 
@@ -313,13 +313,13 @@ export default function MomCare({ storageKey }: MomCareProps) {
               onClick={() => save({ ...data, vitamin: !data.vitamin })}
               style={{ ...pillStyle(data.vitamin, '#AB47BC'), flex: 1, justifyContent: 'center', padding: '8px 0' }}
             >
-              💊 Vitamin{data.vitamin ? ' ✓' : ''}
+              💊 Prenatal{data.vitamin ? ' ✓' : ''}
             </div>
             <div
               onClick={() => save({ ...data, moved: !data.moved })}
               style={{ ...pillStyle(data.moved, '#66BB6A'), flex: 1, justifyContent: 'center', padding: '8px 0' }}
             >
-              🚶‍♀️ Moved{data.moved ? ' ✓' : ''}
+              🧘 Movement{data.moved ? ' ✓' : ''}
             </div>
           </div>
 
