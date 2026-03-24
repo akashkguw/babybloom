@@ -77,7 +77,7 @@ export default function HomeTab({
   const [td2, setTd] = useState('');
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
   const [sliderVal, setSliderVal] = useState(0);
-  const [showSlider, setShowSlider] = useState(false);
+  const [showSlider] = useState(false); // kept for stable hook count
   const [carouselIdx, setCarouselIdx] = useState(0);
   const touchStartX = useRef<number | null>(null);
   // Merge prompt state kept for type compatibility but auto-merge is used instead
@@ -1040,7 +1040,7 @@ export default function HomeTab({
           const unit = volLabel(volumeUnit);
           const sliderMax = isMl ? 300 : 10;
           const sliderStep = isMl ? 10 : 0.5;
-          const closeQL = () => { setQuickFeedType(null); setShowSlider(false); setSliderVal(0); };
+          const closeQL = () => { setQuickFeedType(null); setSliderVal(0); };
           const logAmount = (val: number) => {
             const ozVal = isMl ? mlToOz(val) : val;
             quickLog('feed', { type: quickFeedType!, oz: ozVal, amount: val + ' ' + unit }, quickFeedType!);
@@ -1063,12 +1063,12 @@ export default function HomeTab({
             },
             {
               e: '🍼', l: 'Formula',
-              fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setShowSlider(false); setSliderVal(presets[0]); } },
+              fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } },
               dis: !!feedTimer, needsQty: true, qType: 'Formula',
             },
             {
               e: '🍼', l: 'Breast Milk',
-              fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setShowSlider(false); setSliderVal(presets[0]); } },
+              fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } },
               dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk',
             },
             {
@@ -1095,99 +1095,65 @@ export default function HomeTab({
           // ─── Expanded inline quantity selector ───
           if (quickFeedType) {
             const activeItem = qlItems.find((q) => q.qType === quickFeedType);
+            const displayVal = isMl ? Math.round(sliderVal) : sliderVal.toFixed(1);
             return (
-              <div className="ql-expand" style={{ display: 'flex', gap: 10, animation: 'qlSlideIn 0.25s cubic-bezier(0.22,1,0.36,1)' }}>
-                {/* Left: active item + cancel */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 56 }}>
-                  <div
-                    className="ql-btn"
-                    style={{
-                      textAlign: 'center', padding: '8px 6px', borderRadius: 12, width: 56,
-                      background: C.sl, border: '1.5px solid ' + C.s,
-                    }}
-                  >
-                    <div style={{ fontSize: 18 }}>{activeItem?.e || '🍼'}</div>
-                    <div style={{ fontSize: 9, color: C.s, marginTop: 2, fontWeight: 700 }}>{activeItem?.l || quickFeedType}</div>
+              <div className="ql-expand" style={{ animation: 'qlSlideIn 0.25s cubic-bezier(0.22,1,0.36,1)' }}>
+                {/* Header: type label + cancel */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 18 }}>{activeItem?.e || '🍼'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.s }}>{activeItem?.l || quickFeedType}</span>
                   </div>
                   <div
                     onClick={closeQL}
                     style={{
-                      fontSize: 10, fontWeight: 600, color: C.tl, cursor: 'pointer',
-                      padding: '3px 10px', borderRadius: 8, background: C.cd,
+                      fontSize: 12, fontWeight: 700, color: C.p, cursor: 'pointer',
+                      padding: '5px 14px', borderRadius: 20, background: C.pl,
+                      border: '1px solid ' + C.p + '44',
                     }}
                   >
                     Cancel
                   </div>
                 </div>
 
-                {/* Right: presets grid + slider toggle */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {!showSlider ? (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
-                        {presets.map((v) => (
-                          <div
-                            key={v}
-                            className="ql-btn"
-                            onClick={() => logAmount(v)}
-                            style={{
-                              padding: '7px 4px', textAlign: 'center', cursor: 'pointer',
-                              background: C.bg, borderRadius: 10, border: '1px solid ' + C.b,
-                            }}
-                          >
-                            <div style={{ fontSize: 15, fontWeight: 800, color: C.t }}>{v}</div>
-                            <div style={{ fontSize: 8, color: C.tl }}>{unit}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div
-                        onClick={() => { setShowSlider(true); setSliderVal(presets[0]); }}
-                        style={{
-                          marginTop: 6, fontSize: 10, fontWeight: 600, color: C.s,
-                          cursor: 'pointer', textAlign: 'center',
-                        }}
-                      >
-                        Custom amount...
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ animation: 'fadeIn 0.2s ease' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: C.t, textAlign: 'center', marginBottom: 4 }}>
-                        {isMl ? Math.round(sliderVal) : sliderVal.toFixed(1)} <span style={{ fontSize: 12, fontWeight: 600, color: C.tl }}>{unit}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={sliderMax}
-                        step={sliderStep}
-                        value={sliderVal}
-                        onChange={(e) => setSliderVal(parseFloat(e.target.value))}
-                        style={{ width: '100%', accentColor: C.s, margin: '4px 0 8px' }}
-                      />
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <div
-                          onClick={() => setShowSlider(false)}
-                          style={{
-                            flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 10,
-                            background: C.cd, border: '1px solid ' + C.b,
-                            fontSize: 12, fontWeight: 600, color: C.tl, cursor: 'pointer',
-                          }}
-                        >
-                          Presets
-                        </div>
-                        <div
-                          onClick={() => logAmount(isMl ? Math.round(sliderVal) : parseFloat(sliderVal.toFixed(1)))}
-                          style={{
-                            flex: 2, padding: '8px 0', textAlign: 'center', borderRadius: 10,
-                            background: C.s, border: '1px solid ' + C.s,
-                            fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer',
-                          }}
-                        >
-                          Log {isMl ? Math.round(sliderVal) : sliderVal.toFixed(1)} {unit}
-                        </div>
-                      </div>
+                {/* Presets grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                  {presets.map((v) => (
+                    <div
+                      key={v}
+                      className="ql-btn"
+                      onClick={() => logAmount(v)}
+                      style={{
+                        padding: '7px 4px', textAlign: 'center', cursor: 'pointer',
+                        background: C.bg, borderRadius: 10, border: '1px solid ' + C.b,
+                      }}
+                    >
+                      <div style={{ fontSize: 15, fontWeight: 800, color: C.t }}>{v}</div>
+                      <div style={{ fontSize: 8, color: C.tl }}>{unit}</div>
                     </div>
-                  )}
+                  ))}
+                </div>
+
+                {/* Inline slider + log button — always visible */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={sliderMax}
+                    step={sliderStep}
+                    value={sliderVal}
+                    onChange={(e) => setSliderVal(parseFloat(e.target.value))}
+                    style={{ flex: 1, accentColor: C.s, height: 6 }}
+                  />
+                  <div
+                    onClick={() => logAmount(isMl ? Math.round(sliderVal) : parseFloat(sliderVal.toFixed(1)))}
+                    style={{
+                      padding: '7px 14px', borderRadius: 10, whiteSpace: 'nowrap',
+                      background: C.s, fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                    }}
+                  >
+                    {displayVal} {unit}
+                  </div>
                 </div>
               </div>
             );
