@@ -12,6 +12,7 @@ import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
 import SmartStatus from '@/features/insights/SmartStatus';
 import PredictiveNudges from '@/features/insights/PredictiveNudges';
+import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 
 interface LogEntry {
   id: number;
@@ -139,6 +140,9 @@ export default function HomeTab({
     }
     return warnings;
   }, [logs, birth]);
+
+  // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
+  const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
 
   // Welcome screen if no birth date
   if (!birth) {
@@ -601,27 +605,31 @@ export default function HomeTab({
               </div>
             ),
           });
-          if (ms.red && ms.red.length > 0) {
-            slides.push({
-              id: 'redflag',
-              node: (
-                <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                    🚩 Red flags for {ms.l}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.t, lineHeight: 1.6 }}>
-                    Talk to your doctor if: {ms.red.slice(0, 2).join('; ')}
-                  </div>
-                  <div
-                    onClick={() => { setTab('miles', 'dev'); }}
-                    style={{ fontSize: 10, color: C.p, fontWeight: 600, marginTop: 4, cursor: 'pointer' }}
-                  >
-                    View all red flags →
-                  </div>
+        }
+        if (dynamicRedFlags.length > 0) {
+          slides.push({
+            id: 'redflag',
+            node: (
+              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  🚩 Needs attention
                 </div>
-              ),
-            });
-          }
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {dynamicRedFlags.slice(0, 2).map((rf) => (
+                    <div key={rf.id} style={{ fontSize: 11, color: C.t, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                      <span style={{ flexShrink: 0 }}>{rf.emoji}</span>
+                      <span style={{ fontWeight: rf.severity === 'critical' ? 700 : 400 }}>{rf.text}</span>
+                    </div>
+                  ))}
+                </div>
+                {dynamicRedFlags.length > 2 && (
+                  <div style={{ fontSize: 10, color: C.tl, marginTop: 4 }}>
+                    +{dynamicRedFlags.length - 2} more alert{dynamicRedFlags.length - 2 !== 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            ),
+          });
         }
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
