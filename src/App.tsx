@@ -60,7 +60,7 @@ function App() {
   const [selMo, setSelMo] = useState<number>(0);
   const [checked, setCkR] = useState<any>({});
   const [vDone, setVDR] = useState<any>({});
-  const [logs, setLgR] = useState<any>({ feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+  const [logs, setLgR] = useState<any>({ feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
   const [teeth, setThR] = useState<any>({});
   const [firsts, setFiR] = useState<any[]>([]);
   const [emergencyContacts, setECR] = useState<EmergencyContact[]>([
@@ -226,7 +226,7 @@ function App() {
   const loadProfileData = (profileId: number) => {
     return dg(`profileData_${profileId}`).then((data: any) => {
       if (data) {
-        setLgR(data.logs || { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+        setLgR(data.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
         setCkR(data.milestones || {});
         setVDR(data.vaccines || {});
         setThR(data.teeth || {});
@@ -234,7 +234,7 @@ function App() {
         if (data.birthDate) setBR(data.birthDate);
       } else {
         const prof = profiles.find((p) => p.id === profileId);
-        setLgR({ feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+        setLgR({ feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
         setCkR({});
         setVDR({});
         setThR({});
@@ -329,7 +329,7 @@ function App() {
       // Load profile-specific data
       dg(`profileData_${activeId}`).then((pData: any) => {
         if (pData) {
-          setLgR(pData.logs || { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+          setLgR(pData.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           setCkR(pData.milestones || {});
           setVDR(pData.vaccines || {});
           setThR(pData.teeth || {});
@@ -340,11 +340,11 @@ function App() {
           if (r[0] != null) setBR(r[0]);
           if (r[1] != null) setCkR(r[1]);
           if (r[2] != null) setVDR(r[2]);
-          setLgR(r[3] || { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+          setLgR(r[3] || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           if (r[4] != null) setThR(r[4]);
           if (r[5] != null) setFiR(r[5]);
           ds(`profileData_${activeId}`, {
-            logs: r[3] || { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] },
+            logs: r[3] || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] },
             milestones: r[1] || {},
             vaccines: r[2] || {},
             teeth: r[4] || {},
@@ -356,14 +356,14 @@ function App() {
         setLoading(false);
       }).catch(() => {
         // Ensure logs are properly initialized even on profile data load failure
-        setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
+        setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
         clearTimeout(safetyTimer);
         setLoading(false);
       });
     }).catch((err: Error) => {
       console.error('BabyBloom load error:', err);
       // Ensure logs are properly initialized even on full load failure
-      setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
+      setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
       clearTimeout(safetyTimer);
       setLoading(false);
     });

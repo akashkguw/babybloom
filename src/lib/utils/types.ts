@@ -40,7 +40,12 @@ export type RepeatFrequency = "daily" | "weekly" | "monthly" | "once";
 /**
  * Sleep type for logging
  */
-export type SleepType = "Nap" | "Night Sleep" | "Tummy Time" | "Wake Up";
+export type SleepType = "Nap" | "Night Sleep" | "Wake Up";
+
+/**
+ * Tummy time type for logging
+ */
+export type TummyType = "Tummy Time";
 
 /**
  * Diaper log type

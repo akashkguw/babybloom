@@ -71,7 +71,8 @@ export default function TimerView({
     const dur = mins + 'm ' + secs + 's';
     const totalMins = Math.round((elapsed / 60) * 10) / 10;
     const resolvedType = timerType === 'Sleep' ? autoSleepType() : timerType;
-    const isSleep = ['Nap', 'Night Sleep', 'Sleep', 'Tummy Time'].includes(timerType);
+    const isSleep = ['Nap', 'Night Sleep', 'Sleep'].includes(timerType);
+    const isTummy = timerType === 'Tummy Time';
     const entry = {
       date: today(),
       time: new Date().toTimeString().slice(0, 5),
@@ -81,7 +82,7 @@ export default function TimerView({
       mins: totalMins,
       notes: 'Timed',
     };
-    const logKey = isSleep ? 'sleep' : 'feed';
+    const logKey = isTummy ? 'tummy' : isSleep ? 'sleep' : 'feed';
     const next = Object.assign({}, logs);
     next[logKey] = [entry].concat(next[logKey] || []);
     setLogs(next);
@@ -94,7 +95,7 @@ export default function TimerView({
     .padStart(2, '0');
   const ss = (elapsed % 60).toString().padStart(2, '0');
   let ttToday = 0;
-  (logs.sleep || [])
+  ([...(logs.tummy || []), ...(logs.sleep || [])])
     .filter((e: any) => e.date === today() && e.type === 'Tummy Time')
     .forEach((e: any) => {
       if (!e.amount) return;

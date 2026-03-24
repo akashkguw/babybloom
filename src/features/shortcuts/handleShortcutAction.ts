@@ -20,7 +20,7 @@ export const QUICK_MAP: Record<string, ShortcutAction | (() => ShortcutAction)> 
   sleep: () => ({ cat: 'sleep', entry: { type: autoSleepType() } }),
   wake: { cat: 'sleep', entry: { type: 'Wake Up' } },
   night: () => ({ cat: 'sleep', entry: { type: autoSleepType() } }),
-  tummy: { cat: 'sleep', entry: { type: 'Tummy Time' } },
+  tummy: { cat: 'tummy', entry: { type: 'Tummy Time' } },
   bath: { cat: 'bath', entry: { type: 'Bath' } },
   pump: { cat: 'feed', entry: { type: 'Pump' } },
   massage: { cat: 'massage', entry: { type: 'Full Body' } },

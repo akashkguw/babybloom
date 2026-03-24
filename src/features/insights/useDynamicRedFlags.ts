@@ -184,8 +184,8 @@ export default function useDynamicRedFlags(
 
     // ── 5. Extended no tummy time ──
     if (age < 12) {
-      const sleeps = logs.sleep || [];
-      const lastTummy = sleeps.find((e) => e.type === 'Tummy Time');
+      const tummyEntries = [...(logs.tummy || []), ...(logs.sleep || [])];
+      const lastTummy = tummyEntries.find((e) => e.type === 'Tummy Time');
       if (lastTummy) {
         const tummyMs = parseEntryMs(lastTummy);
         if (tummyMs > 0) {

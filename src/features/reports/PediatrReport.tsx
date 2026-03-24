@@ -92,7 +92,7 @@ export default function PediatrReport({
     const dirtyCount = diapers.filter((e) => e.type === 'Dirty' || e.type === 'Both').length;
 
     // ─── Sleep summary ───
-    const sleeps = entriesInRange(logs.sleep || [], days).filter((e) => e.mins && e.type !== 'Tummy Time');
+    const sleeps = entriesInRange(logs.sleep || [], days).filter((e) => e.mins);
     let totalSleepMins = 0;
     sleeps.forEach((e) => { totalSleepMins += e.mins || 0; });
     const sleepDays = new Set(sleeps.map((e) => e.date)).size || 1;

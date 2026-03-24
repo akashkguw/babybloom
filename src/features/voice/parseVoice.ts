@@ -3,7 +3,7 @@ import { autoSleepType } from '@/lib/utils/date';
 import { safeNum, LIMITS } from '@/lib/utils/validate';
 
 export interface VoiceParseResult {
-  cat: 'feed' | 'diaper' | 'sleep' | 'temp' | 'bath' | 'massage' | 'meds' | 'allergy' | 'growth';
+  cat: 'feed' | 'diaper' | 'sleep' | 'tummy' | 'temp' | 'bath' | 'massage' | 'meds' | 'allergy' | 'growth';
   entry: Record<string, any>;
 }
 
@@ -112,7 +112,7 @@ export default function parseVoice(text: string): VoiceParseResult | null {
   } else if (/night\s*sleep|bedtime|bed\s*time|going\s*to\s*(?:bed|sleep)\s*(?:for\s*the\s*)?night|nap|napping|sleeping|fell\s*asleep|dozed|sleep/i.test(t)) {
     result = { cat: 'sleep', entry: { type: autoSleepType() } };
   } else if (/tummy\s*time/i.test(t)) {
-    result = { cat: 'sleep', entry: { type: 'Tummy Time' } };
+    result = { cat: 'tummy', entry: { type: 'Tummy Time' } };
     if (minM) {
       result.entry.mins = parseFloat(minM[1]);
       result.entry.amount = minM[1] + ' min';

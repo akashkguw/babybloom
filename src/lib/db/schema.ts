@@ -28,7 +28,7 @@ export interface DiaperEntry extends LogEntry {
 }
 
 export interface SleepEntry extends LogEntry {
-  type?: "Nap" | "Night Sleep" | "Tummy Time" | "Wake Up";
+  type?: "Nap" | "Night Sleep" | "Wake Up";
   amount?: string;
   mins?: number;
   duration?: string;

@@ -153,6 +153,7 @@ const LogTab: React.FC<LogTabProps> = ({
     { id: 'pump', l: 'Pump', e: '🫙' },
     { id: 'diaper', l: 'Diaper', e: '💧' },
     { id: 'sleep', l: 'Sleep', e: '😴' },
+    { id: 'tummy', l: 'Tummy', e: '🧒' },
     { id: 'bath', l: 'Bath', e: '🛁' },
     { id: 'massage', l: 'Massage', e: '🤲' },
     { id: 'growth', l: 'Growth', e: '📏' },
@@ -170,6 +171,7 @@ const LogTab: React.FC<LogTabProps> = ({
     pump: C.a,
     diaper: C.bl,
     sleep: C.pu,
+    tummy: C.a,
     bath: C.bl,
     massage: C.pu,
     growth: C.p,
@@ -223,7 +225,9 @@ const LogTab: React.FC<LogTabProps> = ({
           toast('Minutes must be 0–59'); return;
         }
       }
-      if (form.type === 'Tummy Time' && form.sleepMins) {
+    }
+    if (sub === 'tummy') {
+      if (form.sleepMins) {
         const n = parseFloat(form.sleepMins);
         if (isNaN(n) || n < LIMITS.tummyMins.min || n > LIMITS.tummyMins.max) {
           toast('Tummy time must be 0–120 minutes'); return;
@@ -286,6 +290,7 @@ const LogTab: React.FC<LogTabProps> = ({
       time: form.time || now(),
       id: editId || Date.now(),
       ...form,
+      ...(sub === 'tummy' ? { type: 'Tummy Time' } : {}),
     };
 
     // Auto-compute sleep duration for Wake Up if not already set
@@ -1121,7 +1126,7 @@ const LogTab: React.FC<LogTabProps> = ({
               (() => {
                 // Find last sleep entry for auto-calc on Wake Up
                 let lastSleep: LogEntry | null = null;
-                if (form.type === 'Wake Up' || form.type === 'Tummy Time') {
+                if (form.type === 'Wake Up') {
                   const sleepEntries = (logs.sleep || []).filter(
                     (e) => e.type === 'Nap' || e.type === 'Night Sleep'
                   );
@@ -1154,7 +1159,7 @@ const LogTab: React.FC<LogTabProps> = ({
                         Type
                       </label>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {['Sleep', 'Wake Up', 'Tummy Time'].map(
+                        {['Sleep', 'Wake Up'].map(
                           (t) => (
                             <Pill
                               key={t}
@@ -1411,39 +1416,27 @@ const LogTab: React.FC<LogTabProps> = ({
                       </>
                     ) : null}
 
-                    {form.type === 'Tummy Time' ? (
-                      <div style={{ marginBottom: 12 }}>
-                        <label
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: C.tl,
-                            display: 'block',
-                            marginBottom: 4,
-                          }}
-                        >
-                          Duration (minutes)
-                        </label>
-                        <Input
-                          type="number"
-                          value={form.sleepMins || ''}
-                          onChange={(v) => {
-                            const m = parseInt(v) || 0;
-                            setForm({
-                              ...form,
-                              sleepMins: v,
-                              sleepHrs: '0',
-                              amount: m + ' min',
-                              mins: m,
-                            });
-                          }}
-                          placeholder="e.g. 10"
-                        />
-                      </div>
-                    ) : null}
                   </>
                 );
               })()
+            ) : null}
+
+            {/* Tummy Time specific */}
+            {sub === 'tummy' ? (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: C.tl, display: 'block', marginBottom: 4 }}>
+                  Duration (minutes)
+                </label>
+                <Input
+                  type="number"
+                  value={form.sleepMins || ''}
+                  onChange={(v) => {
+                    const m = parseInt(v) || 0;
+                    setForm({ ...form, type: 'Tummy Time', sleepMins: v, sleepHrs: '0', amount: m + ' min', mins: m });
+                  }}
+                  placeholder="e.g. 10"
+                />
+              </div>
             ) : null}
 
             {/* Growth specific */}

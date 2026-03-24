@@ -109,7 +109,7 @@ export default function HomeTab({
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
       'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6, warnMsg: 'Left breast not fed in over {h}h', dangerMsg: 'Left breast not fed in over {h}h — feed soon', neverMsg: 'No left breast feeds logged yet' },
       'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6, warnMsg: 'Right breast not fed in over {h}h', dangerMsg: 'Right breast not fed in over {h}h — feed soon', neverMsg: 'No right breast feeds logged yet' },
-      'Tummy':    { cat: 'sleep', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' },
+      'Tummy':    { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' },
       'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — check hydration', neverMsg: 'No wet diapers logged yet' },
       'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — monitor closely', neverMsg: 'No dirty diapers logged yet' },
     };
@@ -120,7 +120,10 @@ export default function HomeTab({
       // Find most recent entry matching any of the types
       let lastMs = 0;
       for (const e of entries) {
-        if (cfg.types.includes(e.type) && e.date && e.time) {
+        // Check type match directly, or via `sides` array for merged breast sessions
+        const sides = (e as any).sides as string[] | undefined;
+        const typeMatch = cfg.types.includes(e.type) || (sides && cfg.types.some((t) => sides.includes(t)));
+        if (typeMatch && e.date && e.time) {
           const dp = e.date.split('-');
           const tp = e.time.split(':');
           const t = new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
@@ -325,14 +328,18 @@ export default function HomeTab({
     const prevMins = last.mins || 0;
     const totalMins = prevMins + extraMins;
     // When merging different breast sides, update type to the latest side
-    // so risk indicators reflect the actual last breast used (#73)
+    // and track all sides used so warning colors stay correct for both
     const isBreastSwitch = type && type !== last.type &&
       (type === 'Breast L' || type === 'Breast R') &&
       (last.type === 'Breast L' || last.type === 'Breast R');
+    // Build sides array — accumulate all breast sides used in this merged session
+    const prevSides: string[] = (last as any).sides || (last.type === 'Breast L' || last.type === 'Breast R' ? [last.type] : []);
+    const newSides = isBreastSwitch && type ? Array.from(new Set([...prevSides, type])) : prevSides;
     const updated = Object.assign({}, last, {
       mins: totalMins,
       amount: totalMins + ' min',
       ...(isBreastSwitch ? { type } : {}),
+      ...(newSides.length > 0 ? { sides: newSides } : {}),
       notes:
         (last.notes ? last.notes + '; ' : '') +
         '+ ' +
@@ -373,7 +380,7 @@ export default function HomeTab({
       mins: minsInt,
       notes: 'Timed',
     };
-    const cat = isTummy ? 'sleep' : 'feed';
+    const cat = isTummy ? 'tummy' : 'feed';
     const next = Object.assign({}, logs);
     next[cat] = [entry].concat((logs[cat] || []) as LogEntry[]);
     setLogs(next);
@@ -411,7 +418,7 @@ export default function HomeTab({
   const td = today();
   const feedCt = (logs.feed || []).filter((x) => x.date === td).length;
   const diaperCt = (logs.diaper || []).filter((x) => x.date === td).length;
-  const sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up' && x.type !== 'Tummy Time').length;
+  const sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up').length;
 
   let sleepMinsToday = 0;
   (logs.sleep || [])
@@ -466,7 +473,7 @@ export default function HomeTab({
     const dk = daysAgo(i);
     weekFeeds += (logs.feed || []).filter((e) => e.date === dk).length;
     weekDiapers += (logs.diaper || []).filter((e) => e.date === dk).length;
-    weekSleeps += (logs.sleep || []).filter((e) => e.date === dk && e.type !== 'Wake Up' && e.type !== 'Tummy Time').length;
+    weekSleeps += (logs.sleep || []).filter((e) => e.date === dk && e.type !== 'Wake Up').length;
   }
   for (let i = 7; i < 14; i++) {
     const dk = daysAgo(i);

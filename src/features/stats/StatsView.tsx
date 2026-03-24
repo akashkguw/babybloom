@@ -263,7 +263,7 @@ export default function StatsView({
 
   const feedEntries = logs.feed || [];
   const sleepEntries = (logs.sleep || []).filter(
-    (e: any) => e.type !== 'Wake Up' && e.type !== 'Tummy Time'
+    (e: any) => e.type !== 'Wake Up'
   );
   const diaperEntries = logs.diaper || [];
 
