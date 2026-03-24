@@ -97,5 +97,65 @@
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
     "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
+  },
+  {
+    "number": 81,
+    "title": "[Sentry ERROR] TypeError: Failed to resolve module specifier '@sentry/react'",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: Failed to resolve module specifier '@sentry/react'\n**Location:** ?(<anonymous>)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:20:40.419000Z\n**Last seen:** 2026-03-24T19:20:40.419000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361077397/\n**Sentry ID:** 7361077397\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "bug",
+      "sentry"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/81",
+    "created_at": "2026-03-24T20:18:21Z",
+    "status": "pending"
+  },
+  {
+    "number": 80,
+    "title": "[Sentry ERROR] Error: BabyBloom Sentry test",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** Error: BabyBloom Sentry test\n**Location:** ?(<anonymous>)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:21:18.594000Z\n**Last seen:** 2026-03-24T19:21:18.594000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361078817/\n**Sentry ID:** 7361078817\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "bug",
+      "sentry"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/80",
+    "created_at": "2026-03-24T20:18:19Z",
+    "status": "pending"
+  },
+  {
+    "number": 79,
+    "title": "[Sentry ERROR] Error: Rendered more hooks than during the previous render.",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** Error: Rendered more hooks than during the previous render.\n**Location:** _e(babybloom/assets/vendor-wGySg1uH)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:36:11.637000Z\n**Last seen:** 2026-03-24T19:36:11.637000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361110696/\n**Sentry ID:** 7361110696\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "bug",
+      "sentry"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/79",
+    "created_at": "2026-03-24T20:18:17Z",
+    "status": "pending"
+  },
+  {
+    "number": 78,
+    "title": "[Sentry ERROR] TypeError: undefined is not an object (evaluating 'H.type.startsWith')",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: undefined is not an object (evaluating 'H.type.startsWith')\n**Location:** ?(babybloom/assets/index-DJLw0WkL)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:57:10.367000Z\n**Last seen:** 2026-03-24T19:57:10.367000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361153877/\n**Sentry ID:** 7361153877\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "bug",
+      "sentry"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/78",
+    "created_at": "2026-03-24T20:18:14Z",
+    "status": "pending"
+  },
+  {
+    "number": 77,
+    "title": "[Sentry ERROR] TypeError: undefined is not an object (evaluating 'H.type.startsWith')",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: undefined is not an object (evaluating 'H.type.startsWith')\n**Location:** ?(babybloom/assets/index-BufUAn05)\n**Level:** error\n**Events:** 3 | **Users affected:** 0\n**First seen:** 2026-03-24T20:04:36.288000Z\n**Last seen:** 2026-03-24T20:05:05.830000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361171810/\n**Sentry ID:** 7361171810\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "bug",
+      "sentry"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/77",
+    "created_at": "2026-03-24T20:18:12Z",
+    "status": "pending"
   }
 ]
