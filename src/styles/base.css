@@ -88,6 +88,25 @@ button,
   pointer-events: none;
 }
 
+/* Confirmation flash animation for instant quick-log taps */
+@keyframes ql-border-flash {
+  0%   { border-color: rgba(76, 175, 80, 0.0); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.0); }
+  20%  { border-color: rgba(76, 175, 80, 0.8); box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25); }
+  100% { border-color: rgba(76, 175, 80, 0.0); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.0); }
+}
+
+.ql-btn.ql-flash {
+  animation: ql-border-flash 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ql-btn.ql-flash {
+    animation: none;
+    border-color: rgba(76, 175, 80, 0.6) !important;
+    transition: border-color 0.3s ease;
+  }
+}
+
 input,
 select,
 textarea {

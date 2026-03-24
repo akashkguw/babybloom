@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
@@ -83,6 +83,14 @@ export default function HomeTab({
     feedTimerApp ? Math.floor((Date.now() - feedTimerApp.startTime) / 1000) : 0
   );
   const feedIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [flashBtn, setFlashBtn] = useState<string | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerFlash = useCallback((label: string) => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    setFlashBtn(label);
+    flashTimerRef.current = setTimeout(() => setFlashBtn(null), 500);
+  }, []);
 
   // Welcome screen if no birth date
   if (!birth) {
@@ -139,7 +147,8 @@ export default function HomeTab({
   }
 
   // ═══ Quick log helper ═══
-  function quickLog(cat: string, entry: Partial<LogEntry>) {
+  function quickLog(cat: string, entry: Partial<LogEntry>, btnLabel?: string) {
+    if (btnLabel) triggerFlash(btnLabel);
     const e: LogEntry = Object.assign(
       { date: today(), time: now(), id: Date.now() },
       entry
@@ -734,16 +743,17 @@ export default function HomeTab({
               active: feedTimer && feedTimer.type === 'Tummy Time',
               dis: feedTimer && feedTimer.type !== 'Tummy Time',
             },
-            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }), active: false, dis: false },
-            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }), active: false, dis: false },
+            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false },
+            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false },
             {
               e: isSleeping ? '⏰' : '😴',
               l: isSleeping ? 'Wake Up' : 'Sleep',
               fn: () => {
+                const lbl = isSleeping ? 'Wake Up' : 'Sleep';
                 if (isSleeping) {
-                  quickLog('sleep', { type: 'Wake Up' });
+                  quickLog('sleep', { type: 'Wake Up' }, lbl);
                 } else {
-                  quickLog('sleep', { type: autoSleepType() });
+                  quickLog('sleep', { type: autoSleepType() }, lbl);
                 }
               },
               active: false,
@@ -753,7 +763,7 @@ export default function HomeTab({
           ].map((q: any) => (
             <div
               key={q.l}
-              className={'ql-btn' + (q.dis ? ' ql-dis' : '')}
+              className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
               onClick={q.dis ? undefined : q.fn}
               style={{
                 textAlign: 'center',
