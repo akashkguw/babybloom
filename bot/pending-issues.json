@@ -99,21 +99,6 @@
     "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
   },
   {
-    "number": 81,
-    "title": "[Sentry ERROR] TypeError: Failed to resolve module specifier '@sentry/react'",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: Failed to resolve module specifier '@sentry/react'\n**Location:** ?(<anonymous>)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:20:40.419000Z\n**Last seen:** 2026-03-24T19:20:40.419000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361077397/\n**Sentry ID:** 7361077397\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
-    "labels": [
-      "bug",
-      "sentry"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/81",
-    "created_at": "2026-03-24T20:18:21Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "The app fails to resolve the '@sentry/react' module specifier at runtime. This is likely a build/import configuration issue \u2014 either Sentry is not installed as a dependency, or the import path is wrong for the bundler (Vite). Affected area: Sentry integration / app entry point. Expected: Sentry initializes without module resolution errors. Acceptance criteria: App loads without '@sentry/react' resolution error; Sentry captures errors correctly.",
-    "implementation_notes": "Files changed: src/index.tsx (line 55)\nApproach: Changed dynamic import from bare specifier \"@sentry/react\" to \"@/lib/sentry\" (which re-exports Sentry). Bare npm specifiers in dynamic imports can fail to resolve at runtime in the browser. Using the centralized module ensures Vite bundles it correctly.\nTrade-offs: None \u2014 this is strictly a bug fix using the existing abstraction."
-  },
-  {
     "number": 80,
     "title": "[Sentry ERROR] Error: BabyBloom Sentry test",
     "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** Error: BabyBloom Sentry test\n**Location:** ?(<anonymous>)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:21:18.594000Z\n**Last seen:** 2026-03-24T19:21:18.594000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361078817/\n**Sentry ID:** 7361078817\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
@@ -125,50 +110,5 @@
     "created_at": "2026-03-24T20:18:19Z",
     "status": "skipped",
     "skip_reason": "This is an intentional Sentry test error ('BabyBloom Sentry test'), not a real bug. It was triggered to verify Sentry integration is working. No action needed."
-  },
-  {
-    "number": 79,
-    "title": "[Sentry ERROR] Error: Rendered more hooks than during the previous render.",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** Error: Rendered more hooks than during the previous render.\n**Location:** _e(babybloom/assets/vendor-wGySg1uH)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:36:11.637000Z\n**Last seen:** 2026-03-24T19:36:11.637000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361110696/\n**Sentry ID:** 7361110696\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
-    "labels": [
-      "bug",
-      "sentry"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/79",
-    "created_at": "2026-03-24T20:18:17Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "React threw 'Rendered more hooks than during the previous render' \u2014 a hooks ordering violation. This happens when a component conditionally calls hooks (e.g., early return before a hook, or hook inside if/loop). Location: vendor bundle, so the error surfaces in a component during render. Affected area: one or more React components in src/ with conditional hook calls. Expected: All hooks are called unconditionally in every render path. Acceptance criteria: No hooks-ordering errors in Sentry after fix.",
-    "implementation_notes": "Already fixed in commit e151577 (\"Fix React error #310\").\nThe hooks violation was in HomeTab.tsx where useEffects and useMemo were after the if (!birth) early return.\nThat commit moved all hooks before the early return. The Sentry error at 19:36 UTC was captured ~2 min\nbefore the fix deployed at 19:38 UTC \u2014 it is a residual error from the pre-fix build.\nNo additional code changes needed."
-  },
-  {
-    "number": 78,
-    "title": "[Sentry ERROR] TypeError: undefined is not an object (evaluating 'H.type.startsWith')",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: undefined is not an object (evaluating 'H.type.startsWith')\n**Location:** ?(babybloom/assets/index-DJLw0WkL)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:57:10.367000Z\n**Last seen:** 2026-03-24T19:57:10.367000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361153877/\n**Sentry ID:** 7361153877\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
-    "labels": [
-      "bug",
-      "sentry"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/78",
-    "created_at": "2026-03-24T20:18:14Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "TypeError: undefined is not an object (evaluating 'H.type.startsWith') in the main app bundle (index-DJLw0WkL). A variable H (likely a feed/activity entry) has an undefined 'type' property, and code calls .startsWith() on it without a null check. This is likely the same root cause as #77 (different bundle hash from a different build). Affected area: likely the activity/feed filtering or rendering logic in src/. Expected: Code handles entries with missing/undefined 'type' gracefully. Acceptance criteria: No 'H.type.startsWith' TypeError in Sentry; entries with missing type are filtered or handled.",
-    "implementation_notes": "Files changed: src/features/reports/PediatrReport.tsx (line 75)\nApproach: Added optional chaining (e.type?.startsWith) to guard against feed entries with undefined type.\nThe minified 'H.type.startsWith' in Sentry maps to this single .type.startsWith('Breast') call.\nIssues #77 and #78 are the same bug from different bundle hashes (different deploys)."
-  },
-  {
-    "number": 77,
-    "title": "[Sentry ERROR] TypeError: undefined is not an object (evaluating 'H.type.startsWith')",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** TypeError: undefined is not an object (evaluating 'H.type.startsWith')\n**Location:** ?(babybloom/assets/index-BufUAn05)\n**Level:** error\n**Events:** 3 | **Users affected:** 0\n**First seen:** 2026-03-24T20:04:36.288000Z\n**Last seen:** 2026-03-24T20:05:05.830000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361171810/\n**Sentry ID:** 7361171810\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
-    "labels": [
-      "bug",
-      "sentry"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/77",
-    "created_at": "2026-03-24T20:18:12Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "TypeError: undefined is not an object (evaluating 'H.type.startsWith') in the main app bundle (index-BufUAn05). 3 events observed. Same root cause as #78 \u2014 a code path calls .startsWith() on an entry's 'type' field that can be undefined. Affected area: activity/feed filtering or rendering logic in src/. Expected: Code handles entries with missing/undefined 'type' gracefully. Acceptance criteria: No 'H.type.startsWith' TypeError; entries with missing type are filtered or given a default.",
-    "implementation_notes": "Files changed: src/features/reports/PediatrReport.tsx (line 75)\nApproach: Added optional chaining (e.type?.startsWith) to guard against feed entries with undefined type.\nThe minified 'H.type.startsWith' in Sentry maps to this single .type.startsWith('Breast') call.\nIssues #77 and #78 are the same bug from different bundle hashes (different deploys)."
   }
 ]
