@@ -588,23 +588,24 @@ export default function HomeTab({
 
           {/* Today's quick stats */}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <div style={{
+            <div onClick={() => { setTab('log', 'feed'); }} style={{
               flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
-              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{feedCt}</div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>feeds</div>
+              {feedOzToday > 0 && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>{fmtVol(feedOzToday, volumeUnit)}</div>}
             </div>
-            <div style={{
+            <div onClick={() => { setTab('log', 'diaper'); }} style={{
               flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
-              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{diaperCt}</div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>diapers</div>
             </div>
-            <div style={{
+            <div onClick={() => { setTab('log', 'sleep'); }} style={{
               flex: 1, background: isSleeping ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
-              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>
                 {isSleeping ? '😴' : sleepHrsToday + 'h'}
@@ -1213,107 +1214,34 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* Today's Summary with weekly context */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, justifyContent: 'space-between' }}>
+      {/* Quick Actions — with stats */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         {[
-          {
-            l: 'Feeds',
-            v: feedCt,
-            sub: feedOzToday > 0 ? fmtVol(feedOzToday, volumeUnit) : feedMinToday > 0 ? feedMinToday + 'm' : '',
-            e: '🍼',
-            c: C.a,
-            s: 'feed',
-            wk: weekFeeds,
-            tr: feedTrend,
-          },
-          { l: 'Diapers', v: diaperCt, sub: '', e: '💧', c: C.bl, s: 'diaper', wk: weekDiapers, tr: diaperTrend },
-          { l: 'Sleep', v: sleepCt, sub: sleepHrsToday > 0 ? sleepHrsToday + 'h' : '', e: '😴', c: C.pu, s: 'sleep', wk: weekSleeps, tr: '' },
-        ].map((s: any) => (
-          <div
-            key={s.l}
-            onClick={() => {
-              setTab('log', s.s);
-            }}
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 10px',
-              background: C.cd,
-              borderRadius: 12,
-              border: '1px solid ' + C.b,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{s.e}</span>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: C.t, lineHeight: 1 }}>
-                {s.v}
-                {s.sub && (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: s.c, marginLeft: 3 }}>
-                    {s.sub}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 9, color: C.tl }}>{s.l}</div>
-              <div style={{ fontSize: 8, color: C.tl, marginTop: 1 }}>
-                wk: {s.wk}{s.tr && <span style={{ marginLeft: 2, color: s.tr === '↑' ? C.ok : s.tr === '↓' ? C.p : C.tl }}>{s.tr}</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-        <div
-          onClick={() => { setTab('log', 'stats'); }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '8px 6px',
-            background: C.cd,
-            borderRadius: 12,
-            border: '1px solid ' + C.b,
-            cursor: 'pointer',
-            minWidth: 36,
-          }}
-        >
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.s, textAlign: 'center', lineHeight: 1.3 }}>All<br />Stats</div>
-        </div>
-      </div>
-
-      {/* Next feed reminder is now integrated into hero widget above */}
-
-
-      {/* (Tip is now part of the carousel above) */}
-
-      {/* Quick Actions — standalone widget */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
-        {[
-          { l: 'Activities 🎨', t: 'guide', s: 'activities' },
-          { l: 'Safety 🛡️', t: 'safety', s: 'tips' },
-          { l: 'Report 📋', t: '_report', s: '' },
-          { l: 'Sync 🔄', t: '_sync', s: '' },
+          { e: '🎨', l: 'Activities', t: 'guide', s: 'activities', stat: '' },
+          { e: '🛡️', l: 'Safety', t: 'safety', s: 'tips', stat: '' },
+          { e: '📋', l: 'Report', t: '_report', s: '', stat: '' },
+          { e: '📊', l: 'All Stats', t: 'log', s: 'stats', stat: `wk ${weekFeeds}F · ${weekDiapers}D` },
         ].map((q: any) => (
           <div
             key={q.l}
-            onClick={() => {
-              setTab(q.t, q.s);
-            }}
+            onClick={() => { setTab(q.t, q.s); }}
             style={{
-              flex: '1 0 auto',
-              padding: '8px 12px',
+              flex: 1,
+              padding: '10px 6px 8px',
               textAlign: 'center',
               cursor: 'pointer',
               background: C.cd,
-              borderRadius: 10,
+              borderRadius: 14,
               border: '1px solid ' + C.b,
-              fontSize: 11,
-              fontWeight: 600,
-              color: C.t,
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 3,
             }}
           >
-            {q.l}
+            <span style={{ fontSize: 18 }}>{q.e}</span>
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.t, lineHeight: 1.2 }}>{q.l}</div>
+            {q.stat && <div style={{ fontSize: 8, color: C.tl, lineHeight: 1.1 }}>{q.stat}</div>}
           </div>
         ))}
       </div>
