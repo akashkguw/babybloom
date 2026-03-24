@@ -11,6 +11,7 @@ import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
 import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
+import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
 import TimerView from '@/features/feeding/TimerView';
 import StatsView from '@/features/stats/StatsView';
 
@@ -178,6 +179,108 @@ const LogTab: React.FC<LogTabProps> = ({
   };
 
   function addEntry() {
+    // ── Input validation ──
+    if (sub === 'feed') {
+      if (form.feedMins) {
+        const n = parseFloat(form.feedMins);
+        if (isNaN(n) || n < LIMITS.feedMins.min || n > LIMITS.feedMins.max) {
+          toast('Duration must be 0–120 minutes'); return;
+        }
+      }
+      if (form.feedVal) {
+        const n = parseFloat(form.feedVal);
+        const lim = volumeUnit === 'ml' ? LIMITS.feedMl : LIMITS.feedOz;
+        if (isNaN(n) || n < lim.min || n > lim.max) {
+          toast(`Amount must be ${lim.min}–${lim.max} ${volLabel(volumeUnit)}`); return;
+        }
+      }
+    }
+    if (sub === 'pump') {
+      if (form.pumpVal) {
+        const n = parseFloat(form.pumpVal);
+        const lim = volumeUnit === 'ml' ? LIMITS.pumpMl : LIMITS.pumpOz;
+        if (isNaN(n) || n < lim.min || n > lim.max) {
+          toast(`Amount must be ${lim.min}–${lim.max} ${volLabel(volumeUnit)}`); return;
+        }
+      }
+      if (form.duration) {
+        const n = parseFloat(String(form.duration));
+        if (isNaN(n) || n < LIMITS.pumpMins.min || n > LIMITS.pumpMins.max) {
+          toast('Duration must be 0–120 minutes'); return;
+        }
+      }
+    }
+    if (sub === 'sleep') {
+      if (form.sleepHrs) {
+        const n = parseFloat(form.sleepHrs);
+        if (isNaN(n) || n < LIMITS.sleepHrs.min || n > LIMITS.sleepHrs.max) {
+          toast('Hours must be 0–24'); return;
+        }
+      }
+      if (form.sleepMins) {
+        const n = parseFloat(form.sleepMins);
+        if (isNaN(n) || n < LIMITS.sleepMins.min || n > LIMITS.sleepMins.max) {
+          toast('Minutes must be 0–59'); return;
+        }
+      }
+      if (form.type === 'Tummy Time' && form.sleepMins) {
+        const n = parseFloat(form.sleepMins);
+        if (isNaN(n) || n < LIMITS.tummyMins.min || n > LIMITS.tummyMins.max) {
+          toast('Tummy time must be 0–120 minutes'); return;
+        }
+      }
+    }
+    if (sub === 'growth') {
+      if (form.weight) {
+        const n = parseFloat(form.weight);
+        if (isNaN(n) || n < LIMITS.weightLbs.min || n > LIMITS.weightLbs.max) {
+          toast('Weight must be 1–60 lbs'); return;
+        }
+      }
+      if (form.height) {
+        const n = parseFloat(form.height);
+        if (isNaN(n) || n < LIMITS.heightIn.min || n > LIMITS.heightIn.max) {
+          toast('Height must be 10–45 inches'); return;
+        }
+      }
+      if (form.head) {
+        const n = parseFloat(form.head);
+        if (isNaN(n) || n < LIMITS.headIn.min || n > LIMITS.headIn.max) {
+          toast('Head circumference must be 8–22 inches'); return;
+        }
+      }
+    }
+    if (sub === 'temp') {
+      if (form.temp) {
+        const n = parseFloat(form.temp);
+        if (isNaN(n) || n < LIMITS.tempF.min || n > LIMITS.tempF.max) {
+          toast('Temperature must be 90–110 °F'); return;
+        }
+      }
+    }
+    if (sub === 'meds') {
+      if (!form.med || !form.med.trim()) {
+        toast('Medication name is required'); return;
+      }
+      form.med = cleanStr(form.med, LIMITS.nameLen);
+      if (form.dose) form.dose = cleanStr(form.dose, LIMITS.nameLen);
+    }
+    if (sub === 'allergy') {
+      if (!form.food || !form.food.trim()) {
+        toast('Food name is required'); return;
+      }
+      form.food = cleanStr(form.food, LIMITS.nameLen);
+      if (form.reaction) form.reaction = cleanStr(form.reaction, LIMITS.noteLen);
+    }
+    if (sub === 'massage' && form.duration) {
+      const n = parseFloat(String(form.duration));
+      if (isNaN(n) || n < LIMITS.massageMins.min || n > LIMITS.massageMins.max) {
+        toast('Duration must be 0–120 minutes'); return;
+      }
+    }
+    // Sanitize notes if present
+    if (form.notes) form.notes = cleanStr(form.notes, LIMITS.noteLen);
+
     const entry: LogEntry = {
       date: form.date || selectedDate,
       time: form.time || now(),

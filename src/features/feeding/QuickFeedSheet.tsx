@@ -4,6 +4,8 @@ import Input from '@/components/shared/Input';
 import Button from '@/components/shared/Button';
 import Icon from '@/components/shared/Icon';
 import { mlToOz, fmtVol, volLabel } from '@/lib/utils/volume';
+import { safeNum, LIMITS } from '@/lib/utils/validate';
+import { toast } from '@/lib/utils/toast';
 
 interface QuickFeedSheetProps {
   type: string | null;
@@ -25,7 +27,12 @@ export default function QuickFeedSheet({
   if (!type) return null;
 
   const handleSave = () => {
-    const num = parseFloat(value) || 0;
+    const lim = volumeUnit === 'ml' ? LIMITS.feedMl : LIMITS.feedOz;
+    const num = safeNum(value, lim.min, lim.max, -1);
+    if (num <= 0) {
+      toast(`Amount must be ${lim.min}–${lim.max} ${volLabel(volumeUnit)}`);
+      return;
+    }
     const ozVal = volumeUnit === 'ml' ? mlToOz(num) : num;
     onSave(value + ' ' + volLabel(volumeUnit), ozVal);
     onChange('');

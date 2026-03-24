@@ -1,5 +1,6 @@
 import { fmtVol } from '@/lib/utils/volume';
 import { autoSleepType } from '@/lib/utils/date';
+import { safeNum, LIMITS } from '@/lib/utils/validate';
 
 export interface ShortcutAction {
   cat: string;
@@ -46,14 +47,20 @@ export function handleShortcutAction(
     // Check for extra params
     if (result) {
       const oz = params.get('oz');
-      if (oz) result.entry.oz = parseFloat(oz);
+      if (oz) {
+        const ozVal = safeNum(oz, LIMITS.feedOz.min, LIMITS.feedOz.max);
+        if (ozVal > 0) {
+          result.entry.oz = ozVal;
+          result.entry.amount = fmtVol(ozVal, volumeUnit);
+        }
+      }
       const min = params.get('min');
       if (min) {
-        result.entry.mins = parseFloat(min);
-        result.entry.amount = min + ' min';
-      }
-      if (oz) {
-        result.entry.amount = fmtVol(parseFloat(oz), volumeUnit);
+        const minVal = safeNum(min, LIMITS.feedMins.min, LIMITS.feedMins.max);
+        if (minVal > 0) {
+          result.entry.mins = minVal;
+          result.entry.amount = minVal + ' min';
+        }
       }
     }
   } else if (voice && parseVoice) {

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { C } from '@/lib/constants/colors';
 import Input from '@/components/shared/Input';
 import Card from '@/components/shared/Card';
+import { clampNum, LIMITS } from '@/lib/utils/validate';
 
 export default function MedCalc() {
   const [wt, setWt] = useState('');
+  const handleWt = (v: string) => setWt(clampNum(v, LIMITS.weightLbs.min, LIMITS.weightLbs.max));
 
   const kg = wt ? parseFloat(wt) / 2.205 : 0;
   const tylenolLow = Math.round(kg * 10 * 10) / 10;
@@ -36,7 +38,7 @@ export default function MedCalc() {
 
       <Card style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.t, marginBottom: 8 }}>Enter Baby's Weight</div>
-        <Input type="number" value={wt} onChange={setWt} placeholder="Weight in lbs" />
+        <Input type="number" value={wt} onChange={handleWt} placeholder="Weight in lbs (1–60)" />
         {wt && (
           <div style={{ fontSize: 12, color: C.tl, marginTop: 4 }}>
             {parseFloat(wt).toFixed(1)} lbs = {kg.toFixed(1)} kg

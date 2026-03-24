@@ -5,6 +5,8 @@ import Input from '@/components/shared/Input';
 import Icon from '@/components/shared/Icon';
 import Card from '@/components/shared/Card';
 import { today } from '@/lib/utils/date';
+import { isValidBirthDate, cleanStr, LIMITS } from '@/lib/utils/validate';
+import { toast } from '@/lib/utils/toast';
 
 interface Profile {
   id: number;
@@ -78,6 +80,7 @@ export default function ProfileManager({
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <input
                     value={editNm}
+                    maxLength={LIMITS.nameLen}
                     onChange={(e) => setEditNm(e.target.value)}
                     style={{
                       fontSize: 14,
@@ -225,12 +228,14 @@ export default function ProfileManager({
             <Button
               label="Add"
               onClick={() => {
-                if (nm) {
-                  onAdd({ id: Date.now(), name: nm, birthDate: bd || today() });
-                  setNm('');
-                  setBd('');
-                  setShow(false);
-                }
+                const name = cleanStr(nm, LIMITS.nameLen);
+                if (!name) { toast('Please enter a name'); return; }
+                const birthDate = bd || today();
+                if (!isValidBirthDate(birthDate)) { toast('Please enter a valid birth date (not in the future)'); return; }
+                onAdd({ id: Date.now(), name, birthDate });
+                setNm('');
+                setBd('');
+                setShow(false);
               }}
               color={C.s}
             />

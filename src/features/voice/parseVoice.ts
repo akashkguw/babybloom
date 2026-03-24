@@ -1,5 +1,6 @@
 import { ML_PER_OZ } from '@/lib/utils/volume';
 import { autoSleepType } from '@/lib/utils/date';
+import { safeNum, LIMITS } from '@/lib/utils/validate';
 
 export interface VoiceParseResult {
   cat: 'feed' | 'diaper' | 'sleep' | 'temp' | 'bath' | 'massage' | 'meds' | 'allergy' | 'growth';
@@ -149,6 +150,37 @@ export default function parseVoice(text: string): VoiceParseResult | null {
   } else if (/height|length|inch|cm|tall/i.test(t)) {
     const hM = t.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|cm)/);
     if (hM) result = { cat: 'growth', entry: { type: 'Height', value: parseFloat(hM[1]), notes: hM[1] + (hM[0].includes('cm') ? ' cm' : ' in') } };
+  }
+
+  // ── Post-parse bounds validation ──
+  if (result) {
+    const e = result.entry;
+    if (e.oz != null) {
+      e.oz = safeNum(String(e.oz), LIMITS.feedOz.min, LIMITS.feedOz.max);
+      if (e.oz === 0 && e.amount) { return null; } // reject invalid
+    }
+    if (e.mins != null && result.cat === 'feed') {
+      e.mins = safeNum(String(e.mins), LIMITS.feedMins.min, LIMITS.feedMins.max);
+    }
+    if (e.mins != null && result.cat === 'sleep') {
+      e.mins = safeNum(String(e.mins), LIMITS.tummyMins.min, LIMITS.tummyMins.max);
+    }
+    if (e.duration != null) {
+      const dur = safeNum(e.duration, LIMITS.massageMins.min, LIMITS.massageMins.max);
+      e.duration = String(dur);
+    }
+    if (e.value != null && result.cat === 'temp') {
+      e.value = safeNum(String(e.value), LIMITS.tempF.min, LIMITS.tempF.max);
+      if (e.value === 0) { return null; } // reject out-of-range temp
+    }
+    if (e.value != null && result.cat === 'growth') {
+      if (e.type === 'Weight') {
+        e.value = safeNum(String(e.value), LIMITS.weightLbs.min, LIMITS.weightLbs.max);
+      } else if (e.type === 'Height') {
+        e.value = safeNum(String(e.value), LIMITS.heightIn.min, LIMITS.heightIn.max);
+      }
+      if (e.value === 0) { return null; }
+    }
   }
 
   if (result && timeOverride) result.entry.time = timeOverride;

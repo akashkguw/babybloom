@@ -7,6 +7,7 @@ import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { VACCINES } from '@/lib/constants/vaccines';
 import { toast } from '@/lib/utils/toast';
+import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
 
 interface LogEntry {
@@ -112,7 +113,8 @@ export default function HomeTab({
             <Btn
               label="Get Started"
               onClick={() => {
-                if (td2) setBirth(td2);
+                if (!td2 || !isValidBirthDate(td2)) { toast('Please enter a valid birth date (not in the future)'); return; }
+                setBirth(td2);
               }}
               color={C.p}
               full={true}

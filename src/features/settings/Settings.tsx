@@ -6,6 +6,8 @@ import Icon from '@/components/shared/Icon';
 import ProfileManager from '@/features/profiles/ProfileManager';
 import SiriShortcutsSetup from '@/features/shortcuts/SiriShortcutsSetup';
 import { today, daysAgo, fmtTime, fmtDate } from '@/lib/utils/date';
+import { isValidBirthDate } from '@/lib/utils/validate';
+import { toast } from '@/lib/utils/toast';
 import { fmtVol, volLabel } from '@/lib/utils/volume';
 import { dga, odb, dcl, ST } from '@/lib/db/indexeddb';
 
@@ -130,7 +132,14 @@ export default function Settings({
               <input
                 type="date"
                 value={birth}
-                onChange={(e) => { if (e.target.value) setBirth(e.target.value); }}
+                max={today()}
+                onChange={(e) => {
+                  if (e.target.value && isValidBirthDate(e.target.value)) {
+                    setBirth(e.target.value);
+                  } else if (e.target.value) {
+                    toast('Birth date cannot be in the future');
+                  }
+                }}
                 style={{
                   fontSize: 14,
                   padding: '8px 12px',
