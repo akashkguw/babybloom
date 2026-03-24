@@ -80,8 +80,11 @@ git add tests/ 2>/dev/null || true
 
 # ─── SECRET SCAN — hard stop if any secret found in staged files ───
 echo "🔍 Scanning staged files for secrets..."
-# Match real token lengths (40+ chars after prefix), not placeholders or pattern strings
-if git diff --cached | grep -qE "github_pat_[A-Za-z0-9_]{30,}|ghp_[A-Za-z0-9]{36,}|[0-9]{8,}:AAH[A-Za-z0-9_-]{30,}"; then
+# Patterns: GH personal access tokens and Telegram bot tokens
+GH_PAT_PATTERN="github_pat_[A-Za-z0-9_]{30,}"
+GH_TOKEN_PATTERN="ghp_[A-Za-z0-9]{36,}"
+TG_TOKEN_PATTERN="[0-9]{8,}:AA[A-Za-z0-9_-]{30,}"
+if git diff --cached | grep -qE "${GH_PAT_PATTERN}|${GH_TOKEN_PATTERN}|${TG_TOKEN_PATTERN}"; then
   echo "🚨 SECRET DETECTED in staged files! Aborting."
   echo "   Run: git diff --cached | grep -iE '$SECRET_PATTERNS'"
   send_telegram "🚨 *BabyBloom BLOCKER:* Secret detected in staged files — deploy aborted. Check manually."
