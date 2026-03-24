@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
+import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
 import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
@@ -87,6 +88,11 @@ export default function HomeTab({
   const [dismissedResumeId, setDismissedResumeId] = useState<number | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load persisted dismissed resume ID on mount
+  useEffect(() => {
+    dg('dismissedResumeId').then((v) => { if (v != null) setDismissedResumeId(v); });
+  }, []);
+
   const triggerFlash = useCallback((label: string) => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     setFlashBtn(label);
@@ -100,7 +106,7 @@ export default function HomeTab({
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number }> = {
       'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6 },
       'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6 },
-      'Tummy':    { cat: 'feed', types: ['Tummy Time'], warnH: 48, dangerH: 72 },
+      'Tummy':    { cat: 'sleep', types: ['Tummy Time'], warnH: 48, dangerH: 72 },
       'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10 },
       'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48 },
     };
@@ -467,6 +473,23 @@ export default function HomeTab({
     return null;
   })();
 
+  // ═══ Next feed reminder (computed here so hero widget can use it) ═══
+  const feedReminderText = useMemo(() => {
+    if (!reminders || !reminders.enabled || !reminders.feedInterval) return null;
+    const feeds = logs.feed || [];
+    const lastFeed = feeds.length > 0 ? feeds[0] : null;
+    if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
+    const dp2 = lastFeed.date.split('-');
+    const parts = lastFeed.time.split(':');
+    const lastT = new Date(parseInt(dp2[0]), parseInt(dp2[1]) - 1, parseInt(dp2[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
+    const nextT = new Date(lastT.getTime() + reminders.feedInterval * 3600000);
+    const now2 = new Date();
+    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
+    const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
+    const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
+    return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
+  }, [reminders, logs.feed]);
+
   // ═══ Format age ═══
   const ageDays = Math.round(age * 30.44);
   const ageWeeks = Math.floor(ageDays / 7);
@@ -501,6 +524,12 @@ export default function HomeTab({
             <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>
               {ms ? 'Stage: ' + ms.l : ''}
             </div>
+            {feedReminderText && (
+              <div style={{ color: feedReminderText.overdue ? 'rgba(255,200,200,0.95)' : 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span>{feedReminderText.overdue ? '⏰' : '🕐'}</span>
+                <span>{feedReminderText.text}</span>
+              </div>
+            )}
           </div>
           <div
             onClick={() => { setTab('miles', 'dev'); }}
@@ -564,6 +593,27 @@ export default function HomeTab({
               </div>
             ),
           });
+          if (ms.red && ms.red.length > 0) {
+            slides.push({
+              id: 'redflag',
+              node: (
+                <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                    🚩 Red flags for {ms.l}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.t, lineHeight: 1.6 }}>
+                    Talk to your doctor if: {ms.red.slice(0, 2).join('; ')}
+                  </div>
+                  <div
+                    onClick={() => { setTab('miles', 'dev'); }}
+                    style={{ fontSize: 10, color: C.p, fontWeight: 600, marginTop: 4, cursor: 'pointer' }}
+                  >
+                    View all red flags →
+                  </div>
+                </div>
+              ),
+            });
+          }
         }
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
@@ -715,7 +765,7 @@ export default function HomeTab({
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <div
-                  onClick={() => setDismissedResumeId(rf.id)}
+                  onClick={() => { setDismissedResumeId(rf.id); ds('dismissedResumeId', rf.id); }}
                   style={{
                     padding: '5px 10px',
                     borderRadius: 8,
@@ -1044,57 +1094,7 @@ export default function HomeTab({
         </div>
       </div>
 
-      {/* Next feed reminder */}
-      {reminders && reminders.enabled && reminders.feedInterval ? (
-        (() => {
-          const feeds = logs.feed || [];
-          const lastFeed = feeds.length > 0 ? feeds[0] : null;
-          if (!lastFeed || !lastFeed.time || !lastFeed.date) {
-            return (
-              <Cd style={{ marginBottom: 12, borderLeft: '4px solid ' + C.w, padding: 14 }}>
-                <div style={{ fontSize: 13, color: C.t }}>
-                  <Ic n="clock" s={14} c={C.w} st={{ marginRight: 6 }} />
-                  No feeds logged today — time to feed?
-                </div>
-              </Cd>
-            );
-          }
-          const dp2 = lastFeed.date.split('-');
-          const parts = lastFeed.time.split(':');
-          const lastT = new Date(
-            parseInt(dp2[0]),
-            parseInt(dp2[1]) - 1,
-            parseInt(dp2[2]),
-            parseInt(parts[0]),
-            parseInt(parts[1]),
-            0
-          );
-          const nextT = new Date(lastT.getTime() + reminders.feedInterval * 3600000);
-          const now2 = new Date();
-
-          if (now2 >= nextT) {
-            return (
-              <Cd style={{ marginBottom: 12, borderLeft: '4px solid ' + C.p, background: C.pl + '44', padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.p }}>
-                  <Ic n="clock" s={14} c={C.p} st={{ marginRight: 6 }} />
-                  Feeding overdue! Last feed: {fmtTime(lastFeed.time)}
-                </div>
-              </Cd>
-            );
-          }
-          const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
-          const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
-          return (
-            <Cd style={{ marginBottom: 12, borderLeft: '4px solid ' + C.a, padding: 14 }}>
-              <div style={{ fontSize: 13, color: C.t }}>
-                <Ic n="clock" s={14} c={C.a} st={{ marginRight: 6 }} />
-                Next feed in {hrs > 0 ? hrs + 'h ' : ''}
-                {mins}m
-              </div>
-            </Cd>
-          );
-        })()
-      ) : null}
+      {/* Next feed reminder is now integrated into hero widget above */}
 
 
       {/* (Tip is now part of the carousel above) */}
