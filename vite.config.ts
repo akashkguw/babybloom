@@ -21,7 +21,7 @@ export default defineConfig({
         scope: '/babybloom/',
         icons: [
           {
-            src: '/logo.svg',
+            src: 'logo.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any'
