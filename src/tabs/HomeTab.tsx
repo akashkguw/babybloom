@@ -11,6 +11,7 @@ import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
+import MomCare from '@/features/wellness/MomCare';
 
 interface LogEntry {
   id: number;
@@ -958,6 +959,9 @@ export default function HomeTab({
             </div>
           );
         })()}
+
+      {/* ═══ MOM WELLNESS — postpartum self-care tracker ═══ */}
+      <MomCare />
 
       {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
