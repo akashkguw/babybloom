@@ -11,6 +11,7 @@ import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
+import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
 
 interface LogEntry {
@@ -170,6 +171,7 @@ export default function HomeTab({
 
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
+  const momAlerts = useMomAlerts();
 
   // ═══ Feed timer effect (must be before early return to keep hook count stable) ═══
   const feedTimer = feedTimerApp;
@@ -676,114 +678,70 @@ export default function HomeTab({
       {(() => {
         const slides: { id: string; node: React.ReactNode; priority: number }[] = [];
 
-        // ── Red flags (priority 0 — shown first) ──
-        if (dynamicRedFlags.length > 0) {
+        // ── Baby alerts — each flag is its own card ──
+        dynamicRedFlags.forEach((rf) => {
+          const isCritical = rf.severity === 'critical';
+          const borderColor = isCritical ? C.p : C.w;
+          const bgColor = isCritical ? C.pl : C.wl;
           slides.push({
-            id: 'redflag',
-            priority: 0,
+            id: 'rf-' + rf.id,
+            priority: isCritical ? 0 : 1,
             node: (
-              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                  🚩 Needs attention
+              <div style={{
+                padding: '10px 12px', borderRadius: 14,
+                borderLeft: '3px solid ' + borderColor, background: bgColor,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>{rf.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: borderColor }}>
+                    {rf.id === 'feed-gap' ? (isCritical ? 'Feed now' : 'Feed soon')
+                      : rf.id === 'low-wet' ? 'Check hydration'
+                      : rf.id === 'dirty-gap' ? 'Check diaper'
+                      : rf.id === 'feed-drop' ? 'Intake dropping'
+                      : rf.id === 'tummy-gap' ? 'Tummy time'
+                      : 'Heads up'}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {dynamicRedFlags.slice(0, 2).map((rf) => (
-                    <div key={rf.id} style={{ fontSize: 11, color: C.t, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                      <span style={{ flexShrink: 0 }}>{rf.emoji}</span>
-                      <span style={{ fontWeight: rf.severity === 'critical' ? 700 : 400 }}>{rf.text}</span>
-                    </div>
-                  ))}
+                <div style={{ fontSize: 11, color: C.t, lineHeight: 1.5 }}>
+                  {rf.text}
                 </div>
-                {dynamicRedFlags.length > 2 && (
-                  <div style={{ fontSize: 10, color: C.tl, marginTop: 4 }}>
-                    +{dynamicRedFlags.length - 2} more alert{dynamicRedFlags.length - 2 !== 1 ? 's' : ''}
-                  </div>
-                )}
               </div>
             ),
           });
-        }
+        });
 
-        // ── SmartStatus: feed/diaper/sleep cards (inline) ──
-        {
-          const allFeeds = logs.feed || [];
-          const _todayFeeds = allFeeds.filter((e) => e.date === td);
-          const lastFeed = allFeeds.length > 0 ? allFeeds[0] : null;
-          const lastFeedMs = lastFeed && lastFeed.date && lastFeed.time
-            ? (() => { const dp = lastFeed.date.split('-'); const tp = lastFeed.time.split(':'); return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime(); })()
-            : 0;
-          const feedHrs = lastFeedMs ? (Date.now() - lastFeedMs) / 3600000 : 999;
-          const feedWarn = age < 3 ? 3 : age < 6 ? 3.5 : 4;
-          const feedDanger = age < 3 ? 4 : age < 6 ? 5 : 6;
-          const fmtAgo = (h: number) => h < 1 ? Math.round(h * 60) + 'm ago' : h < 24 ? Math.round(h * 10) / 10 + 'h ago' : Math.round(h / 24) + 'd ago';
-
-          if (feedHrs >= feedDanger) {
-            slides.push({ id: 'ss-feed', priority: 0, node: (
-              <div style={{ padding: '10px 12px', background: C.pl, borderRadius: 14, borderLeft: '3px solid ' + C.p }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <span style={{ fontSize: 14 }}>🍼</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.p }}>Feed now</span>
+        // ── Mom wellness alerts — same card style ──
+        momAlerts.forEach((ma) => {
+          const isCritical = ma.severity === 'critical';
+          const borderColor = isCritical ? C.p : '#9C7CF4';
+          const bgColor = isCritical ? C.pl : '#9C7CF4' + '18';
+          slides.push({
+            id: 'mom-' + ma.id,
+            priority: isCritical ? 0 : 1,
+            node: (
+              <div style={{
+                padding: '10px 12px', borderRadius: 14,
+                borderLeft: '3px solid ' + borderColor, background: bgColor,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 16 }}>{ma.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: borderColor }}>
+                    {ma.id === 'mom-water' ? 'Stay hydrated'
+                      : ma.id === 'mom-meal' ? 'Eat something'
+                      : ma.id === 'mom-sleep' ? 'Rest up'
+                      : ma.id === 'mom-mood' ? 'How you\'re doing'
+                      : ma.id === 'mom-vitamin' ? 'Vitamin reminder'
+                      : 'Self-care check'}
+                  </span>
+                  <span style={{ fontSize: 9, color: C.tl, marginLeft: 'auto', fontWeight: 600 }}>For you</span>
                 </div>
-                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{lastFeedMs ? 'Last: ' + fmtAgo(feedHrs) : 'No feeds logged'}</div>
-              </div>
-            )});
-          } else if (feedHrs >= feedWarn) {
-            slides.push({ id: 'ss-feed', priority: 1, node: (
-              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <span style={{ fontSize: 14 }}>🍼</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Feed soon</span>
+                <div style={{ fontSize: 11, color: C.t, lineHeight: 1.5 }}>
+                  {ma.text}
                 </div>
-                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>Last: {fmtAgo(feedHrs)}</div>
               </div>
-            )});
-          }
-
-          const allDiapers = logs.diaper || [];
-          const todayDiapers = allDiapers.filter((e) => e.date === td);
-          const lastDiaper = allDiapers.length > 0 ? allDiapers[0] : null;
-          const lastDiaperMs = lastDiaper && lastDiaper.date && lastDiaper.time
-            ? (() => { const dp = lastDiaper.date.split('-'); const tp = lastDiaper.time.split(':'); return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime(); })()
-            : 0;
-          const diaperHrs = lastDiaperMs ? (Date.now() - lastDiaperMs) / 3600000 : 999;
-          const wetToday = todayDiapers.filter((e) => e.type === 'Wet' || e.type === 'Both').length;
-          const wetTarget = age < 3 ? 6 : 4;
-
-          if (diaperHrs >= 8 || (wetToday < Math.floor(wetTarget / 2) && new Date().getHours() >= 14)) {
-            slides.push({ id: 'ss-diaper', priority: 0, node: (
-              <div style={{ padding: '10px 12px', background: C.pl, borderRadius: 14, borderLeft: '3px solid ' + C.p }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <span style={{ fontSize: 14 }}>💧</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.p }}>{wetToday < wetTarget ? 'Check hydration' : 'Check diaper'}</span>
-                </div>
-                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{wetToday} wet today · last {fmtAgo(diaperHrs)}</div>
-              </div>
-            )});
-          } else if (diaperHrs >= 5) {
-            slides.push({ id: 'ss-diaper', priority: 1, node: (
-              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <span style={{ fontSize: 14 }}>💧</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Check soon</span>
-                </div>
-                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{wetToday} wet today</div>
-              </div>
-            )});
-          }
-
-          const sleepTarget = age < 3 ? 16 : age < 6 ? 14 : age < 12 ? 13 : 12;
-          if (!isSleeping && sleepHrsToday < sleepTarget * 0.3 && new Date().getHours() >= 16) {
-            slides.push({ id: 'ss-sleep', priority: 1, node: (
-              <div style={{ padding: '10px 12px', background: C.wl, borderRadius: 14, borderLeft: '3px solid ' + C.w }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <span style={{ fontSize: 14 }}>😴</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.w }}>Needs more sleep</span>
-                </div>
-                <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.3 }}>{sleepHrsToday}h of ~{sleepTarget}h target</div>
-              </div>
-            )});
-          }
-        }
+            ),
+          });
+        });
 
         // ── Overdue vaccine (priority 0 if overdue, 2 if upcoming) ──
         if (nextAction) {
@@ -959,9 +917,6 @@ export default function HomeTab({
             </div>
           );
         })()}
-
-      {/* ═══ MOM WELLNESS — postpartum self-care tracker ═══ */}
-      <MomCare />
 
       {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
@@ -1286,6 +1241,9 @@ export default function HomeTab({
           );
         })()}
       </Cd>
+
+      {/* ═══ MOM WELLNESS — postpartum self-care tracker ═══ */}
+      <MomCare />
 
       {/* Quick Actions — with stats */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
