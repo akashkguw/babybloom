@@ -33,6 +33,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

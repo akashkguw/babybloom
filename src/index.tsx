@@ -1,7 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
+import { initSentry } from '@/lib/sentry';
 import App from './App';
 import './styles/base.css';
+
+// Initialize Sentry error tracking (production only)
+initSentry();
 
 // Service worker registration is handled by vite-plugin-pwa (registerType: 'autoUpdate')
 // Clean up any old service workers from v1 that might cache stale pages
@@ -30,8 +35,36 @@ if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist();
 }
 
+// Fallback UI when the app crashes
+function CrashFallback() {
+  return (
+    <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'system-ui' }}>
+      <h2>Something went wrong</h2>
+      <p style={{ color: '#666', margin: '1rem 0' }}>
+        The error has been reported automatically.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          padding: '0.6rem 1.5rem',
+          borderRadius: '8px',
+          border: 'none',
+          background: '#6C63FF',
+          color: '#fff',
+          fontSize: '1rem',
+          cursor: 'pointer',
+        }}
+      >
+        Reload App
+      </button>
+    </div>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <Sentry.ErrorBoundary fallback={<CrashFallback />}>
+      <App />
+    </Sentry.ErrorBoundary>
   </React.StrictMode>
 );
