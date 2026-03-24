@@ -555,18 +555,45 @@ export default function HomeTab({
         </div>
       </Cd>
 
-      {/* ═══ SMART STATUS — traffic-light glanceable indicators ═══ */}
-      <SmartStatus logs={logs} age={age} birth={birth} />
+      {/* SmartStatus & PredictiveNudges moved into carousel */}
 
-      {/* ═══ PREDICTIVE NUDGES — pattern-based reminders ═══ */}
-      <PredictiveNudges logs={logs} age={age} />
-
-      {/* ═══ CAROUSEL: Don't Miss + Tip ═══ */}
+      {/* ═══ CAROUSEL: Red → Yellow → Green priority ═══ */}
       {(() => {
-        const slides: { id: string; node: React.ReactNode }[] = [];
+        const slides: { id: string; node: React.ReactNode; priority: number }[] = [];
+
+        // ── Red flags (priority 0 — shown first) ──
+        if (dynamicRedFlags.length > 0) {
+          slides.push({
+            id: 'redflag',
+            priority: 0,
+            node: (
+              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  🚩 Needs attention
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {dynamicRedFlags.slice(0, 2).map((rf) => (
+                    <div key={rf.id} style={{ fontSize: 11, color: C.t, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                      <span style={{ flexShrink: 0 }}>{rf.emoji}</span>
+                      <span style={{ fontWeight: rf.severity === 'critical' ? 700 : 400 }}>{rf.text}</span>
+                    </div>
+                  ))}
+                </div>
+                {dynamicRedFlags.length > 2 && (
+                  <div style={{ fontSize: 10, color: C.tl, marginTop: 4 }}>
+                    +{dynamicRedFlags.length - 2} more alert{dynamicRedFlags.length - 2 !== 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            ),
+          });
+        }
+
+        // ── Overdue vaccine (priority 0 if overdue, 2 if upcoming) ──
         if (nextAction) {
           slides.push({
             id: 'vaccine',
+            priority: nextAction.overdue ? 0 : 2,
             node: (
               <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + (nextAction.overdue ? C.p : C.bl), background: nextAction.overdue ? C.pl + '22' : C.bll + '44', borderRadius: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -601,9 +628,12 @@ export default function HomeTab({
             ),
           });
         }
+
+        // ── Tip (priority 3 — green/informational, shown last) ──
         if (ms) {
           slides.push({
             id: 'tip',
+            priority: 3,
             node: (
               <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.a, background: C.cd, borderRadius: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: C.a, marginBottom: 3 }}>Tip for {ms.l}</div>
@@ -612,31 +642,9 @@ export default function HomeTab({
             ),
           });
         }
-        if (dynamicRedFlags.length > 0) {
-          slides.push({
-            id: 'redflag',
-            node: (
-              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.p, background: C.pl + '18', borderRadius: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.p, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                  🚩 Needs attention
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {dynamicRedFlags.slice(0, 2).map((rf) => (
-                    <div key={rf.id} style={{ fontSize: 11, color: C.t, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                      <span style={{ flexShrink: 0 }}>{rf.emoji}</span>
-                      <span style={{ fontWeight: rf.severity === 'critical' ? 700 : 400 }}>{rf.text}</span>
-                    </div>
-                  ))}
-                </div>
-                {dynamicRedFlags.length > 2 && (
-                  <div style={{ fontSize: 10, color: C.tl, marginTop: 4 }}>
-                    +{dynamicRedFlags.length - 2} more alert{dynamicRedFlags.length - 2 !== 1 ? 's' : ''}
-                  </div>
-                )}
-              </div>
-            ),
-          });
-        }
+
+        // Sort slides: red (0) → yellow (1) → blue (2) → green (3)
+        slides.sort((a, b) => a.priority - b.priority);
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
         return (
