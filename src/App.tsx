@@ -81,6 +81,8 @@ function App() {
   const [feedTimerApp, _setFTA] = useState<FeedTimerApp | null>(null);
   const [siriResult, setSiriResult] = useState<SiriResult | null>(null);
   const [appTimerElapsed, setAppTimerElapsed] = useState(0);
+  const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
+  const [sliderVal, setSliderVal] = useState(0);
 
   // Wrapper functions for persistence
   const setEmergencyContacts = (v: EmergencyContact[]) => {
@@ -655,6 +657,10 @@ function App() {
               volumeUnit={volumeUnit}
               vDone={vDone}
               setVDone={setVDone}
+              quickFeedType={quickFeedType}
+              setQuickFeedType={setQuickFeedType}
+              sliderVal={sliderVal}
+              setSliderVal={setSliderVal}
             />
           ) : null}
           {tab === 'log' ? (

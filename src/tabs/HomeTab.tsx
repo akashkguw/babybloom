@@ -56,6 +56,10 @@ interface HomeTabProps {
   volumeUnit: 'oz' | 'ml';
   vDone: { [key: string]: boolean };
   setVDone: (updater: (prev: { [key: string]: boolean }) => { [key: string]: boolean }) => void;
+  quickFeedType: string | null;
+  setQuickFeedType: (v: string | null) => void;
+  sliderVal: number;
+  setSliderVal: (v: number) => void;
 }
 
 export default function HomeTab({
@@ -73,10 +77,12 @@ export default function HomeTab({
   volumeUnit,
   vDone,
   setVDone,
+  quickFeedType,
+  setQuickFeedType,
+  sliderVal,
+  setSliderVal,
 }: HomeTabProps) {
   const [td2, setTd] = useState('');
-  const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
-  const [sliderVal, setSliderVal] = useState(0);
   const [showSlider] = useState(false); // kept for stable hook count
   const [carouselIdx, setCarouselIdx] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -1198,8 +1204,8 @@ export default function HomeTab({
                 {/* Companion items — things you can still log */}
                 {companionItems.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 10, color: C.tl, fontWeight: 600, marginBottom: 5, letterSpacing: 0.3 }}>
-                      ALSO LOG
+                    <div style={{ fontSize: 10, color: C.tl, fontWeight: 600, marginBottom: 5 }}>
+                      Also log
                     </div>
                     <div style={{ display: 'flex', gap: 5 }}>
                       {companionItems.map((c) => (
