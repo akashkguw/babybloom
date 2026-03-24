@@ -403,9 +403,34 @@ ${text}
 }
 
 // ═══════════════════════════════
+//  Dedup: prevent double-tap duplicates
+// ═══════════════════════════════
+const _recentIssues = new Map(); // key → timestamp
+const DEDUP_WINDOW_MS = 10_000;  // 10 second window
+
+function isDuplicate(chatId, text) {
+  const key = `${chatId}:${text.trim().toLowerCase()}`;
+  const now = Date.now();
+  const prev = _recentIssues.get(key);
+  if (prev && now - prev < DEDUP_WINDOW_MS) return true;
+  _recentIssues.set(key, now);
+  // Cleanup old entries every 50 inserts
+  if (_recentIssues.size > 50) {
+    for (const [k, t] of _recentIssues) {
+      if (now - t > DEDUP_WINDOW_MS) _recentIssues.delete(k);
+    }
+  }
+  return false;
+}
+
+// ═══════════════════════════════
 //  Core: Create GitHub Issue
 // ═══════════════════════════════
 async function createIssue(chatId, text, forceLabels, customBody) {
+  if (isDuplicate(chatId, text)) {
+    console.log(`⏭️ Skipping duplicate issue: "${text.slice(0, 40)}..."`);
+    return;
+  }
   try {
     const { labels: autoLabels, emojis } = detectLabels(text);
     const allLabels = [...new Set([...forceLabels, ...autoLabels, "telegram"])];
