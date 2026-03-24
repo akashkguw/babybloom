@@ -854,73 +854,6 @@ export default function HomeTab({
         );
       })()}
 
-      {/* Feed timer banner removed — now integrated into Quick Log card */}
-
-      {/* ═══ CONTINUE / ADD TO PREVIOUS — shows when recent feed within 30 min, no timer running ═══ */}
-      {!feedTimer &&
-        (() => {
-          const rf = getRecentFeed(null);
-          if (!rf || rf.id === dismissedResumeId) return null;
-          const elapsed = rf.mins || 0;
-          return (
-            <div
-              style={{
-                marginBottom: 12,
-                padding: '10px 14px',
-                background: C.cd,
-                borderRadius: 12,
-                border: '1px solid ' + C.b,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14 }}>🍼</div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.t }}>
-                    {rf.type} • {elapsed > 0 ? elapsed + 'm' : fmtTime(rf.time)}
-                  </div>
-                  <div style={{ fontSize: 10, color: C.tl }}>
-                    Tap to continue or add time
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <div
-                  onClick={() => { setDismissedResumeId(rf.id); ds('dismissedResumeId', rf.id); }}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 8,
-                    background: C.cd,
-                    border: '1px solid ' + C.b,
-                    color: C.tl,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Dismiss
-                </div>
-                <div
-                  onClick={() => startFeedTimer(rf.type)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 8,
-                    background: C.a,
-                    color: 'white',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Resume
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
       {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
@@ -1192,9 +1125,53 @@ export default function HomeTab({
             );
           }
 
+          // ─── Resume prompt (recent feed within 30 min, no timer) ───
+          const resumeFeed = !feedTimer ? getRecentFeed(null) : null;
+          const showResume = resumeFeed && resumeFeed.id !== dismissedResumeId;
+          const resumeElapsed = resumeFeed?.mins || 0;
+
           // ─── Normal 4-column grid ───
           return (
             <>
+              {showResume && resumeFeed && (
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '7px 10px', marginBottom: 8, borderRadius: 10,
+                    background: C.al, border: '1px solid ' + C.a + '33',
+                    animation: 'fadeIn 0.2s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13 }}>🍼</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.a }}>
+                      {resumeFeed.type} • {resumeElapsed > 0 ? resumeElapsed + 'm' : fmtTime(resumeFeed.time)}
+                    </span>
+                    <span style={{ fontSize: 9, color: C.tl }}>— continue?</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                    <div
+                      onClick={() => { setDismissedResumeId(resumeFeed.id); ds('dismissedResumeId', resumeFeed.id); }}
+                      style={{
+                        padding: '4px 8px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                        color: C.tl, cursor: 'pointer',
+                      }}
+                    >
+                      ✕
+                    </div>
+                    <div
+                      onClick={() => startFeedTimer(resumeFeed.type)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 8,
+                        background: C.a, color: '#fff',
+                        fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      Resume
+                    </div>
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
                 {qlItems.map((q: any) => {
                   const warnInfo = quickLogWarnings[q.l] || null;
