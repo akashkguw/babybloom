@@ -342,9 +342,11 @@ const LogTab: React.FC<LogTabProps> = ({
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                padding: '4px 8px',
-                fontSize: 18,
+                padding: '8px 12px',
+                fontSize: 28,
+                fontWeight: 600,
                 color: C.s,
+                lineHeight: 1,
               }}
               aria-label="Previous day"
             >
@@ -365,10 +367,12 @@ const LogTab: React.FC<LogTabProps> = ({
                 background: 'none',
                 border: 'none',
                 cursor: selectedDate === td ? 'default' : 'pointer',
-                padding: '4px 8px',
-                fontSize: 18,
+                padding: '8px 12px',
+                fontSize: 28,
+                fontWeight: 600,
                 color: selectedDate === td ? C.tl : C.s,
                 opacity: selectedDate === td ? 0.3 : 1,
+                lineHeight: 1,
               }}
               aria-label="Next day"
             >
