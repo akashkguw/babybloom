@@ -126,6 +126,30 @@ export function autoSleepType(time?: string): "Nap" | "Night Sleep" {
   return hour >= 19 || hour < 7 ? "Night Sleep" : "Nap";
 }
 
+/**
+ * Calculate sleep duration in minutes using both date and time.
+ * Returns 0 if duration is non-positive or exceeds 24 hours.
+ */
+export function calcSleepMins(
+  sleepDate: string,
+  sleepTime: string,
+  wakeDate: string,
+  wakeTime: string
+): number {
+  const [sy, sm, sd] = sleepDate.split("-").map(Number);
+  const [sh, smin] = sleepTime.split(":").map(Number);
+  const [wy, wm, wd] = wakeDate.split("-").map(Number);
+  const [wh, wmin] = wakeTime.split(":").map(Number);
+
+  const sleepMs = new Date(sy, sm - 1, sd, sh, smin).getTime();
+  const wakeMs = new Date(wy, wm - 1, wd, wh, wmin).getTime();
+
+  const diffMins = Math.round((wakeMs - sleepMs) / 60000);
+
+  if (diffMins > 0 && diffMins < 1440) return diffMins;
+  return 0;
+}
+
 export function getWeekStart(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   const day = d.getDay();

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { VACCINES } from '@/lib/constants/vaccines';
@@ -148,14 +148,9 @@ export default function HomeTab({
       const sl = (logs.sleep || []).filter(
         (x) => x.type === 'Nap' || x.type === 'Night Sleep'
       );
-      if (sl.length > 0 && sl[0].time && e.time) {
-        const wP = e.time.split(':');
-        const sP = sl[0].time.split(':');
-        const wM = parseInt(wP[0]) * 60 + parseInt(wP[1]);
-        const sM = parseInt(sP[0]) * 60 + parseInt(sP[1]);
-        let df = wM - sM;
-        if (df < 0) df += 1440;
-        if (df > 0 && df < 1440) {
+      if (sl.length > 0 && sl[0].time && sl[0].date && e.time && e.date) {
+        const df = calcSleepMins(sl[0].date, sl[0].time, e.date, e.time);
+        if (df > 0) {
           const hrs2 = Math.floor(df / 60);
           const mins2 = df % 60;
           e.mins = df;

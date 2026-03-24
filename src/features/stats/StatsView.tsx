@@ -275,8 +275,12 @@ export default function StatsView({
   }
 
   // Sleep data based on selected metric
+  // For duration (hours), use Wake Up entries which carry the mins field
+  const sleepWakeEntries = (logs.sleep || []).filter(
+    (e: any) => e.type === 'Wake Up' && e.mins
+  );
   function getSleepData(): number[] {
-    if (sleepMetric === 'hours') return sumByBucket(sleepEntries, 'mins', period, buckets);
+    if (sleepMetric === 'hours') return sumByBucket(sleepWakeEntries, 'mins', period, buckets);
     return countByBucket(sleepEntries, period, buckets);
   }
 

@@ -8,7 +8,7 @@ import {
   Icon as Ic,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import TimerView from '@/features/feeding/TimerView';
@@ -190,14 +190,9 @@ const LogTab: React.FC<LogTabProps> = ({
       const sl = (logs.sleep || []).filter(
         (e) => e.type === 'Nap' || e.type === 'Night Sleep'
       );
-      if (sl.length > 0 && sl[0].time && entry.time) {
-        const wP = (entry.time || '').split(':');
-        const sP = sl[0].time.split(':');
-        const wM = parseInt(wP[0]) * 60 + parseInt(wP[1]);
-        const sM = parseInt(sP[0]) * 60 + parseInt(sP[1]);
-        let df = wM - sM;
-        if (df < 0) df += 1440;
-        if (df > 0 && df < 1440) {
+      if (sl.length > 0 && sl[0].time && sl[0].date && entry.time && entry.date) {
+        const df = calcSleepMins(sl[0].date, sl[0].time, entry.date, entry.time);
+        if (df > 0) {
           const hrs2 = Math.floor(df / 60);
           const mins2 = df % 60;
           entry.mins = df;
@@ -654,14 +649,10 @@ const LogTab: React.FC<LogTabProps> = ({
                     const sl = (logs.sleep || []).filter(
                       (e) => e.type === 'Nap' || e.type === 'Night Sleep'
                     );
-                    if (sl.length > 0 && sl[0].time) {
-                      const wP = v.split(':');
-                      const sP = sl[0].time.split(':');
-                      const wM = parseInt(wP[0]) * 60 + parseInt(wP[1]);
-                      const sM = parseInt(sP[0]) * 60 + parseInt(sP[1]);
-                      let df = wM - sM;
-                      if (df < 0) df += 1440;
-                      if (df > 0 && df < 1440) {
+                    if (sl.length > 0 && sl[0].time && sl[0].date) {
+                      const wakeDate = form.date || selectedDate;
+                      const df = calcSleepMins(sl[0].date, sl[0].time, wakeDate, v);
+                      if (df > 0) {
                         const hrs2 = Math.floor(df / 60);
                         const mins2 = df % 60;
                         setForm({
@@ -1034,16 +1025,11 @@ const LogTab: React.FC<LogTabProps> = ({
 
                 // Compute auto duration for display
                 let autoMins: number | null = null;
-                if (form.type === 'Wake Up' && lastSleep && lastSleep.time) {
+                if (form.type === 'Wake Up' && lastSleep && lastSleep.time && lastSleep.date) {
                   const wt = form.time || now();
-                  const st = lastSleep.time;
-                  const wP = wt.split(':');
-                  const sP = st.split(':');
-                  const wM = parseInt(wP[0]) * 60 + parseInt(wP[1]);
-                  const sM = parseInt(sP[0]) * 60 + parseInt(sP[1]);
-                  let df = wM - sM;
-                  if (df < 0) df += 1440;
-                  if (df > 0 && df < 1440) autoMins = df;
+                  const wd = form.date || selectedDate;
+                  const df = calcSleepMins(lastSleep.date, lastSleep.time, wd, wt);
+                  if (df > 0) autoMins = df;
                 }
 
                 return (
@@ -1079,20 +1065,11 @@ const LogTab: React.FC<LogTabProps> = ({
                                       e.type === 'Nap' ||
                                       e.type === 'Night Sleep'
                                   );
-                                  if (sl.length > 0 && sl[0].time) {
+                                  if (sl.length > 0 && sl[0].time && sl[0].date) {
                                     const wt2 = form.time || now();
-                                    const st2 = sl[0].time;
-                                    const wP2 = wt2.split(':');
-                                    const sP2 = st2.split(':');
-                                    const wM2 =
-                                      parseInt(wP2[0]) * 60 +
-                                      parseInt(wP2[1]);
-                                    const sM2 =
-                                      parseInt(sP2[0]) * 60 +
-                                      parseInt(sP2[1]);
-                                    let df2 = wM2 - sM2;
-                                    if (df2 < 0) df2 += 1440;
-                                    if (df2 > 0 && df2 < 1440) {
+                                    const wd2 = form.date || selectedDate;
+                                    const df2 = calcSleepMins(sl[0].date, sl[0].time, wd2, wt2);
+                                    if (df2 > 0) {
                                       const hrs2 = Math.floor(df2 / 60);
                                       const mins2 = df2 % 60;
                                       setForm({
