@@ -97,19 +97,5 @@
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
     "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
-  },
-  {
-    "number": 76,
-    "title": "Revamp Hero Widget",
-    "body": "Hero widget should the the identity of the app. Its a standard hero widget and doesn't really relates to the app itself. The background is generic etc. I want to have a hero widget which is very premium and is useful and relates to the app",
-    "labels": [
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/76",
-    "created_at": "2026-03-24T18:39:56Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "The user wants the Hero widget redesigned to feel premium and be closely tied to BabyBloom's identity as a baby care tracking app.\n- Current state: The hero widget uses a generic/standard design with a generic background that doesn't reflect the app's purpose.\n- Desired state: A premium-looking hero widget that visually communicates baby care tracking, feels unique to BabyBloom, and is useful (not just decorative).\n- Affected component: The Hero widget in the main/home view (src/ directory).\n- Acceptance criteria: Hero widget has a custom, app-relevant design; background relates to baby/parenting theme; the widget should feel premium and polished; it should display useful information relevant to the user (e.g. baby info, next feed, quick stats).",
-    "implementation_notes": "Files changed:\n- src/tabs/HomeTab.tsx: Replaced the hero widget section (lines 518-556) with a premium redesigned version.\n\nApproach:\n- Replaced the flat gradient card with a multi-layered design featuring decorative bokeh circles, glassmorphism containers, and a 3-color gradient (primary \u2192 secondary \u2192 purple).\n- Added time-based greeting (Good morning/afternoon/evening) with baby name as the primary heading.\n- Created a frosted-glass age badge showing age + milestone stage inline.\n- Preserved the milestone progress ring but placed it in a frosted container for visual polish.\n- Added today's quick stats bar showing feeds count, diapers count, and sleep hours (or sleeping indicator) in frosted pill containers.\n- Feed reminder now has its own styled row with visual urgency differentiation (red-tinted for overdue).\n- All existing functionality preserved: clickable milestone ring, feed reminder logic, age emoji stages.\n\nTrade-offs:\n- Uses backdrop-filter for frosted glass effect which may not render on very old browsers, but gracefully degrades.\n- Slightly taller widget due to added stats row, but provides much more useful at-a-glance information."
   }
 ]
