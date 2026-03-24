@@ -14,6 +14,9 @@ REPO_DIR="/Users/akashkg/saanvi/babybloom"
 BOT_DIR="$REPO_DIR/bot"
 REPO="akashkguw/babybloom"
 
+# ─── Ensure PATH includes common tool locations (LaunchAgents use minimal PATH) ───
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ 2>/dev/null | tail -1)/bin:$PATH"
+
 # ─── Clean up stale git lock files ───
 rm -f "$REPO_DIR/.git/HEAD.lock" "$REPO_DIR/.git/index.lock" "$REPO_DIR/.git/MERGE_HEAD.lock" 2>/dev/null
 
