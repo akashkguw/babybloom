@@ -162,34 +162,120 @@ export default function HomeTab({
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
 
+  // ═══ Feed timer effect (must be before early return to keep hook count stable) ═══
+  useEffect(() => {
+    if (feedTimer) {
+      const diff = Math.floor((Date.now() - feedTimer.startTime) / 1000);
+      if (diff > 14400) {
+        setFeedTimerApp(null);
+        toast('Feed timer auto-reset (exceeded 4 hrs)');
+        return;
+      }
+      setFeedElapsed(diff);
+      feedIntRef.current = setInterval(() => {
+        const el = Math.floor((Date.now() - feedTimer.startTime) / 1000);
+        if (el > 14400) {
+          clearInterval(feedIntRef.current!);
+          setFeedTimerApp(null);
+          toast('Feed timer auto-reset (exceeded 4 hrs)');
+          return;
+        }
+        setFeedElapsed(el);
+      }, 1000);
+      return () => {
+        if (feedIntRef.current) clearInterval(feedIntRef.current);
+      };
+    } else {
+      setFeedElapsed(0);
+    }
+  }, [feedTimer, setFeedTimerApp]);
+
+  // mergeTimerRef cleanup
+  useEffect(() => {
+    return () => {
+      if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
+    };
+  }, []);
+
+  // ═══ Next feed reminder ═══
+  const feedReminderText = useMemo(() => {
+    if (!reminders || !reminders.enabled || !reminders.feedInterval) return null;
+    const feeds = logs.feed || [];
+    const lastFeed = feeds.length > 0 ? feeds[0] : null;
+    if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
+    const dp2 = lastFeed.date.split('-');
+    const parts = lastFeed.time.split(':');
+    const lastT = new Date(parseInt(dp2[0]), parseInt(dp2[1]) - 1, parseInt(dp2[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
+    const nextT = new Date(lastT.getTime() + reminders.feedInterval * 3600000);
+    const now2 = new Date();
+    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
+    const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
+    const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
+    return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
+  }, [reminders, logs.feed]);
+
   // Welcome screen if no birth date
   if (!birth) {
     return (
-      <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🍼</div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: C.t, marginBottom: 8 }}>
+      <div style={{ padding: '48px 20px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        {/* Decorative header */}
+        <div style={{
+          width: 88, height: 88, borderRadius: '50%', margin: '0 auto 20px',
+          background: `linear-gradient(135deg, ${C.p}, ${C.s})`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 8px 24px ${C.p}44`,
+        }}>
+          <span style={{ fontSize: 42 }}>🍼</span>
+        </div>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: C.t, marginBottom: 6 }}>
           Welcome to BabyBloom
         </h1>
-        <p
-          style={{
-            color: C.tl,
-            fontSize: 15,
-            marginBottom: 40,
-            lineHeight: 1.5,
-          }}
-        >
-          Your complete baby care companion
-          <br />
-          powered by AAP, CDC & WHO guidelines
+        <p style={{ color: C.tl, fontSize: 14, marginBottom: 32, lineHeight: 1.5 }}>
+          Your baby care companion
         </p>
-        <Cd style={{ maxWidth: 340, margin: '0 auto', padding: 24 }}>
-          <p style={{ fontWeight: 600, fontSize: 16, marginBottom: 16 }}>
+
+        <Cd style={{ maxWidth: 340, margin: '0 auto', padding: '28px 24px' }}>
+          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: C.t }}>
             When was your baby born?
           </p>
-          <Input type="date" value={td2} onChange={setTd} />
-          <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 12, color: C.tl, marginBottom: 16 }}>
+            Tap below to pick a date
+          </p>
+
+          {/* Large tappable date picker area */}
+          <div
+            onClick={() => {
+              const inp = document.getElementById('bb-birth-input');
+              if (inp) (inp as HTMLInputElement).showPicker?.();
+              inp?.focus();
+            }}
+            style={{
+              position: 'relative', padding: '16px 14px', borderRadius: 14,
+              border: `2px solid ${td2 ? C.p : C.b}`,
+              background: td2 ? C.pl + '33' : C.bg,
+              cursor: 'pointer', transition: 'border 0.2s, background 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>📅</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: td2 ? C.t : C.tl }}>
+              {td2 ? new Date(td2 + 'T00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Select birth date'}
+            </span>
+            <input
+              id="bb-birth-input"
+              type="date"
+              value={td2}
+              onChange={(e) => setTd(e.target.value)}
+              style={{
+                position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%',
+                cursor: 'pointer',
+              }}
+            />
+          </div>
+
+          <div style={{ marginTop: 20 }}>
             <Btn
-              label="Get Started"
+              label={td2 ? 'Get Started' : 'Select a date above'}
               onClick={() => {
                 if (!td2 || !isValidBirthDate(td2)) { toast('Please enter a valid birth date (not in the future)'); return; }
                 setBirth(td2);
@@ -200,17 +286,17 @@ export default function HomeTab({
           </div>
           <div style={{ marginTop: 10 }}>
             <Btn
-              label="Skip — just born"
-              onClick={() => {
-                setBirth(today());
-              }}
+              label="Baby just born today"
+              onClick={() => { setBirth(today()); }}
               outline={true}
               full={true}
             />
           </div>
         </Cd>
-        <div style={{ marginTop: 20, fontSize: 12, color: C.tl }}>
+        <div style={{ marginTop: 24, fontSize: 11, color: C.tl, lineHeight: 1.5 }}>
           Data stored locally on your device
+          <br />
+          Based on AAP, CDC & WHO guidelines
         </div>
       </div>
     );
@@ -254,41 +340,6 @@ export default function HomeTab({
 
   // ═══ Inline feed timer (state lives in App so it survives tab switches) ═══
   const feedTimer = feedTimerApp;
-
-  useEffect(() => {
-    if (feedTimer) {
-      const diff = Math.floor((Date.now() - feedTimer.startTime) / 1000);
-      if (diff > 14400) {
-        setFeedTimerApp(null);
-        toast('Feed timer auto-reset (exceeded 4 hrs)');
-        return;
-      }
-      setFeedElapsed(diff);
-      feedIntRef.current = setInterval(() => {
-        const el = Math.floor((Date.now() - feedTimer.startTime) / 1000);
-        if (el > 14400) {
-          clearInterval(feedIntRef.current!);
-          setFeedTimerApp(null);
-          toast('Feed timer auto-reset (exceeded 4 hrs)');
-          return;
-        }
-        setFeedElapsed(el);
-      }, 1000);
-
-      return () => {
-        if (feedIntRef.current) clearInterval(feedIntRef.current);
-      };
-    } else {
-      setFeedElapsed(0);
-    }
-  }, [feedTimer, setFeedTimerApp]);
-
-  // mergeTimerRef cleanup
-  useEffect(() => {
-    return () => {
-      if (mergeTimerRef.current) clearInterval(mergeTimerRef.current);
-    };
-  }, []);
 
   function startFeedTimer(type: string) {
     if (feedTimer) return;
@@ -506,23 +557,6 @@ export default function HomeTab({
     }
     return null;
   })();
-
-  // ═══ Next feed reminder (computed here so hero widget can use it) ═══
-  const feedReminderText = useMemo(() => {
-    if (!reminders || !reminders.enabled || !reminders.feedInterval) return null;
-    const feeds = logs.feed || [];
-    const lastFeed = feeds.length > 0 ? feeds[0] : null;
-    if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
-    const dp2 = lastFeed.date.split('-');
-    const parts = lastFeed.time.split(':');
-    const lastT = new Date(parseInt(dp2[0]), parseInt(dp2[1]) - 1, parseInt(dp2[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
-    const nextT = new Date(lastT.getTime() + reminders.feedInterval * 3600000);
-    const now2 = new Date();
-    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
-    const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
-    const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
-    return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
-  }, [reminders, logs.feed]);
 
   // ═══ Format age ═══
   const ageDays = Math.round(age * 30.44);
@@ -1121,98 +1155,77 @@ export default function HomeTab({
         )}
       </Cd>
 
-      {/* ═══ QUICK FEED BOTTOM SHEET — Formula/Pumped amount entry ═══ */}
-      {quickFeedType && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 150,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'flex-end',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setQuickFeedType(null);
-              setQuickFeedVal('');
-            }
-          }}
-        >
+      {/* ═══ QUICK FEED — Formula/Pumped compact amount selector ═══ */}
+      {quickFeedType && (() => {
+        const isMl = volumeUnit === 'ml';
+        const presets = isMl ? [30, 60, 90, 120, 150, 180] : [1, 2, 3, 4, 5, 6];
+        const unit = volLabel(volumeUnit);
+        const logAmount = (val: number) => {
+          const ozVal = isMl ? mlToOz(val) : val;
+          quickLog('feed', { type: quickFeedType, oz: ozVal, amount: val + ' ' + unit });
+          setQuickFeedType(null);
+          setQuickFeedVal('');
+        };
+        return (
           <div
-            style={{
-              width: '100%',
-              background: C.bg,
-              borderRadius: '20px 20px 0 0',
-              padding: '20px 16px 30px',
-              minHeight: '50vh',
-              maxHeight: '80vh',
-              overflowY: 'auto',
-            }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setQuickFeedType(null); setQuickFeedVal(''); } }}
+            style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: C.t }}>Log {quickFeedType}</h3>
-              <button
-                onClick={() => {
-                  setQuickFeedType(null);
-                  setQuickFeedVal('');
-                }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                <Ic n="x" s={22} c={C.tl} />
-              </button>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: C.tl,
-                  display: 'block',
-                  marginBottom: 4,
-                }}
-              >
-                Amount ({volLabel(volumeUnit)})
-              </label>
-              <Input
-                type="number"
-                value={quickFeedVal}
-                onChange={setQuickFeedVal}
-                placeholder={volumeUnit === 'ml' ? 'e.g. 120' : 'e.g. 4'}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn
-                label="Save"
-                onClick={() => {
-                  const num = parseFloat(quickFeedVal) || 0;
-                  const ozVal = volumeUnit === 'ml' ? mlToOz(num) : num;
-                  quickLog('feed', {
-                    type: quickFeedType,
-                    oz: ozVal,
-                    amount: (quickFeedVal || '0') + ' ' + volLabel(volumeUnit),
-                  });
-                  setQuickFeedType(null);
-                  setQuickFeedVal('');
-                }}
-                color={C.a}
-                full={true}
-              />
-              <Btn
-                label="Cancel"
-                onClick={() => {
-                  setQuickFeedType(null);
-                  setQuickFeedVal('');
-                }}
-                outline={true}
-              />
+            <div style={{ width: '100%', background: C.cd, borderRadius: '22px 22px 0 0', padding: '16px 16px 28px' }}>
+              {/* Drag handle */}
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b, margin: '0 auto 12px' }} />
+
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>🍼</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: C.t }}>{quickFeedType}</span>
+                </div>
+                <button onClick={() => { setQuickFeedType(null); setQuickFeedVal(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                  <Ic n="x" s={20} c={C.tl} />
+                </button>
+              </div>
+
+              {/* Preset amount grid — single tap to log */}
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.tl, marginBottom: 8 }}>Quick pick ({unit})</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+                {presets.map((v) => (
+                  <div
+                    key={v}
+                    onClick={() => logAmount(v)}
+                    style={{
+                      padding: '14px 8px', textAlign: 'center', cursor: 'pointer',
+                      background: C.bg, borderRadius: 14, border: '1.5px solid ' + C.b,
+                      transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    <div style={{ fontSize: 20, fontWeight: 800, color: C.t }}>{v}</div>
+                    <div style={{ fontSize: 10, color: C.tl, marginTop: 2 }}>{unit}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom amount row */}
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.tl, marginBottom: 6 }}>Custom</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <Input
+                    type="number"
+                    value={quickFeedVal}
+                    onChange={setQuickFeedVal}
+                    placeholder={isMl ? 'e.g. 120' : 'e.g. 4'}
+                  />
+                </div>
+                <Btn
+                  label={'Log ' + (quickFeedVal || '0') + ' ' + unit}
+                  onClick={() => { logAmount(parseFloat(quickFeedVal) || 0); }}
+                  color={C.a}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Sleep status banner */}
       {isSleeping && lastSleepEntry && (
