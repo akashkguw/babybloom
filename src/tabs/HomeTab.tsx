@@ -678,7 +678,7 @@ export default function HomeTab({
       {(() => {
         const slides: { id: string; node: React.ReactNode; priority: number }[] = [];
 
-        // ── Baby alerts — each flag is its own card ──
+        // ── Baby alerts — each flag is its own compact card ──
         dynamicRedFlags.forEach((rf) => {
           const isCritical = rf.severity === 'critical';
           const borderColor = isCritical ? C.p : C.w;
@@ -688,12 +688,12 @@ export default function HomeTab({
             priority: isCritical ? 0 : 1,
             node: (
               <div style={{
-                padding: '10px 12px', borderRadius: 14,
+                padding: '8px 10px', borderRadius: 12,
                 borderLeft: '3px solid ' + borderColor, background: bgColor,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 16 }}>{rf.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: borderColor }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>{rf.emoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: borderColor }}>
                     {rf.id === 'feed-gap' ? (isCritical ? 'Feed now' : 'Feed soon')
                       : rf.id === 'low-wet' ? 'Check hydration'
                       : rf.id === 'dirty-gap' ? 'Check diaper'
@@ -702,7 +702,7 @@ export default function HomeTab({
                       : 'Heads up'}
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: C.t, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, color: C.t, lineHeight: 1.4 }}>
                   {rf.text}
                 </div>
               </div>
@@ -710,7 +710,7 @@ export default function HomeTab({
           });
         });
 
-        // ── Mom wellness alerts — same card style ──
+        // ── Mom wellness alerts — same compact card style ──
         momAlerts.forEach((ma) => {
           const isCritical = ma.severity === 'critical';
           const borderColor = isCritical ? C.p : '#9C7CF4';
@@ -720,12 +720,12 @@ export default function HomeTab({
             priority: isCritical ? 0 : 1,
             node: (
               <div style={{
-                padding: '10px 12px', borderRadius: 14,
+                padding: '8px 10px', borderRadius: 12,
                 borderLeft: '3px solid ' + borderColor, background: bgColor,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 16 }}>{ma.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: borderColor }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>{ma.emoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: borderColor }}>
                     {ma.id === 'mom-water' ? 'Stay hydrated'
                       : ma.id === 'mom-meal' ? 'Eat something'
                       : ma.id === 'mom-sleep' ? 'Rest up'
@@ -733,9 +733,9 @@ export default function HomeTab({
                       : ma.id === 'mom-vitamin' ? 'Vitamin reminder'
                       : 'Self-care check'}
                   </span>
-                  <span style={{ fontSize: 9, color: C.tl, marginLeft: 'auto', fontWeight: 600 }}>For you</span>
+                  <span style={{ fontSize: 8, color: C.tl, marginLeft: 'auto', fontWeight: 600 }}>For you</span>
                 </div>
-                <div style={{ fontSize: 11, color: C.t, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, color: C.t, lineHeight: 1.4 }}>
                   {ma.text}
                 </div>
               </div>
@@ -749,18 +749,18 @@ export default function HomeTab({
             id: 'vaccine',
             priority: nextAction.overdue ? 0 : 2,
             node: (
-              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + (nextAction.overdue ? C.p : C.bl), background: nextAction.overdue ? C.pl + '22' : C.bll + '44', borderRadius: 14 }}>
+              <div style={{ padding: '8px 10px', borderLeft: '3px solid ' + (nextAction.overdue ? C.p : C.bl), background: nextAction.overdue ? C.pl + '22' : C.bll + '44', borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: nextAction.overdue ? C.p : C.bl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
-                      {nextAction.overdue ? '⚠️ Overdue' : '💉 Don\'t miss'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                      <span style={{ fontSize: 14 }}>{nextAction.overdue ? '⚠️' : '💉'}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: nextAction.overdue ? C.p : C.bl }}>
+                        {nextAction.vaccine.n} — {nextAction.vaccine.d}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.t, lineHeight: 1.3 }}>
-                      {nextAction.vaccine.n} — {nextAction.vaccine.d}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.tl, marginTop: 2 }}>Due at {nextAction.ageLabel}</div>
+                    <div style={{ fontSize: 10, color: C.tl }}>Due at {nextAction.ageLabel}</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 6 }}>
                     <div
                       onClick={() => {
                         setVDone((p) => {
@@ -770,12 +770,12 @@ export default function HomeTab({
                         });
                         toast('Marked ' + nextAction.vaccine.n + ' as done!');
                       }}
-                      style={{ padding: '6px 14px', borderRadius: 10, background: C.ok, color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      style={{ padding: '5px 10px', borderRadius: 8, background: C.ok, color: 'white', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
                     >Done</div>
                     <div
                       onClick={() => { setTab('guide', 'vaccines'); }}
-                      style={{ padding: '6px 10px', borderRadius: 10, background: C.cd, border: '1px solid ' + C.b, color: C.tl, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                    >View all</div>
+                      style={{ padding: '5px 8px', borderRadius: 8, background: C.cd, border: '1px solid ' + C.b, color: C.tl, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}
+                    >All</div>
                   </div>
                 </div>
               </div>
@@ -789,9 +789,12 @@ export default function HomeTab({
             id: 'tip',
             priority: 3,
             node: (
-              <div style={{ padding: '12px 14px', borderLeft: '4px solid ' + C.a, background: C.cd, borderRadius: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: C.a, marginBottom: 3 }}>Tip for {ms.l}</div>
-                <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>{ms.tips}</div>
+              <div style={{ padding: '8px 10px', borderLeft: '3px solid ' + C.a, background: C.cd, borderRadius: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <span style={{ fontSize: 14 }}>💡</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: C.a }}>Tip for {ms.l}</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.t, lineHeight: 1.4 }}>{ms.tips}</div>
               </div>
             ),
           });
@@ -814,14 +817,14 @@ export default function HomeTab({
               else if (diff > 0 && idx > 0) setCarouselIdx(idx - 1);
             }}
           >
-            {/* Show current slide with peek of next slide (#75) */}
-            <div style={{ display: 'flex', gap: 8, transition: 'transform 0.3s ease', transform: slides.length > 1 ? `translateX(calc(-${idx} * (88% + 8px)))` : undefined }}>
+            {/* Show current slide with generous peek of next */}
+            <div style={{ display: 'flex', gap: 6, transition: 'transform 0.3s cubic-bezier(0.22,1,0.36,1)', transform: slides.length > 1 ? `translateX(calc(-${idx} * (76% + 6px)))` : undefined }}>
               {slides.map((s, i) => (
                 <div
                   key={s.id}
                   style={{
-                    flex: '0 0 ' + (slides.length > 1 ? '88%' : '100%'),
-                    opacity: i === idx ? 1 : 0.5,
+                    flex: '0 0 ' + (slides.length > 1 ? '76%' : '100%'),
+                    opacity: i === idx ? 1 : 0.45,
                     transition: 'opacity 0.3s ease',
                   }}
                 >
@@ -830,14 +833,14 @@ export default function HomeTab({
               ))}
             </div>
             {slides.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 5 }}>
                 {slides.map((s, i) => (
                   <div
                     key={s.id}
                     onClick={() => setCarouselIdx(i)}
                     style={{
-                      width: i === idx ? 16 : 6,
-                      height: 6,
+                      width: i === idx ? 14 : 5,
+                      height: 5,
                       borderRadius: 3,
                       background: i === idx ? C.p : C.b,
                       cursor: 'pointer',
