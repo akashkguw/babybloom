@@ -27,6 +27,36 @@ if (fs.existsSync(envPath)) {
   });
 }
 
+// ─── Single-instance lock (prevents duplicate bot from launchd restarts) ───
+const LOCK_FILE = path.join(__dirname, "bot.lock");
+function acquireLock() {
+  try {
+    // Check if another instance is alive
+    if (fs.existsSync(LOCK_FILE)) {
+      const pid = parseInt(fs.readFileSync(LOCK_FILE, "utf8").trim(), 10);
+      try {
+        process.kill(pid, 0); // signal 0 = check if alive
+        console.error(`❌ Bot already running (PID ${pid}). Exiting.`);
+        process.exit(0);
+      } catch {
+        // Process not running — stale lock, take over
+        console.log(`🔓 Removing stale lock (PID ${pid} not running)`);
+      }
+    }
+    fs.writeFileSync(LOCK_FILE, String(process.pid));
+    console.log(`🔒 Lock acquired (PID ${process.pid})`);
+  } catch (e) {
+    console.error("Lock error:", e.message);
+  }
+}
+function releaseLock() {
+  try { fs.unlinkSync(LOCK_FILE); } catch {}
+}
+process.on("exit", releaseLock);
+process.on("SIGINT", () => { releaseLock(); process.exit(0); });
+process.on("SIGTERM", () => { releaseLock(); process.exit(0); });
+acquireLock();
+
 const TelegramBot = require("node-telegram-bot-api");
 const { Octokit } = require("octokit");
 
