@@ -10,6 +10,8 @@ import { VACCINES } from '@/lib/constants/vaccines';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
+import SmartStatus from '@/features/insights/SmartStatus';
+import PredictiveNudges from '@/features/insights/PredictiveNudges';
 
 interface LogEntry {
   id: number;
@@ -542,6 +544,12 @@ export default function HomeTab({
           </div>
         </div>
       </Cd>
+
+      {/* ═══ SMART STATUS — traffic-light glanceable indicators ═══ */}
+      <SmartStatus logs={logs} age={age} birth={birth} />
+
+      {/* ═══ PREDICTIVE NUDGES — pattern-based reminders ═══ */}
+      <PredictiveNudges logs={logs} age={age} />
 
       {/* ═══ CAROUSEL: Don't Miss + Tip ═══ */}
       {(() => {
@@ -1104,8 +1112,8 @@ export default function HomeTab({
         {[
           { l: 'Activities 🎨', t: 'guide', s: 'activities' },
           { l: 'Safety 🛡️', t: 'safety', s: 'tips' },
-          { l: 'Wellness 💜', t: 'guide', s: 'wellness' },
-          { l: 'Firsts 📸', t: 'miles', s: 'firsts' },
+          { l: 'Report 📋', t: '_report', s: '' },
+          { l: 'Sync 🔄', t: '_sync', s: '' },
         ].map((q: any) => (
           <div
             key={q.l}

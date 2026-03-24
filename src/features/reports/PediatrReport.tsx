@@ -1,0 +1,327 @@
+/**
+ * Pediatrician Report Generator
+ * One-tap PDF-style report summarizing the baby's recent data
+ * in a format pediatricians actually want to see.
+ *
+ * Generates a printable HTML page that can be saved as PDF
+ * via the browser's print dialog.
+ */
+import { useState, useCallback } from 'react';
+import { C } from '@/lib/constants/colors';
+import { Card as Cd, Button as Btn, Icon as Ic } from '@/components/shared';
+import { toast } from '@/lib/utils/toast';
+import { today, fmtDate, fmtTime, daysAgo } from '@/lib/utils/date';
+import { fmtVol, volLabel } from '@/lib/utils/volume';
+import { VACCINES } from '@/lib/constants/vaccines';
+
+interface LogEntry {
+  id: number;
+  date: string;
+  time: string;
+  type: string;
+  mins?: number;
+  oz?: number;
+  amount?: string;
+  notes?: string;
+}
+
+interface Logs {
+  feed?: LogEntry[];
+  diaper?: LogEntry[];
+  sleep?: LogEntry[];
+  growth?: LogEntry[];
+  temp?: LogEntry[];
+  bath?: LogEntry[];
+  meds?: LogEntry[];
+  allergy?: LogEntry[];
+  [key: string]: LogEntry[] | undefined;
+}
+
+interface PediatrReportProps {
+  logs: Logs;
+  babyName: string;
+  birth: string | null;
+  age: number;
+  vDone: { [key: string]: boolean };
+  volumeUnit: 'ml' | 'oz';
+  onClose: () => void;
+}
+
+type ReportPeriod = '7' | '14' | '30';
+
+function daysBetween(start: string, end: string): number {
+  const s = new Date(start + 'T00:00:00');
+  const e = new Date(end + 'T00:00:00');
+  return Math.round((e.getTime() - s.getTime()) / 86400000);
+}
+
+function entriesInRange(entries: LogEntry[], days: number): LogEntry[] {
+  const cutoff = daysAgo(days);
+  return entries.filter((e) => e.date >= cutoff);
+}
+
+export default function PediatrReport({
+  logs, babyName, birth, age, vDone, volumeUnit, onClose,
+}: PediatrReportProps) {
+  const [period, setPeriod] = useState<ReportPeriod>('7');
+  const [generating, setGenerating] = useState(false);
+
+  const generateReport = useCallback(() => {
+    setGenerating(true);
+    const days = parseInt(period);
+    const td = today();
+    const startDate = daysAgo(days);
+
+    // ─── Feeding summary ───
+    const feeds = entriesInRange(logs.feed || [], days);
+    const feedDays = new Set(feeds.map((e) => e.date)).size;
+    const avgFeedsPerDay = feedDays > 0 ? Math.round((feeds.length / feedDays) * 10) / 10 : 0;
+    const breastFeeds = feeds.filter((e) => e.type.startsWith('Breast'));
+    const bottleFeeds = feeds.filter((e) => e.type === 'Formula' || e.type === 'Pumped Milk');
+    const solidFeeds = feeds.filter((e) => e.type === 'Solids');
+    let totalOz = 0;
+    bottleFeeds.forEach((e) => { totalOz += e.oz || 0; });
+    let totalBreastMin = 0;
+    breastFeeds.forEach((e) => { totalBreastMin += e.mins || 0; });
+
+    // ─── Diaper summary ───
+    const diapers = entriesInRange(logs.diaper || [], days);
+    const diaperDays = new Set(diapers.map((e) => e.date)).size;
+    const avgDiapersPerDay = diaperDays > 0 ? Math.round((diapers.length / diaperDays) * 10) / 10 : 0;
+    const wetCount = diapers.filter((e) => e.type === 'Wet' || e.type === 'Both').length;
+    const dirtyCount = diapers.filter((e) => e.type === 'Dirty' || e.type === 'Both').length;
+
+    // ─── Sleep summary ───
+    const sleeps = entriesInRange(logs.sleep || [], days).filter((e) => e.mins && e.type !== 'Tummy Time');
+    let totalSleepMins = 0;
+    sleeps.forEach((e) => { totalSleepMins += e.mins || 0; });
+    const sleepDays = new Set(sleeps.map((e) => e.date)).size || 1;
+    const avgSleepHrs = Math.round((totalSleepMins / sleepDays / 60) * 10) / 10;
+    const naps = sleeps.filter((e) => e.type === 'Nap');
+    const nights = sleeps.filter((e) => e.type === 'Night Sleep');
+
+    // ─── Growth ───
+    const growth = (logs.growth || []).sort((a, b) => b.date.localeCompare(a.date));
+    const latestGrowth = growth.length > 0 ? growth[0] : null;
+    const prevGrowth = growth.length > 1 ? growth[1] : null;
+
+    // ─── Temperature ───
+    const temps = entriesInRange(logs.temp || [], days);
+    const highTemps = temps.filter((e) => {
+      const val = parseFloat(e.amount || '0');
+      return val >= 100.4 || val >= 38;
+    });
+
+    // ─── Meds ───
+    const meds = entriesInRange(logs.meds || [], days);
+    const medTypes = [...new Set(meds.map((e) => e.type))];
+
+    // ─── Allergies ───
+    const allergies = logs.allergy || [];
+    const reactions = allergies.filter((e) => e.notes && e.notes.toLowerCase().includes('reaction'));
+
+    // ─── Vaccines ───
+    const completedVaccines: string[] = [];
+    const pendingVaccines: string[] = [];
+    const ageMonths = Math.floor(age);
+    const ageToMonths: { [key: string]: number } = {
+      Birth: 0, '1 Month': 1, '2 Months': 2, '4 Months': 4,
+      '6 Months': 6, '9 Months': 9, '12 Months': 12, '15 Months': 15, '18 Months': 18,
+    };
+    VACCINES.forEach((group, ai) => {
+      const dueAt = ageToMonths[group.age] ?? 99;
+      if (dueAt > ageMonths + 1) return;
+      group.v.forEach((v, vi) => {
+        const key = ai + '_' + vi;
+        if (vDone[key]) completedVaccines.push(v.n);
+        else pendingVaccines.push(v.n + ' (due ' + group.age + ')');
+      });
+    });
+
+    // ─── Format age ───
+    const ageDays = Math.round(age * 30.44);
+    const ageStr = age < 1
+      ? ageDays + ' days'
+      : age < 2
+        ? Math.floor(ageDays / 7) + ' weeks'
+        : Math.floor(age) + ' months';
+
+    // ─── Build HTML report ───
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>BabyBloom Report - ${babyName}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #2D2D3A; padding: 24px; max-width: 700px; margin: 0 auto; line-height: 1.5; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 15px; color: #6C63FF; margin: 18px 0 8px; border-bottom: 2px solid #E8E6FF; padding-bottom: 4px; }
+  .meta { color: #8E8E9A; font-size: 12px; margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .stat { background: #F8F8FC; border-radius: 8px; padding: 10px 14px; }
+  .stat-label { font-size: 11px; color: #8E8E9A; }
+  .stat-value { font-size: 18px; font-weight: 700; }
+  .flag { background: #FFF3E0; border-left: 3px solid #FFB347; padding: 8px 12px; border-radius: 6px; margin: 6px 0; font-size: 12px; }
+  .good { background: #E8F5E9; border-left: 3px solid #4CAF50; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  th { text-align: left; padding: 6px 8px; background: #F8F8FC; font-weight: 600; }
+  td { padding: 6px 8px; border-bottom: 1px solid #F0EBE3; }
+  .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #F0EBE3; font-size: 10px; color: #8E8E9A; text-align: center; }
+  @media print { body { padding: 12px; } .no-print { display: none; } }
+</style>
+</head><body>
+<div class="no-print" style="margin-bottom:16px;padding:10px 14px;background:#E8E6FF;border-radius:8px;font-size:13px;color:#6C63FF">
+  <strong>Tip:</strong> Use your browser's Print (Ctrl+P / Cmd+P) to save as PDF for your pediatrician.
+</div>
+<h1>🍼 ${babyName} — Care Report</h1>
+<div class="meta">
+  Age: ${ageStr} · Born: ${birth ? fmtDate(birth) : 'Not set'} · Period: ${fmtDate(startDate)} – ${fmtDate(td)} (${days} days)<br>
+  Generated: ${new Date().toLocaleDateString()} via BabyBloom
+</div>
+
+<h2>🍼 Feeding</h2>
+<div class="grid">
+  <div class="stat"><div class="stat-label">Avg feeds/day</div><div class="stat-value">${avgFeedsPerDay}</div></div>
+  <div class="stat"><div class="stat-label">Total feeds</div><div class="stat-value">${feeds.length}</div></div>
+</div>
+<table>
+  <tr><th>Type</th><th>Count</th><th>Total</th></tr>
+  ${breastFeeds.length > 0 ? `<tr><td>Breastfeeding</td><td>${breastFeeds.length}</td><td>${totalBreastMin} min</td></tr>` : ''}
+  ${bottleFeeds.length > 0 ? `<tr><td>Bottle (formula/pumped)</td><td>${bottleFeeds.length}</td><td>${fmtVol(totalOz, volumeUnit)}</td></tr>` : ''}
+  ${solidFeeds.length > 0 ? `<tr><td>Solids</td><td>${solidFeeds.length}</td><td>—</td></tr>` : ''}
+</table>
+
+<h2>💧 Diapers</h2>
+<div class="grid">
+  <div class="stat"><div class="stat-label">Avg diapers/day</div><div class="stat-value">${avgDiapersPerDay}</div></div>
+  <div class="stat"><div class="stat-label">Wet / Dirty</div><div class="stat-value">${wetCount} / ${dirtyCount}</div></div>
+</div>
+
+<h2>😴 Sleep</h2>
+<div class="grid">
+  <div class="stat"><div class="stat-label">Avg sleep/day</div><div class="stat-value">${avgSleepHrs}h</div></div>
+  <div class="stat"><div class="stat-label">Naps / Nights</div><div class="stat-value">${naps.length} / ${nights.length}</div></div>
+</div>
+
+${latestGrowth ? `<h2>📊 Growth</h2>
+<div class="grid">
+  ${latestGrowth.amount ? `<div class="stat"><div class="stat-label">Latest (${fmtDate(latestGrowth.date)})</div><div class="stat-value">${latestGrowth.amount}</div></div>` : ''}
+  ${prevGrowth && prevGrowth.amount ? `<div class="stat"><div class="stat-label">Previous (${fmtDate(prevGrowth.date)})</div><div class="stat-value">${prevGrowth.amount}</div></div>` : ''}
+</div>` : ''}
+
+${highTemps.length > 0 ? `<h2>🌡️ Temperature Flags</h2>
+<div class="flag">Elevated temperatures recorded: ${highTemps.length} time(s) in ${days} days
+${highTemps.slice(0, 3).map((e) => `<br>· ${fmtDate(e.date)} ${fmtTime(e.time)} — ${e.amount}`).join('')}</div>` : ''}
+
+${medTypes.length > 0 ? `<h2>💊 Medications</h2>
+<table><tr><th>Medication</th><th>Doses in period</th></tr>
+${medTypes.map((m) => `<tr><td>${m}</td><td>${meds.filter((e) => e.type === m).length}</td></tr>`).join('')}
+</table>` : ''}
+
+${allergies.length > 0 ? `<h2>⚠️ Food Introduction / Allergies</h2>
+<div class="${reactions.length > 0 ? 'flag' : 'flag good'}">
+${allergies.length} foods introduced${reactions.length > 0 ? ` · ${reactions.length} reaction(s) noted` : ' · No reactions noted'}
+</div>` : ''}
+
+<h2>💉 Immunizations</h2>
+${completedVaccines.length > 0 ? `<div class="flag good">Completed: ${completedVaccines.join(', ')}</div>` : ''}
+${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.join(', ')}</div>` : '<div class="flag good">All age-appropriate vaccines up to date!</div>'}
+
+<div class="footer">
+  Generated by BabyBloom · Data stored locally on parent's device · Not medical advice<br>
+  Discuss all findings with your healthcare provider
+</div>
+</body></html>`;
+
+    // Open in new tab for print/save
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    toast('Report opened — use Print to save as PDF');
+    setGenerating(false);
+  }, [period, logs, babyName, birth, age, vDone, volumeUnit]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 200,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'flex-end',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 430,
+          margin: '0 auto',
+          background: C.bg,
+          borderRadius: '20px 20px 0 0',
+          padding: '20px 16px 40px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: C.t, margin: 0 }}>
+              Pediatrician Report
+            </h3>
+            <div style={{ fontSize: 12, color: C.tl }}>
+              Summarize {babyName}'s care for your doctor
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <Ic n="x" s={22} c={C.tl} />
+          </button>
+        </div>
+
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 8 }}>
+          Report period
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {([
+            { key: '7' as ReportPeriod, label: 'Last 7 days' },
+            { key: '14' as ReportPeriod, label: 'Last 2 weeks' },
+            { key: '30' as ReportPeriod, label: 'Last month' },
+          ]).map((opt) => (
+            <div
+              key={opt.key}
+              onClick={() => setPeriod(opt.key)}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                borderRadius: 12,
+                background: period === opt.key ? C.sl : C.cd,
+                border: '1px solid ' + (period === opt.key ? C.s : C.b),
+                cursor: 'pointer',
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 600,
+                color: period === opt.key ? C.s : C.t,
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 12, color: C.tl, marginBottom: 16, lineHeight: 1.5 }}>
+          The report includes feeding patterns, diaper counts, sleep duration,
+          growth measurements, temperature flags, medications, food introductions,
+          and vaccine status — everything your pediatrician asks about.
+        </div>
+
+        <Btn
+          label={generating ? 'Generating...' : 'Generate report'}
+          onClick={generateReport}
+          color={C.s}
+          full
+        />
+
+        <div style={{ fontSize: 11, color: C.tl, marginTop: 10, textAlign: 'center' }}>
+          Opens in a new tab · Use Print (Ctrl+P) to save as PDF
+        </div>
+      </div>
+    </div>
+  );
+}

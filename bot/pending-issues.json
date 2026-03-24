@@ -31,7 +31,7 @@
   {
     "number": 30,
     "title": "issues resolved is not coming in telegram message",
-    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -45,7 +45,7 @@
   {
     "number": 31,
     "title": "Chicken is little hard",
-    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 💬 Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "feedback",
       "telegram"
@@ -59,7 +59,7 @@
   {
     "number": 34,
     "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## ✨ Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -73,7 +73,7 @@
   {
     "number": 59,
     "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -82,12 +82,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/59",
     "created_at": "2026-03-24T08:45:33.058Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels — created 1 second apart). Will be addressed via #58."
   },
   {
     "number": 61,
     "title": "- I want dark mode as default",
-    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## ✨ Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -96,69 +96,19 @@
     "url": "https://github.com/akashkguw/babybloom/issues/61",
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels — created at the same second). Will be addressed via #60."
   },
   {
-    "number": 65,
-    "title": "next feed reminder should be subtly available in the hero widget and not a de...",
-    "body": "## \u2728 Feature Request\n\nnext feed reminder should be subtly available in the hero widget and not a dedicated widget of its own\n\n---\n\n**Category:** `enhancement` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "feeding"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/65",
-    "created_at": "2026-03-24T10:35:24.292Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User wants the next-feed reminder integrated into the existing hero widget rather than being a separate dedicated widget.\n- Affected area: Hero widget component and the next-feed reminder widget in the home/dashboard page.\n- Current behaviour: Next feed reminder is a standalone widget taking up extra screen space.\n- Expected behaviour: The next feed reminder info should be subtly embedded within the hero widget (e.g. as a small line or secondary text).\n- Edge cases: Handle case when no next feed is scheduled; ensure hero widget doesn't become cluttered.\n- Acceptance criteria: Next feed reminder appears within hero widget; dedicated reminder widget is removed; layout remains clean.",
-    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\n- Moved next-feed reminder logic into a useMemo (feedReminderText) computed before render\n- Added a subtle line inside the hero widget showing feed reminder text with overdue/normal styling\n- Removed the standalone <Cd> next-feed reminder card\n- Uses emoji indicators and translucent text to keep the hero widget uncluttered"
-  },
-  {
-    "number": 66,
-    "title": "after dismissing the resume option it still shows up on reload",
-    "body": "## \ud83d\udc1b Bug Report\n\nafter dismissing the resume option it still shows up on reload\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 69,
+    "title": "red flags in the caurasel is static",
+    "body": "## 🐛 Bug Report\n\nred flags in the caurasel is static. I want it to be specific given the recent data for p0 log items. If not there don’t show. It should also not reduce the load time for the app so ensure to implement it safely.\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
-      "feedback"
+      "enhancement"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/66",
-    "created_at": "2026-03-24T10:37:19.929Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "Bug: After the user dismisses a resume option (likely for a paused feeding/activity timer), reloading the page causes the dismissed resume option to reappear.\n- Affected area: Resume/continuation prompt logic and its persistence layer (likely IndexedDB or localStorage).\n- Current behaviour: Dismissing the resume option does not persist; on reload, the option reappears.\n- Expected behaviour: Once dismissed, the resume option should stay dismissed across page reloads.\n- Edge cases: Multiple dismissed sessions; clearing app data should reset; ensure dismiss state is cleaned up after session expires.\n- Acceptance criteria: Dismissing resume option persists across reloads; no stale resume prompts appear.",
-    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\n- Added import for ds/dg from @/lib/db (IndexedDB wrappers)\n- Added useEffect on mount to load persisted dismissedResumeId from IndexedDB\n- Updated dismiss onClick to also persist the ID via ds('dismissedResumeId', id)\n- On reload, the dismissed state is restored from IndexedDB"
-  },
-  {
-    "number": 67,
-    "title": "why does tummy time continue to remain red",
-    "body": "## \ud83d\udc1b Bug Report\n\nwhy does tummy time continue to remain red?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/67",
-    "created_at": "2026-03-24T10:37:57.958Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "Bug: The tummy time indicator/status remains red even when it should not be (e.g. after logging tummy time or meeting the daily goal).\n- Affected area: Tummy time tracking component, status color logic on the dashboard/home page.\n- Current behaviour: Tummy time indicator stays red regardless of logged activity.\n- Expected behaviour: The color should update based on whether the daily tummy time goal has been met (green) or is still pending (red/amber).\n- Edge cases: Partial completion, day rollover, no goal set.\n- Acceptance criteria: Tummy time status color accurately reflects whether the goal is met for the current day.",
-    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\n- Changed Tummy quickLogWarnings config from cat:'feed' to cat:'sleep'\n- Tummy Time entries are logged to the 'sleep' category, so the warning color check must look there\n- Root cause: category mismatch between where entries are stored vs where warnings look"
-  },
-  {
-    "number": 68,
-    "title": "if there is any area which is red flag acc to guidelines for baby\u2019s age",
-    "body": "## \u2728 Feature Request\n\nif there is any area which is red flag acc to guidelines for baby\u2019s age. Add that into home page carousel which is present just below the hero widget already present\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/68",
-    "created_at": "2026-03-24T10:43:47.001Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "Feature request: Add red-flag health/development alerts based on pediatric guidelines for the baby's current age. Display these alerts in the existing home page carousel below the hero widget.\n- Affected area: Home page carousel component, possibly a new data source for age-based guideline alerts.\n- Current behaviour: The carousel exists but does not show age-specific red-flag health warnings.\n- Expected behaviour: Based on the baby's age, show relevant red-flag developmental or health milestones (e.g. \"by 4 months baby should be able to hold head up\") in the carousel.\n- Edge cases: No baby age configured; age at boundary between guideline ranges; multiple babies.\n- Acceptance criteria: Age-appropriate red-flag alerts appear in the home carousel; alerts update as baby ages.",
-    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\n- Added a new 'redflag' slide to the home carousel after the tip slide\n- Shows first 2 red flags from the current milestone's ms.red array\n- Styled with red accent border and background consistent with other carousel slides\n- Includes a 'View all red flags' link that navigates to milestones tab"
+    "url": "https://github.com/akashkguw/babybloom/issues/69",
+    "created_at": "2026-03-24T11:01:03.415Z",
+    "status": "pending"
   }
 ]

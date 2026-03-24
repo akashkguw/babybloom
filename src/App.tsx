@@ -14,6 +14,8 @@ import Settings from '@/features/settings/Settings';
 import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
+import PartnerSync from '@/features/sync/PartnerSync';
+import PediatrReport from '@/features/reports/PediatrReport';
 
 interface Profile {
   id: number;
@@ -69,6 +71,8 @@ function App() {
   const [activeProfile, setActivePR] = useState<number | null>(null);
   const [showSet, setShowSet] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
+  const [showSync, setShowSync] = useState<boolean>(false);
+  const [showReport, setShowReport] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [darkMode, setDarkModeR] = useState<boolean>(true);
   const [timerState, setTSR] = useState<TimerState>({ running: false, type: null, startTime: null });
@@ -124,6 +128,9 @@ function App() {
   const quickFormRef = useRef<any>(null);
 
   const navTo = (t: string, sub?: string, formData?: any) => {
+    // Intercept special modal targets
+    if (t === '_sync') { setShowSync(true); return; }
+    if (t === '_report') { setShowReport(true); return; }
     subNavRef.current = sub || null;
     quickFormRef.current = formData || null;
     setTab(t);
@@ -688,6 +695,28 @@ function App() {
           firsts={firsts}
           checked={checked}
           onNav={navTo}
+        />
+      ) : null}
+
+      {showSync ? (
+        <PartnerSync
+          logs={logs}
+          setLogs={setLogs}
+          babyName={babyName}
+          birth={birth}
+          onClose={() => setShowSync(false)}
+        />
+      ) : null}
+
+      {showReport ? (
+        <PediatrReport
+          logs={logs}
+          babyName={babyName}
+          birth={birth}
+          age={age}
+          vDone={vDone}
+          volumeUnit={volumeUnit}
+          onClose={() => setShowReport(false)}
         />
       ) : null}
 
