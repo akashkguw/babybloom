@@ -66,6 +66,11 @@ BOT_SAFE_FILES=(
   bot/README.md
   bot/deploy.sh
   bot/WORKER_SKILL.md
+  bot/TRIAGE_SKILL.md
+  bot/IMPL_SKILL.md
+  bot/INFRA_SKILL.md
+  bot/ANALYSIS_SKILL.md
+  bot/DOCS_SKILL.md
   bot/pending-issues.json
   bot/pipeline.sh
 )
@@ -136,14 +141,15 @@ console.log('All '+checks.length+' feature checks passed');
   exit 1
 }
 
-# ─── Read implemented issues from pending-issues.json ───
+# ─── Read completed issues from pending-issues.json ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"
 IMPLEMENTED_DATA=$(python3 -c "
 import json
 try:
   q=json.load(open('$QUEUE_FILE'))
+  done_statuses = {'implemented', 'infra_implemented', 'documented'}
   for i in q:
-    if i.get('status')=='implemented':
+    if i.get('status') in done_statuses:
       print(str(i['number'])+'|'+i.get('title','').replace('|',' '))
 except: pass
 " 2>/dev/null || true)
@@ -202,8 +208,9 @@ def gh(method, path, data=None):
 q = json.load(open(qfile))
 resolved = []
 
+done_statuses = {"implemented", "infra_implemented", "documented"}
 for issue in q:
-    if issue.get("status") != "implemented":
+    if issue.get("status") not in done_statuses:
         continue
     num   = issue["number"]
     title = issue.get("title", f"Issue #{num}")

@@ -164,6 +164,51 @@ except: pass
 " 2>/dev/null || true
 fi
 
+# ─── Notify failed issues (leave open on GitHub for retry) ───
+if [ -f "$QUEUE_FILE" ]; then
+  FAILED=$(python3 -c "
+import sys,json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='failed':
+      print(i['number'],'|',i.get('title',''),'|',i.get('failure_reason','Unknown failure'))
+except: pass
+" 2>/dev/null || true)
+
+  while IFS='|' read -r num title reason; do
+    num=$(echo "$num" | tr -d ' ')
+    title=$(echo "$title" | xargs)
+    reason=$(echo "$reason" | xargs)
+    [ -z "$num" ] && continue
+
+    curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"body\":\"⚠️ Implementation attempted but failed.\\n\\n**Reason:** $reason\\n\\n_Will retry on next pipeline run if re-opened._\"}" \
+      "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
+
+    send_telegram "⚠️ *BabyBloom: Implementation Failed*
+
+🔢 Issue: #$num
+📌 Title: $title
+💥 Reason: $reason
+
+The issue remains open on GitHub for manual review or retry.
+🔗 [View issue](https://github.com/$REPO/issues/$num)"
+
+    echo "⚠️ Failed & notified: #$num — $title"
+  done <<< "$FAILED"
+
+  # Remove failed issues from queue
+  python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  remaining=[i for i in q if i.get('status')!='failed']
+  json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
+except: pass
+" 2>/dev/null || true
+fi
+
 # ─── Post analysis results as GitHub comments (leave issue open) ───
 if [ -f "$QUEUE_FILE" ]; then
   ANALYZED=$(python3 -c "
@@ -260,13 +305,14 @@ QUEUE_FILE="$BOT_DIR/pending-issues.json"
 ISSUE_LIST=""
 
 if [ -f "$QUEUE_FILE" ]; then
-  # Get all "implemented" issues (Claude marked them after coding)
+  # Get all completed issues (implemented, infra_implemented, documented)
   IMPLEMENTED=$(python3 -c "
 import sys,json
 try:
   q=json.load(open('$QUEUE_FILE'))
+  done_statuses = {'implemented', 'infra_implemented', 'documented'}
   for i in q:
-    if i.get('status')=='implemented': print(i['number'],'|',i.get('title',''))
+    if i.get('status') in done_statuses: print(i['number'],'|',i.get('title',''))
 except: pass
 " 2>/dev/null || true)
 
@@ -287,12 +333,13 @@ except: pass
     ISSUE_LIST="$ISSUE_LIST\n✅ #$num — $title"
   done <<< "$IMPLEMENTED"
 
-  # Remove deployed issues from queue
+  # Remove deployed issues from queue (all completed statuses)
   python3 -c "
 import json
 try:
   q=json.load(open('$QUEUE_FILE'))
-  remaining=[i for i in q if i.get('status')!='implemented']
+  done_statuses = {'implemented', 'infra_implemented', 'documented'}
+  remaining=[i for i in q if i.get('status') not in done_statuses]
   json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
 except: pass
 " 2>/dev/null || true
