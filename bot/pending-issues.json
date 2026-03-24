@@ -97,5 +97,38 @@
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
     "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
+  },
+  {
+    "number": 63,
+    "title": "dismiss option on resume feeding",
+    "body": "## \u2728 Feature Request\n\ndismiss option on resume feeding\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/63",
+    "created_at": "2026-03-24T10:10:23.392Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User wants a dismiss/cancel option on the \"resume feeding\" prompt or banner.\n- Affected area: Feeding tracker UI, likely the resume-feeding notification/modal in the feed logging flow.\n- Current behaviour: When a feeding session can be resumed, there is no way to dismiss the prompt \u2014 user must either resume or navigate away.\n- Expected behaviour: A dismiss/close button should be added so the user can decline to resume and start fresh or ignore the prompt.\n- Edge cases: Dismissing should not delete the paused session data; consider if dismiss should be permanent or show again next visit.\n- Acceptance criteria: A visible dismiss button on the resume feeding UI that closes the prompt without resuming.",
+    "implementation_notes": "Added dismiss option to the resume feeding banner in HomeTab.\n- Files changed: src/tabs/HomeTab.tsx\n- Added dismissedResumeId state to track which feed entry was dismissed\n- Added condition to hide resume banner when its ID matches the dismissed ID\n- Added a Dismiss button (styled consistently with existing Cancel buttons) next to the Resume button\n- Dismiss is per-session (resets on reload) and per-feed-entry (new feeds will still show the banner)\n- Trade-offs: Dismiss is in-memory only, so refreshing the page will show the banner again for the same feed. This is intentional \u2014 the user may want to resume later."
+  },
+  {
+    "number": 64,
+    "title": "if any of the quick log (important ones only) has not been used for a while i...",
+    "body": "## \u2728 Feature Request\n\nif any of the quick log (important ones only) has not been used for a while it slowly changes the color to a warning color. For example no tummy for 3 days etc. no Breast R for last 12 hours etc. shouldn\u2019t happen for others. Review the best guidelines from the relevant sources & then only. You can add subtle emoji addition or change etc for these cases. Should be very professional\n\n---\n\n**Category:** `enhancement` `ui` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "ui",
+      "feeding",
+      "priority"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/64",
+    "created_at": "2026-03-24T10:13:23.501Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User wants important quick-log buttons to visually warn when they haven't been used for a while.\n- Affected area: Quick log buttons/grid in the main dashboard UI.\n- Current behaviour: Quick log buttons have static colors regardless of how recently they were last used.\n- Expected behaviour: Important quick-log items (e.g., tummy time, breast feeding L/R, diaper) should gradually change to a warning color (e.g., amber/red) if not logged for a configurable period (e.g., no tummy time for 3 days, no breast R for too long).\n- Edge cases: Only \"important\" logs should have this behavior (not all); thresholds may vary per log type; color transition should be gradual/smooth; need to determine which logs are \"important\" and what the time thresholds are; reset the color when the item is logged.\n- Acceptance criteria: Important quick-log buttons change color based on time since last use, with sensible per-type thresholds. Non-important buttons remain unchanged."
   }
 ]

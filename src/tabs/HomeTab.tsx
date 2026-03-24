@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card as Cd, SectionHeader as SH, Button as Btn, Pill, Input, Icon as Ic, ProgressCircle as PR } from '@/components/shared';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
@@ -92,6 +92,45 @@ export default function HomeTab({
     setFlashBtn(label);
     flashTimerRef.current = setTimeout(() => setFlashBtn(null), 500);
   }, []);
+
+  // ═══ Quick-log warning colors — highlight important buttons not used recently ═══
+  const quickLogWarnings = useMemo(() => {
+    // Thresholds in hours: [warningStart, dangerStart]
+    // After warningStart hours → amber tint; after dangerStart hours → red tint
+    const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number }> = {
+      'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6 },
+      'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6 },
+      'Tummy':    { cat: 'feed', types: ['Tummy Time'], warnH: 48, dangerH: 72 },
+      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10 },
+      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48 },
+    };
+    const warnings: Record<string, 'warn' | 'danger' | null> = {};
+    const nowMs = Date.now();
+    for (const [label, cfg] of Object.entries(thresholds)) {
+      const entries = logs[cfg.cat] || [];
+      // Find most recent entry matching any of the types
+      let lastMs = 0;
+      for (const e of entries) {
+        if (cfg.types.includes(e.type) && e.date && e.time) {
+          const dp = e.date.split('-');
+          const tp = e.time.split(':');
+          const t = new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
+          if (t > lastMs) lastMs = t;
+          break; // logs are sorted newest first
+        }
+      }
+      if (lastMs === 0) {
+        // No log ever — show danger if birth exists (baby needs care)
+        warnings[label] = birth ? 'danger' : null;
+      } else {
+        const hoursAgo = (nowMs - lastMs) / 3600000;
+        if (hoursAgo >= cfg.dangerH) warnings[label] = 'danger';
+        else if (hoursAgo >= cfg.warnH) warnings[label] = 'warn';
+        else warnings[label] = null;
+      }
+    }
+    return warnings;
+  }, [logs, birth]);
 
   // Welcome screen if no birth date
   if (!birth) {
@@ -776,7 +815,12 @@ export default function HomeTab({
               dis: false,
               highlight: isSleeping,
             },
-          ].map((q: any) => (
+          ].map((q: any) => {
+            const warn = quickLogWarnings[q.l] || null;
+            const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
+            const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
+            const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
+            return (
             <div
               key={q.l}
               className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
@@ -785,18 +829,19 @@ export default function HomeTab({
                 textAlign: 'center',
                 padding: '8px 2px',
                 borderRadius: 12,
-                background: q.active ? C.al : q.highlight ? C.pul : C.bg,
-                border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : C.b),
+                background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
+                border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
                 cursor: q.dis ? 'default' : 'pointer',
                 opacity: q.dis ? 0.35 : 1,
               }}
             >
               <div style={{ fontSize: 18 }}>{q.e}</div>
-              <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : C.tl, marginTop: 2, fontWeight: 600 }}>
+              <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
                 {q.l}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Cd>
 
