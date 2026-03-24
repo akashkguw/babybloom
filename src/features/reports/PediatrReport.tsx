@@ -72,7 +72,7 @@ export default function PediatrReport({
     const feeds = entriesInRange(logs.feed || [], days);
     const feedDays = new Set(feeds.map((e) => e.date)).size;
     const avgFeedsPerDay = feedDays > 0 ? Math.round((feeds.length / feedDays) * 10) / 10 : 0;
-    const breastFeeds = feeds.filter((e) => e.type.startsWith('Breast'));
+    const breastFeeds = feeds.filter((e) => e.type?.startsWith('Breast'));
     const bottleFeeds = feeds.filter((e) => e.type === 'Formula' || e.type === 'Pumped Milk');
     const solidFeeds = feeds.filter((e) => e.type === 'Solids');
     let totalOz = 0;
