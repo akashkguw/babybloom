@@ -515,45 +515,107 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      {/* Hero — age + milestone progress */}
-      <Cd
+      {/* Hero — premium baby dashboard */}
+      <div
         style={{
-          background: `linear-gradient(135deg,${C.p},${C.s})`,
-          border: 'none',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 24,
           marginBottom: 12,
-          padding: '14px 20px',
+          background: `linear-gradient(145deg, ${C.p}, ${C.s} 55%, ${C.pu} 100%)`,
+          boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>{age < 3 ? '🍼' : age < 8 ? '👶' : age < 14 ? '🧒' : '🌟'}</span>
-              <span>Your baby is</span>
-            </div>
-            <div style={{ color: 'white', fontSize: 28, fontWeight: 800, lineHeight: 1.2 }}>
-              {ageStr}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>
-              {ms ? 'Stage: ' + ms.l : ''}
-            </div>
-            {feedReminderText && (
-              <div style={{ color: feedReminderText.overdue ? 'rgba(255,200,200,0.95)' : 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span>{feedReminderText.overdue ? '⏰' : '🕐'}</span>
-                <span>{feedReminderText.text}</span>
+        {/* Decorative background elements */}
+        <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ position: 'absolute', top: 20, right: 60, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+
+        {/* Main content */}
+        <div style={{ position: 'relative', zIndex: 1, padding: '18px 20px 14px' }}>
+          {/* Top row: greeting + milestone ring */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              {/* Greeting */}
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 500, letterSpacing: 0.3 }}>
+                {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}
               </div>
-            )}
+              {/* Baby name */}
+              <div style={{ color: 'white', fontSize: 22, fontWeight: 800, lineHeight: 1.2, marginTop: 2 }}>
+                {babyName || 'Your baby'}
+              </div>
+              {/* Age badge */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+                borderRadius: 20, padding: '4px 10px', marginTop: 6,
+              }}>
+                <span style={{ fontSize: 12 }}>{age < 3 ? '🍼' : age < 8 ? '👶' : age < 14 ? '🧒' : '🌟'}</span>
+                <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>{ageStr}</span>
+                {ms && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>· {ms.l}</span>}
+              </div>
+            </div>
+
+            {/* Milestone ring */}
+            <div
+              onClick={() => { setTab('miles', 'dev'); }}
+              style={{
+                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: '10px 12px',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <PR pct={pct} sz={42} sw={3} color="rgba(255,255,255,0.95)" trackColor="rgba(255,255,255,0.2)" />
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: 9, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+                {pct}%<br />milestones
+              </div>
+            </div>
           </div>
-          <div
-            onClick={() => { setTab('miles', 'dev'); }}
-            style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
-          >
-            <PR pct={pct} sz={44} sw={3} color="rgba(255,255,255,0.9)" trackColor="rgba(255,255,255,0.25)" />
-            <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 600 }}>
-              {pct}% milestones
+
+          {/* Feed reminder */}
+          {feedReminderText && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5, marginTop: 10,
+              background: feedReminderText.overdue ? 'rgba(255,100,100,0.2)' : 'rgba(255,255,255,0.1)',
+              borderRadius: 10, padding: '5px 10px',
+            }}>
+              <span style={{ fontSize: 11 }}>{feedReminderText.overdue ? '⏰' : '🕐'}</span>
+              <span style={{ color: feedReminderText.overdue ? 'rgba(255,210,210,0.95)' : 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}>
+                {feedReminderText.text}
+              </span>
+            </div>
+          )}
+
+          {/* Today's quick stats */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{
+              flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{feedCt}</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>feeds</div>
+            </div>
+            <div style={{
+              flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{diaperCt}</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>diapers</div>
+            </div>
+            <div style={{
+              flex: 1, background: isSleeping ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
+              borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>
+                {isSleeping ? '😴' : sleepHrsToday + 'h'}
+              </div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>
+                {isSleeping ? 'sleeping' : 'sleep'}
+              </div>
             </div>
           </div>
         </div>
-      </Cd>
+      </div>
 
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 
