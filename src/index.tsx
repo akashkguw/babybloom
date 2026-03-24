@@ -4,12 +4,9 @@ import App from './App';
 import './styles/base.css';
 
 // Initialize Sentry — wrapped so a failure never blocks the app
-try {
-  const { initSentry } = await import('@/lib/sentry');
-  initSentry();
-} catch {
-  // Sentry unavailable — app runs fine without it
-}
+import('@/lib/sentry')
+  .then(({ initSentry }) => initSentry())
+  .catch(() => { /* Sentry unavailable — app runs fine without it */ });
 
 // Service worker registration is handled by vite-plugin-pwa (registerType: 'autoUpdate')
 // Clean up any old service workers from v1 that might cache stale pages
