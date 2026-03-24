@@ -31,7 +31,7 @@
   {
     "number": 30,
     "title": "issues resolved is not coming in telegram message",
-    "body": "## 🐛 Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -45,7 +45,7 @@
   {
     "number": 31,
     "title": "Chicken is little hard",
-    "body": "## 💬 Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "feedback",
       "telegram"
@@ -59,7 +59,7 @@
   {
     "number": 34,
     "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## ✨ Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -73,7 +73,7 @@
   {
     "number": 59,
     "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## 🐛 Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -82,12 +82,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/59",
     "created_at": "2026-03-24T08:45:33.058Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels — created 1 second apart). Will be addressed via #58."
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
   },
   {
     "number": 61,
     "title": "- I want dark mode as default",
-    "body": "## ✨ Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -96,12 +96,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/61",
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels — created at the same second). Will be addressed via #60."
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
   },
   {
     "number": 69,
     "title": "red flags in the caurasel is static",
-    "body": "## 🐛 Bug Report\n\nred flags in the caurasel is static. I want it to be specific given the recent data for p0 log items. If not there don’t show. It should also not reduce the load time for the app so ensure to implement it safely.\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nred flags in the caurasel is static. I want it to be specific given the recent data for p0 log items. If not there don\u2019t show. It should also not reduce the load time for the app so ensure to implement it safely.\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -109,6 +109,22 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/69",
     "created_at": "2026-03-24T11:01:03.415Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The user reports that the red flags carousel on the dashboard is currently static (hardcoded content). They want it to be dynamic \u2014 showing red flag alerts only when relevant based on recent P0-priority log items (e.g., feeding, sleep, diaper data).\n- Affected component: Dashboard carousel / red flags section\n- Current behaviour: Red flags are always shown with static/hardcoded content regardless of actual baby data\n- Expected behaviour: Red flags should be derived from recent P0 log data; if no concerning data exists, the red flags carousel should not appear at all\n- Edge cases: No log data yet (new user), partial data, ensure lazy/deferred loading so it does not increase initial app load time\n- Acceptance criteria: Red flags are dynamic based on recent logs, hidden when not applicable, and do not degrade app performance",
+    "implementation_notes": "Changes made:\n- Files changed: src/tabs/HomeTab.tsx (moved dynamic red flags block outside milestone guard)\n- The red flag carousel slide was nested inside an `if (ms)` block, meaning it only showed when milestone data existed. Moved it to be a sibling block so data-driven red flags show independently of milestone availability.\n- The useDynamicRedFlags hook (already existed in src/features/insights/useDynamicRedFlags.ts) computes P0 red flags from actual log data: feeding gaps, low wet diaper counts, dirty diaper gaps, week-over-week feeding volume drops, and tummy time gaps.\n- Red flags only render when there are actual concerns (dynamicRedFlags.length > 0) \u2014 carousel slide is hidden otherwise.\n- All computations are memoized (useMemo) so there is no impact on load time.\n- Removed duplicate useDataRedFlags.ts file that was accidentally created."
+  },
+  {
+    "number": 70,
+    "title": "When recording first, keyboard is going to away after every letter type",
+    "body": "## \ud83d\udc1b Bug Report\n\nWhen recording first, keyboard is going to away after every letter type\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/70",
+    "created_at": "2026-03-24T11:06:43.557Z",
     "status": "pending"
   }
 ]
