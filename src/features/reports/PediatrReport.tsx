@@ -6,12 +6,12 @@
  * Generates a printable HTML page that can be saved as PDF
  * via the browser's print dialog.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { C } from '@/lib/constants/colors';
-import { Card as Cd, Button as Btn, Icon as Ic } from '@/components/shared';
+import { Button as Btn, Icon as Ic } from '@/components/shared';
 import { toast } from '@/lib/utils/toast';
 import { today, fmtDate, fmtTime, daysAgo } from '@/lib/utils/date';
-import { fmtVol, volLabel } from '@/lib/utils/volume';
+import { fmtVol } from '@/lib/utils/volume';
 import { VACCINES } from '@/lib/constants/vaccines';
 
 interface LogEntry {
@@ -49,12 +49,6 @@ interface PediatrReportProps {
 
 type ReportPeriod = '7' | '14' | '30';
 
-function daysBetween(start: string, end: string): number {
-  const s = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  return Math.round((e.getTime() - s.getTime()) / 86400000);
-}
-
 function entriesInRange(entries: LogEntry[], days: number): LogEntry[] {
   const cutoff = daysAgo(days);
   return entries.filter((e) => e.date >= cutoff);
@@ -65,6 +59,8 @@ export default function PediatrReport({
 }: PediatrReportProps) {
   const [period, setPeriod] = useState<ReportPeriod>('7');
   const [generating, setGenerating] = useState(false);
+  const [reportHtml, setReportHtml] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const generateReport = useCallback(() => {
     setGenerating(true);
@@ -231,14 +227,77 @@ ${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.joi
 </div>
 </body></html>`;
 
-    // Open in new tab for print/save
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    toast('Report opened — use Print to save as PDF');
+    setReportHtml(html);
     setGenerating(false);
+    toast('Report ready — tap Share to save as PDF');
   }, [period, logs, babyName, birth, age, vDone, volumeUnit]);
 
+  const handleShare = useCallback(() => {
+    if (!reportHtml) return;
+    const blob = new Blob([reportHtml], { type: 'text/html' });
+    const file = new File([blob], `${babyName}-report.html`, { type: 'text/html' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      navigator.share({ files: [file], title: `${babyName} Care Report` }).catch(() => {});
+    } else {
+      // Fallback: download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${babyName}-report.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Report downloaded');
+    }
+  }, [reportHtml, babyName]);
+
+  const handleBack = useCallback(() => {
+    setReportHtml(null);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setReportHtml(null);
+    onClose();
+  }, [onClose]);
+
+  // ─── Full-screen report preview ───
+  if (reportHtml) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 210,
+          background: C.bg,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '12px 16px', borderBottom: '1px solid ' + C.b,
+        }}>
+          <button onClick={handleBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', gap: 4, color: C.s, fontSize: 14, fontWeight: 600 }}>
+            <Ic n="arrow-left" s={18} c={C.s} /> Back
+          </button>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Report Preview</div>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <Ic n="x" s={22} c={C.tl} />
+          </button>
+        </div>
+        <iframe
+          ref={iframeRef}
+          srcDoc={reportHtml}
+          style={{ flex: 1, border: 'none', width: '100%' }}
+          title="Report Preview"
+        />
+        <div style={{ padding: '12px 16px 28px', borderTop: '1px solid ' + C.b }}>
+          <Btn label="Share / Save Report" onClick={handleShare} color={C.s} full />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Config bottom sheet ───
   return (
     <div
       style={{
@@ -249,7 +308,7 @@ ${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.joi
         display: 'flex',
         alignItems: 'flex-end',
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div
         style={{
@@ -270,7 +329,7 @@ ${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.joi
               Summarize {babyName}'s care for your doctor
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
             <Ic n="x" s={22} c={C.tl} />
           </button>
         </div>
@@ -306,21 +365,16 @@ ${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.joi
         </div>
 
         <div style={{ fontSize: 12, color: C.tl, marginBottom: 16, lineHeight: 1.5 }}>
-          The report includes feeding patterns, diaper counts, sleep duration,
-          growth measurements, temperature flags, medications, food introductions,
-          and vaccine status — everything your pediatrician asks about.
+          Includes feeding patterns, diaper counts, sleep, growth,
+          temperature flags, medications, food introductions, and vaccines.
         </div>
 
         <Btn
-          label={generating ? 'Generating...' : 'Generate report'}
+          label={generating ? 'Generating...' : 'Generate Report'}
           onClick={generateReport}
           color={C.s}
           full
         />
-
-        <div style={{ fontSize: 11, color: C.tl, marginTop: 10, textAlign: 'center' }}>
-          Opens in a new tab · Use Print (Ctrl+P) to save as PDF
-        </div>
       </div>
     </div>
   );

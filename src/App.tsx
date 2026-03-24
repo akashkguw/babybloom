@@ -634,7 +634,7 @@ function App() {
           setReminders={setReminders}
           volumeUnit={volumeUnit}
           setVolumeUnit={setVolumeUnit}
-          onShowReport={() => { setShowSet(false); setShowReport(true); }}
+          onShowReport={() => { setShowReport(true); }}
           onSync={() => { setShowSet(false); setShowSync(true); }}
         />
       ) : (
