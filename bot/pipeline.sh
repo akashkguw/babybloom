@@ -197,6 +197,27 @@ _This issue was auto-created from a Sentry error report. Fix the root cause and 
         tracked[sid] = gh_num
         new_count += 1
         print(f"  🐛 Created GH issue #{gh_num} from Sentry error: {title}")
+
+        # Add directly to pending queue so triage picks it up THIS run
+        try:
+            queue = json.load(open(queue_path))
+        except:
+            queue = []
+        existing_nums = {i["number"] for i in queue}
+        if gh_num not in existing_nums:
+            queue.append({
+                "number": gh_num,
+                "title": gh_title,
+                "body": gh_body,
+                "labels": ["sentry", "bug"],
+                "url": resp.get("html_url", ""),
+                "created_at": resp.get("created_at", ""),
+                "status": "pending",
+                "source": "sentry",
+                "sentry_id": sid
+            })
+            json.dump(queue, open(queue_path, "w"), indent=2)
+            print(f"  📥 Added #{gh_num} to pending queue")
     except Exception as e:
         print(f"  ⚠️ Failed to create GH issue for Sentry {sid}: {e}")
 
