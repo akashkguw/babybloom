@@ -113,8 +113,21 @@ const LogTab: React.FC<LogTabProps> = ({
   const [form, setForm] = useState<FormData>({});
   const [editId, setEditId] = useState<number | string | null>(null);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [selectedDate, setSelectedDate] = useState<string>(today());
 
   const td = today();
+
+  const navigateDate = (dir: -1 | 1) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + dir);
+    const next =
+      d.getFullYear() +
+      '-' +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(d.getDate()).padStart(2, '0');
+    if (next <= td) setSelectedDate(next);
+  };
 
   // Handle subNavRef on mount
   useEffect(() => {
@@ -148,7 +161,7 @@ const LogTab: React.FC<LogTabProps> = ({
     { id: 'stats', l: 'Stats', e: '📊' },
   ];
 
-  const items = (logs[sub] || []).filter((x) => x.date === td);
+  const items = (logs[sub] || []).filter((x) => x.date === selectedDate);
   const allItems = logs[sub] || [];
 
   const logColors: Record<string, string> = {
@@ -166,7 +179,7 @@ const LogTab: React.FC<LogTabProps> = ({
 
   function addEntry() {
     const entry: LogEntry = {
-      date: form.date || td,
+      date: form.date || selectedDate,
       time: form.time || now(),
       id: editId || Date.now(),
       ...form,
@@ -316,27 +329,83 @@ const LogTab: React.FC<LogTabProps> = ({
         />
       ) : null}
 
-      {/* Today's entries (hidden in stats and timer view) */}
+      {/* Entries with date navigation (hidden in stats and timer view) */}
       {sub !== 'stats' && sub !== 'timer' ? (
         <>
           <div
             style={{
               marginTop: 16,
               marginBottom: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.tl,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            Today — {fmtDate(td)} ({items.length} entries)
+            <button
+              onClick={() => navigateDate(-1)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontSize: 18,
+                color: C.s,
+              }}
+              aria-label="Previous day"
+            >
+              ‹
+            </button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.t }}>
+                {selectedDate === td ? 'Today' : fmtDate(selectedDate)}
+              </div>
+              <div style={{ fontSize: 11, color: C.tl }}>
+                {fmtDate(selectedDate)} · {items.length} {items.length === 1 ? 'entry' : 'entries'}
+              </div>
+            </div>
+            <button
+              onClick={() => navigateDate(1)}
+              disabled={selectedDate === td}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: selectedDate === td ? 'default' : 'pointer',
+                padding: '4px 8px',
+                fontSize: 18,
+                color: selectedDate === td ? C.tl : C.s,
+                opacity: selectedDate === td ? 0.3 : 1,
+              }}
+              aria-label="Next day"
+            >
+              ›
+            </button>
           </div>
+          {selectedDate !== td ? (
+            <div style={{ textAlign: 'center', marginBottom: 8 }}>
+              <button
+                onClick={() => setSelectedDate(td)}
+                style={{
+                  background: 'none',
+                  border: `1px solid ${C.s}`,
+                  borderRadius: 12,
+                  padding: '2px 12px',
+                  fontSize: 11,
+                  color: C.s,
+                  cursor: 'pointer',
+                }}
+              >
+                Back to Today
+              </button>
+            </div>
+          ) : null}
+
 
           {items.length === 0 ? (
             <Cd style={{ textAlign: 'center', padding: 30, color: C.tl }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>
                 {(subs.find((s) => s.id === sub) || { e: '📝' }).e}
               </div>
-              <div>No entries yet today</div>
+              <div>{selectedDate === td ? 'No entries yet today' : 'No entries on this day'}</div>
             </Cd>
           ) : (
             items.map((entry) => (
@@ -489,7 +558,7 @@ const LogTab: React.FC<LogTabProps> = ({
                 color: C.tl,
               }}
             >
-              {allItems.length} total entries
+              {allItems.length} total entries · Use arrows to browse past days
             </div>
           ) : null}
         </>
