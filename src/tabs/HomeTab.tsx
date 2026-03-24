@@ -637,41 +637,6 @@ export default function HomeTab({
             ),
           });
         }
-        // Add explore/quick-action links as carousel slides (#74)
-        slides.push({
-          id: 'explore',
-          node: (
-            <div style={{ padding: '12px 14px', background: C.cd, borderRadius: 14, border: '1px solid ' + C.b }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.s, marginBottom: 8 }}>Quick Actions</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[
-                  { l: 'Activities', e: '🎨', t: 'guide', s: 'activities' },
-                  { l: 'Safety', e: '🛡️', t: 'safety', s: 'tips' },
-                  { l: 'Report', e: '📋', t: '_report', s: '' },
-                  { l: 'Sync', e: '🔄', t: '_sync', s: '' },
-                ].map((q) => (
-                  <div
-                    key={q.l}
-                    onClick={() => setTab(q.t, q.s)}
-                    style={{
-                      flex: 1,
-                      padding: '8px 4px',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      background: C.bg,
-                      borderRadius: 10,
-                      border: '1px solid ' + C.b,
-                    }}
-                  >
-                    <div style={{ fontSize: 18 }}>{q.e}</div>
-                    <div style={{ fontSize: 9, color: C.t, fontWeight: 600, marginTop: 2 }}>{q.l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ),
-        });
-
         if (slides.length === 0) return null;
         const idx = carouselIdx >= slides.length ? 0 : carouselIdx;
         return (
@@ -1170,7 +1135,37 @@ export default function HomeTab({
 
       {/* (Tip is now part of the carousel above) */}
 
-      {/* Explore links consolidated into carousel (#74) */}
+      {/* Quick Actions — standalone widget */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
+        {[
+          { l: 'Activities 🎨', t: 'guide', s: 'activities' },
+          { l: 'Safety 🛡️', t: 'safety', s: 'tips' },
+          { l: 'Report 📋', t: '_report', s: '' },
+          { l: 'Sync 🔄', t: '_sync', s: '' },
+        ].map((q: any) => (
+          <div
+            key={q.l}
+            onClick={() => {
+              setTab(q.t, q.s);
+            }}
+            style={{
+              flex: '1 0 auto',
+              padding: '8px 12px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              background: C.cd,
+              borderRadius: 10,
+              border: '1px solid ' + C.b,
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.t,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {q.l}
+          </div>
+        ))}
+      </div>
 
       <div style={{ textAlign: 'center', padding: 8, color: C.tl, fontSize: 10 }}>
         Based on AAP, CDC & WHO guidelines
