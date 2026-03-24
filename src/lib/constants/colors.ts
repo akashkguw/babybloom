@@ -68,7 +68,7 @@ export const C_DARK: Colors = {
 };
 
 // Mutable color object that is applied at runtime
-export const C: Colors = Object.assign({}, C_LIGHT);
+export const C: Colors = Object.assign({}, C_DARK);
 
 /**
  * Apply theme to the app

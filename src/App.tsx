@@ -70,7 +70,7 @@ function App() {
   const [showSet, setShowSet] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [darkMode, setDarkModeR] = useState<boolean>(false);
+  const [darkMode, setDarkModeR] = useState<boolean>(true);
   const [timerState, setTSR] = useState<TimerState>({ running: false, type: null, startTime: null });
   const [reminders, setRemR] = useState<Reminders>({ feedInterval: 0, enabled: false });
   const [volumeUnit, setVUR] = useState<'ml' | 'oz'>('ml');
@@ -288,8 +288,14 @@ function App() {
       dg('feedTimerApp'),
       dg('volumeUnit'),
     ]).then((r: any) => {
-      if (r[6]) applyTheme(true);
-      if (r[6]) setDarkModeR(true);
+      // Dark mode is default (true). Only switch to light if user explicitly saved false.
+      if (r[6] === false) {
+        applyTheme(false);
+        setDarkModeR(false);
+      } else {
+        applyTheme(true);
+        setDarkModeR(true);
+      }
       if (r[7] != null) setTSR(r[7]);
       if (r[8] != null) setECR(r[8]);
       if (r[11] != null) setRemR(r[11]);
