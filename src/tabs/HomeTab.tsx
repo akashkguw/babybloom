@@ -163,6 +163,7 @@ export default function HomeTab({
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
 
   // ═══ Feed timer effect (must be before early return to keep hook count stable) ═══
+  const feedTimer = feedTimerApp;
   useEffect(() => {
     if (feedTimer) {
       const diff = Math.floor((Date.now() - feedTimer.startTime) / 1000);
@@ -338,8 +339,6 @@ export default function HomeTab({
     toast(msg + '\n' + encouragement);
   }
 
-  // ═══ Inline feed timer (state lives in App so it survives tab switches) ═══
-  const feedTimer = feedTimerApp;
 
   function startFeedTimer(type: string) {
     if (feedTimer) return;
