@@ -114,6 +114,102 @@ else:
     print("✅ Queue already up to date")
 EOF
 
+# ─── Sync unresolved Sentry issues → GitHub Issues → pending queue ───
+if [ -n "$SENTRY_AUTH_TOKEN" ] && [ -n "$SENTRY_ORG" ] && [ -n "$SENTRY_PROJECT" ]; then
+  echo "🔍 Checking Sentry for new errors..."
+  python3 - <<SENTRY_EOF
+import urllib.request, json, ssl, os
+
+try:
+    import certifi; ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ssl_ctx = ssl.create_default_context(); ssl_ctx.load_default_certs()
+
+sentry_token = "$SENTRY_AUTH_TOKEN"
+sentry_org   = "$SENTRY_ORG"
+sentry_proj  = "$SENTRY_PROJECT"
+gh_token     = "$GITHUB_TOKEN"
+repo         = "$REPO"
+queue_path   = "$QUEUE_FILE"
+
+# Track which Sentry issues we've already created GH issues for
+tracker_path = "$BOT_DIR/sentry-tracked.json"
+try:
+    tracked = json.load(open(tracker_path))
+except:
+    tracked = {}  # { sentry_issue_id: github_issue_number }
+
+# Fetch unresolved Sentry issues (last 24h, sorted by last seen)
+try:
+    req = urllib.request.Request(
+        f"https://sentry.io/api/0/projects/{sentry_org}/{sentry_proj}/issues/?query=is:unresolved&sort=date&limit=10",
+        headers={"Authorization": f"Bearer {sentry_token}"}
+    )
+    sentry_issues = json.loads(urllib.request.urlopen(req, timeout=15, context=ssl_ctx).read())
+except Exception as e:
+    print(f"⚠️  Sentry sync skipped: {e}")
+    sentry_issues = []
+
+new_count = 0
+for si in sentry_issues:
+    sid = str(si["id"])
+    if sid in tracked:
+        continue  # Already have a GH issue for this
+
+    title = si.get("title", "Unknown error")
+    culprit = si.get("culprit", "")
+    count = si.get("count", "?")
+    users = si.get("userCount", "?")
+    first_seen = si.get("firstSeen", "")
+    last_seen = si.get("lastSeen", "")
+    level = si.get("level", "error")
+    permalink = si.get("permalink", "")
+
+    # Create GitHub issue with Sentry context
+    gh_title = f"[Sentry {level.upper()}] {title}"
+    gh_body = f"""**Sentry Error Report** (auto-created by pipeline)
+
+**Error:** {title}
+**Location:** {culprit}
+**Level:** {level}
+**Events:** {count} | **Users affected:** {users}
+**First seen:** {first_seen}
+**Last seen:** {last_seen}
+**Sentry link:** {permalink}
+**Sentry ID:** {sid}
+
+---
+_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._"""
+
+    try:
+        data = json.dumps({
+            "title": gh_title,
+            "body": gh_body,
+            "labels": ["sentry", "bug"]
+        }).encode()
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/issues",
+            data=data, method="POST",
+            headers={"Authorization": f"Bearer {gh_token}", "Content-Type": "application/json"}
+        )
+        resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ssl_ctx).read())
+        gh_num = resp["number"]
+        tracked[sid] = gh_num
+        new_count += 1
+        print(f"  🐛 Created GH issue #{gh_num} from Sentry error: {title}")
+    except Exception as e:
+        print(f"  ⚠️ Failed to create GH issue for Sentry {sid}: {e}")
+
+if new_count:
+    json.dump(tracked, open(tracker_path, "w"), indent=2)
+    print(f"📥 Created {new_count} GitHub issue(s) from Sentry errors")
+else:
+    print("✅ No new Sentry errors to process")
+SENTRY_EOF
+else
+  echo "ℹ️  Sentry sync skipped (SENTRY_AUTH_TOKEN/ORG/PROJECT not set)"
+fi
+
 # ─── Check for uncommitted changes — run deploy.sh if needed ───
 # Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
 DEPLOY_PUSHED_SHA=""
@@ -453,6 +549,60 @@ MSG="$MSG
 
 $LIVE_LINE
 📊 [All issues](https://github.com/$REPO/issues)"
+
+# ─── Auto-resolve Sentry issues that were fixed in this deploy ───
+if [ "$ACTIONS_STATUS" = "success" ] && [ -n "$SENTRY_AUTH_TOKEN" ] && [ -n "$SENTRY_ORG" ] && [ -n "$SENTRY_PROJECT" ]; then
+  python3 - <<RESOLVE_EOF
+import json, urllib.request, ssl
+
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+tracker_path = "$BOT_DIR/sentry-tracked.json"
+queue_path   = "$QUEUE_FILE"
+sentry_token = "$SENTRY_AUTH_TOKEN"
+sentry_org   = "$SENTRY_ORG"
+sentry_proj  = "$SENTRY_PROJECT"
+
+try:
+    tracked = json.load(open(tracker_path))
+except:
+    tracked = {}
+
+# Find which GH issues were just closed (implemented)
+try:
+    queue = json.load(open(queue_path))
+except:
+    queue = []
+
+done_statuses = {"implemented", "infra_implemented", "documented"}
+closed_nums = {str(i["number"]) for i in queue if i.get("status") in done_statuses}
+
+resolved_sentry = []
+for sid, gh_num in list(tracked.items()):
+    if str(gh_num) in closed_nums:
+        # Resolve this Sentry issue
+        try:
+            data = json.dumps({"status": "resolved"}).encode()
+            req = urllib.request.Request(
+                f"https://sentry.io/api/0/issues/{sid}/",
+                data=data, method="PUT",
+                headers={"Authorization": f"Bearer {sentry_token}", "Content-Type": "application/json"}
+            )
+            urllib.request.urlopen(req, timeout=10, context=ctx)
+            resolved_sentry.append(sid)
+            del tracked[sid]
+            print(f"  ✅ Resolved Sentry issue {sid} (GH #{gh_num})")
+        except Exception as e:
+            print(f"  ⚠️ Could not resolve Sentry {sid}: {e}")
+
+if resolved_sentry:
+    json.dump(tracked, open(tracker_path, "w"), indent=2)
+    print(f"🎯 Resolved {len(resolved_sentry)} Sentry issue(s)")
+RESOLVE_EOF
+fi
 
 send_telegram "$MSG"
 echo "🎉 Pipeline complete! Telegram notified with CI result: $ACTIONS_STATUS"

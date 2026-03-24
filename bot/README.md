@@ -97,14 +97,17 @@ All issues also get a `telegram` label so you can filter them.
 Beyond the Telegram bot, BabyBloom includes a full automation pipeline that processes issues using specialized Claude agents:
 
 ```
-Telegram message → bot.js → GitHub Issue → pipeline.sh → Triage Agent
-                                                              ↓
-                                          ┌─────────────┬─────┴──────┬──────────────┐
-                                          ↓             ↓            ↓              ↓
-                                    Implementation  Infrastructure  Analysis   Documentation
-                                      (IMPL)          (INFRA)      (read-only)   (DOCS)
-                                          ↓             ↓            ↓              ↓
-                                       deploy.sh → push → close issue → Telegram notify
+Telegram message → bot.js → GitHub Issue ──┐
+Sentry error → pipeline.sh → GitHub Issue ─┤
+                                           ↓
+                                    pipeline.sh → Triage Agent
+                                                       ↓
+                                     ┌─────────────┬───┴────────┬──────────────┐
+                                     ↓             ↓            ↓              ↓
+                               Implementation  Infrastructure  Analysis   Documentation
+                                 (IMPL)          (INFRA)      (read-only)   (DOCS)
+                                     ↓             ↓            ↓              ↓
+                                  deploy.sh → push → close GH issue → resolve Sentry → Telegram
 ```
 
 ### Agent skills
