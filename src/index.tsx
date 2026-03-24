@@ -1,12 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import * as Sentry from '@sentry/react';
-import { initSentry } from '@/lib/sentry';
 import App from './App';
 import './styles/base.css';
 
-// Initialize Sentry error tracking (production only)
-initSentry();
+// Initialize Sentry — wrapped so a failure never blocks the app
+try {
+  const { initSentry } = await import('@/lib/sentry');
+  initSentry();
+} catch {
+  // Sentry unavailable — app runs fine without it
+}
 
 // Service worker registration is handled by vite-plugin-pwa (registerType: 'autoUpdate')
 // Clean up any old service workers from v1 that might cache stale pages
@@ -35,36 +38,64 @@ if (navigator.storage && navigator.storage.persist) {
   navigator.storage.persist();
 }
 
-// Fallback UI when the app crashes
-function CrashFallback() {
-  return (
-    <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'system-ui' }}>
-      <h2>Something went wrong</h2>
-      <p style={{ color: '#666', margin: '1rem 0' }}>
-        The error has been reported automatically.
-      </p>
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          padding: '0.6rem 1.5rem',
-          borderRadius: '8px',
-          border: 'none',
-          background: '#6C63FF',
-          color: '#fff',
-          fontSize: '1rem',
-          cursor: 'pointer',
-        }}
-      >
-        Reload App
-      </button>
-    </div>
-  );
+// Standalone error boundary — zero dependency on Sentry
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // Try to report to Sentry if available, but never throw
+    try {
+      import('@sentry/react').then((Sentry) => {
+        Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
+      });
+    } catch {
+      // Sentry not available — that's fine
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'system-ui' }}>
+          <h2>Something went wrong</h2>
+          <p style={{ color: '#666', margin: '1rem 0' }}>
+            The error has been reported automatically.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.6rem 1.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#6C63FF',
+              color: '#fff',
+              fontSize: '1rem',
+              cursor: 'pointer',
+            }}
+          >
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<CrashFallback />}>
+    <AppErrorBoundary>
       <App />
-    </Sentry.ErrorBoundary>
+    </AppErrorBoundary>
   </React.StrictMode>
 );

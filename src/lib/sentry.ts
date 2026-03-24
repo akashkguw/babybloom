@@ -31,6 +31,7 @@ export function initSentry() {
   // Only init in production with a valid DSN
   if (import.meta.env.DEV || !SENTRY_DSN) return;
 
+  try {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
@@ -91,6 +92,10 @@ export function initSentry() {
       return breadcrumb;
     },
   });
+  } catch {
+    // Sentry init failed — app continues without error tracking
+    console.warn('Sentry initialization failed — running without error tracking');
+  }
 }
 
 export { Sentry };
