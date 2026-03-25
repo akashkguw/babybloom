@@ -9,6 +9,8 @@ import { today } from '@/lib/utils/date';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
 import { dcl } from '@/lib/db/indexeddb';
+import { getAvailableCountries } from '@/lib/constants/countries';
+import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
 
 interface SettingsProps {
   onClose: () => void;
@@ -29,6 +31,9 @@ interface SettingsProps {
   setVolumeUnit: (unit: 'ml' | 'oz') => void;
   onShowReport?: () => void;
   onSync?: () => void;
+  country: CountryCode;
+  setCountry: (code: CountryCode) => void;
+  countryConfig: CountryConfig;
 }
 
 const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
@@ -62,7 +67,11 @@ export default function Settings({
   setVolumeUnit,
   onShowReport,
   onSync,
+  country,
+  setCountry,
+  countryConfig,
 }: SettingsProps) {
+  const countries = getAvailableCountries();
 
   return (
     <div
@@ -125,6 +134,51 @@ export default function Settings({
             />
           </Section>
         )}
+
+        {/* Country / Region */}
+        <Section title="Country" icon="🌍">
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 8 }}>
+            Select your country for localized guidelines, vaccines & emergency numbers
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {countries.map((c) => (
+              <div
+                key={c.code}
+                onClick={() => setCountry(c.code)}
+                style={{
+                  flex: '1 1 45%',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: `2px solid ${country === c.code ? C.a : C.b}`,
+                  background: country === c.code ? C.al : C.bg,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  transition: 'all 0.2s',
+                }}
+              >
+                <span style={{ fontSize: 24 }}>{c.flag}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>{c.name}</div>
+                  <div style={{ fontSize: 10, color: C.tl }}>
+                    {c.code === 'US' ? 'AAP/CDC guidelines' : c.code === 'IN' ? 'IAP guidelines' : ''}
+                  </div>
+                </div>
+                {country === c.code && (
+                  <Icon n="check" s={16} c={C.a} st={{ marginLeft: 'auto' }} />
+                )}
+              </div>
+            ))}
+          </div>
+          {countryConfig && (
+            <div style={{ marginTop: 10, fontSize: 11, color: C.tl, lineHeight: 1.4 }}>
+              Using {countryConfig.medical.authorityFull} ({countryConfig.medical.authority}) guidelines
+              {' \u00B7 '}Emergency: {countryConfig.emergency.primaryNumber}
+              {' \u00B7 '}Vaccines: {countryConfig.vaccineSource}
+            </div>
+          )}
+        </Section>
 
         {/* General */}
         <Section title="General" icon="⚙️">
@@ -296,7 +350,7 @@ export default function Settings({
         </div>
 
         <div style={{ textAlign: 'center', fontSize: 11, color: C.tl }}>
-          BabyBloom v2.1 — AAP/CDC/WHO 2026
+          BabyBloom v2.1 — {countryConfig.medical.authority}/WHO 2026
         </div>
       </div>
     </div>

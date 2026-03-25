@@ -16,6 +16,8 @@ import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
 import PediatrReport from '@/features/reports/PediatrReport';
+import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
+import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
 
 interface Profile {
   id: number;
@@ -63,10 +65,7 @@ function App() {
   const [logs, setLgR] = useState<any>({ feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
   const [teeth, setThR] = useState<any>({});
   const [firsts, setFiR] = useState<any[]>([]);
-  const [emergencyContacts, setECR] = useState<EmergencyContact[]>([
-    { id: 1, name: 'Emergency', phone: '911', role: 'Emergency' },
-    { id: 2, name: 'Poison Control', phone: '1-800-222-1222', role: 'Poison Control' },
-  ]);
+  const [emergencyContacts, setECR] = useState<EmergencyContact[]>([]);
   const [profiles, setProfilesR] = useState<Profile[]>([]);
   const [activeProfile, setActivePR] = useState<number | null>(null);
   const [showSet, setShowSet] = useState<boolean>(false);
@@ -83,11 +82,37 @@ function App() {
   const [appTimerElapsed, setAppTimerElapsed] = useState(0);
   const [quickFeedType, setQuickFeedType] = useState<string | null>(null);
   const [sliderVal, setSliderVal] = useState(0);
+  const [country, setCountryR] = useState<CountryCode>(detectCountry());
+
+  // Derived country config — recalculated when country changes
+  const countryConfig = useMemo(() => getCountryConfig(country), [country]);
+
+  const setCountry = (v: CountryCode) => {
+    setCountryR(v);
+    ds('country', v);
+    // Update defaults based on new country
+    const cfg = getCountryConfig(v);
+    setVolumeUnit(cfg.defaults.volumeUnit);
+    // Update emergency contacts to country defaults (keep user-added contacts with id > 2)
+    setEmergencyContacts((prev: EmergencyContact[]) => {
+      const userContacts = prev.filter((c) => c.id > 2);
+      return [...cfg.emergency.defaultContacts, ...userContacts];
+    });
+    toast(`Switched to ${cfg.flag} ${cfg.name}`);
+  };
 
   // Wrapper functions for persistence
-  const setEmergencyContacts = (v: EmergencyContact[]) => {
-    setECR(v);
-    ds('emergencyContacts', v);
+  const setEmergencyContacts = (v: EmergencyContact[] | ((prev: EmergencyContact[]) => EmergencyContact[])) => {
+    if (typeof v === 'function') {
+      setECR((prev: EmergencyContact[]) => {
+        const next = v(prev);
+        ds('emergencyContacts', next);
+        return next;
+      });
+    } else {
+      setECR(v);
+      ds('emergencyContacts', v);
+    }
   };
 
   const setProfiles = (v: Profile[]) => {
@@ -296,7 +321,18 @@ function App() {
       dg('reminders'),
       dg('feedTimerApp'),
       dg('volumeUnit'),
+      dg('country'),
     ]).then((r: any) => {
+      // Load saved country or detect from browser
+      const savedCountry = r[14] as CountryCode | null;
+      if (savedCountry) {
+        setCountryR(savedCountry);
+      } else {
+        const detected = detectCountry();
+        setCountryR(detected);
+      }
+      const activeCountry = savedCountry || detectCountry();
+      const cfg = getCountryConfig(activeCountry);
       // Dark mode is default (true). Only switch to light if user explicitly saved false.
       if (r[6] === false) {
         applyTheme(false);
@@ -307,9 +343,11 @@ function App() {
       }
       if (r[7] != null) setTSR(r[7]);
       if (r[8] != null) setECR(r[8]);
+      else setECR(cfg.emergency.defaultContacts);
       if (r[11] != null) setRemR(r[11]);
       if (r[12] != null) _setFTA(r[12]);
       if (r[13]) setVUR(r[13]);
+      else setVUR(cfg.defaults.volumeUnit);
 
       const loadedProfiles = r[9];
       const loadedActiveProfile = r[10];
@@ -638,6 +676,9 @@ function App() {
           setVolumeUnit={setVolumeUnit}
           onShowReport={() => { setShowReport(true); }}
           onSync={() => { setShowSet(false); setShowSync(true); }}
+          country={country}
+          setCountry={setCountry}
+          countryConfig={countryConfig}
         />
       ) : (
         <>
@@ -661,6 +702,7 @@ function App() {
               setQuickFeedType={setQuickFeedType}
               sliderVal={sliderVal}
               setSliderVal={setSliderVal}
+              countryConfig={countryConfig}
             />
           ) : null}
           {tab === 'log' ? (
@@ -690,10 +732,10 @@ function App() {
             />
           ) : null}
           {tab === 'guide' ? (
-            <GuideTab age={age} vDone={vDone} setVDone={setVDone} subNavRef={subNavRef} logs={logs} birth={birth || ''} />
+            <GuideTab age={age} vDone={vDone} setVDone={setVDone} subNavRef={subNavRef} logs={logs} birth={birth || ''} countryConfig={countryConfig} />
           ) : null}
           {tab === 'safety' ? (
-            <SafetyTab subNavRef={subNavRef} emergencyContacts={emergencyContacts} setEmergencyContacts={setEmergencyContacts} />
+            <SafetyTab subNavRef={subNavRef} emergencyContacts={emergencyContacts} setEmergencyContacts={setEmergencyContacts} countryConfig={countryConfig} />
           ) : null}
         </>
       )}
@@ -729,6 +771,7 @@ function App() {
           vDone={vDone}
           volumeUnit={volumeUnit}
           onClose={() => setShowReport(false)}
+          countryConfig={countryConfig}
         />
       ) : null}
 

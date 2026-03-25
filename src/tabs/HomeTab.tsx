@@ -6,7 +6,7 @@ import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
 import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
-import { VACCINES } from '@/lib/constants/vaccines';
+import type { CountryConfig } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
@@ -62,6 +62,7 @@ interface HomeTabProps {
   setQuickFeedType: (v: string | null) => void;
   sliderVal: number;
   setSliderVal: (v: number) => void;
+  countryConfig: CountryConfig;
 }
 
 export default function HomeTab({
@@ -83,7 +84,9 @@ export default function HomeTab({
   setQuickFeedType,
   sliderVal,
   setSliderVal,
+  countryConfig,
 }: HomeTabProps) {
+  const VACCINES = countryConfig.vaccines;
   const [td2, setTd] = useState('');
   const [showSlider] = useState(false); // kept for stable hook count
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -538,10 +541,18 @@ export default function HomeTab({
   }
 
   // ═══ Next critical action (vaccine) ═══
-  const ageToMonths: { [key: string]: number } = {
-    Birth: 0, '1 Month': 1, '2 Months': 2, '4 Months': 4,
-    '6 Months': 6, '9 Months': 9, '12 Months': 12, '15 Months': 15, '18 Months': 18,
-  };
+  const ageToMonths: { [key: string]: number } = (() => {
+    const map: { [key: string]: number } = { Birth: 0 };
+    VACCINES.forEach((v) => {
+      const a = v.age;
+      if (a === 'Birth') return;
+      const weekMatch = a.match(/(\d+)\s*weeks?/i);
+      if (weekMatch) { map[a] = Math.round(parseInt(weekMatch[1]) / 4.33 * 10) / 10; return; }
+      const moMatch = a.match(/(\d+)/);
+      if (moMatch) { map[a] = parseInt(moMatch[1]); }
+    });
+    return map;
+  })();
 
   const nextAction = (() => {
     // Find the first undone vaccine that is due (age-appropriate or overdue)

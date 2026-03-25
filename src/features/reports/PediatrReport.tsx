@@ -12,7 +12,7 @@ import { Button as Btn, Icon as Ic } from '@/components/shared';
 import { toast } from '@/lib/utils/toast';
 import { today, fmtDate, fmtTime, daysAgo } from '@/lib/utils/date';
 import { fmtVol } from '@/lib/utils/volume';
-import { VACCINES } from '@/lib/constants/vaccines';
+import type { CountryConfig } from '@/lib/constants/countries';
 
 interface LogEntry {
   id: number;
@@ -45,6 +45,7 @@ interface PediatrReportProps {
   vDone: { [key: string]: boolean };
   volumeUnit: 'ml' | 'oz';
   onClose: () => void;
+  countryConfig: CountryConfig;
 }
 
 type ReportPeriod = '7' | '14' | '30';
@@ -55,8 +56,9 @@ function entriesInRange(entries: LogEntry[], days: number): LogEntry[] {
 }
 
 export default function PediatrReport({
-  logs, babyName, birth, age, vDone, volumeUnit, onClose,
+  logs, babyName, birth, age, vDone, volumeUnit, onClose, countryConfig,
 }: PediatrReportProps) {
+  const VACCINES = countryConfig.vaccines;
   const [period, setPeriod] = useState<ReportPeriod>('7');
   const [generating, setGenerating] = useState(false);
   const [reportHtml, setReportHtml] = useState<string | null>(null);
@@ -120,10 +122,18 @@ export default function PediatrReport({
     const completedVaccines: string[] = [];
     const pendingVaccines: string[] = [];
     const ageMonths = Math.floor(age);
-    const ageToMonths: { [key: string]: number } = {
-      Birth: 0, '1 Month': 1, '2 Months': 2, '4 Months': 4,
-      '6 Months': 6, '9 Months': 9, '12 Months': 12, '15 Months': 15, '18 Months': 18,
-    };
+    const ageToMonths: { [key: string]: number } = (() => {
+      const map: { [key: string]: number } = { Birth: 0 };
+      VACCINES.forEach((v) => {
+        const a = v.age;
+        if (a === 'Birth') return;
+        const weekMatch = a.match(/(\d+)\s*weeks?/i);
+        if (weekMatch) { map[a] = Math.round(parseInt(weekMatch[1]) / 4.33 * 10) / 10; return; }
+        const moMatch = a.match(/(\d+)/);
+        if (moMatch) { map[a] = parseInt(moMatch[1]); }
+      });
+      return map;
+    })();
     VACCINES.forEach((group, ai) => {
       const dueAt = ageToMonths[group.age] ?? 99;
       if (dueAt > ageMonths + 1) return;

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { C } from '@/lib/constants/colors';
-import { SAFETY, CPR_STEPS, CHOKING_STEPS, FEVER_GUIDE } from '@/lib/constants/guides';
 import { Card as Cd, SectionHeader as SH, Icon as Ic, Dot } from '@/components/shared';
 import AddContactForm from '@/components/modals/AddContactForm';
+import type { CountryConfig } from '@/lib/constants/countries';
 
 interface Contact {
   id: number;
@@ -15,13 +15,20 @@ interface SafetyTabProps {
   subNavRef?: React.MutableRefObject<string | null>;
   emergencyContacts: Contact[];
   setEmergencyContacts: (contacts: Contact[]) => void;
+  countryConfig: CountryConfig;
 }
 
 export default function SafetyTab({
   subNavRef,
   emergencyContacts,
   setEmergencyContacts,
+  countryConfig,
 }: SafetyTabProps) {
+  // Use country-specific data
+  const SAFETY = countryConfig.safety;
+  const CPR_STEPS = countryConfig.cprSteps;
+  const CHOKING_STEPS = countryConfig.chokingSteps;
+  const FEVER_GUIDE = countryConfig.feverGuide;
   // Initialize expanded state based on subNavRef
   const initExp = subNavRef?.current
     ? { [subNavRef.current]: true }
@@ -155,10 +162,10 @@ export default function SafetyTab({
       >
         <Ic n="alert-triangle" s={24} c="white" />
         <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6 }}>
-          Emergency: Call 911
+          {countryConfig.emergency.bannerTitle}
         </div>
         <div style={{ fontSize: 12, opacity: 0.9 }}>
-          Poison Control: 1-800-222-1222
+          {countryConfig.emergency.bannerSubtitle}
         </div>
       </Cd>
 
@@ -246,9 +253,7 @@ export default function SafetyTab({
                 Learn CPR In Person
               </div>
               <div style={{ fontSize: 13, color: C.t, lineHeight: 1.5 }}>
-                This guide is for reference only. Please take a certified infant
-                CPR class through the American Red Cross or American Heart
-                Association.
+                {countryConfig.cprDisclaimer}
               </div>
             </Cd>
             {CPR_STEPS.map((s) => (
@@ -384,8 +389,10 @@ export default function SafetyTab({
                 items={[
                   'Rectal is most accurate for infants (gold standard)',
                   'Forehead/temporal artery for quick checks',
-                  'Under arm (axillary): add 1°F to reading',
-                  'Normal: 97–100.3°F (36.1–37.9°C)',
+                  countryConfig.defaults.temperatureUnit === 'F'
+                    ? 'Under arm (axillary): add 1°F to reading'
+                    : 'Under arm (axillary): add 0.5°C to reading',
+                  `Normal: ${countryConfig.medical.normalTempRange}`,
                   'Do NOT use mercury thermometers',
                 ]}
                 color={C.bl}

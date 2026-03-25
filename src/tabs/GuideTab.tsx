@@ -15,9 +15,7 @@ import {
   MASSAGE_GUIDE,
   TUMMY_TIME_GUIDE,
   MOM_NUTRITION,
-  VISITS,
 } from '@/lib/constants/guides';
-import { VACCINES } from '@/lib/constants/vaccines';
 import {
   Icon,
   Card,
@@ -29,6 +27,7 @@ import {
 } from '@/components/shared';
 import GrowthChart from '@/components/charts/GrowthChart';
 import MedCalc from '@/features/settings/MedCalc';
+import type { CountryConfig } from '@/lib/constants/countries';
 
 interface GuideTabProps {
   age: number;
@@ -37,6 +36,7 @@ interface GuideTabProps {
   subNavRef: React.MutableRefObject<string | null>;
   logs?: { growth?: Array<{ date: string; weight?: string; height?: string }> };
   birth: string;
+  countryConfig: CountryConfig;
 }
 
 interface Expanded {
@@ -48,7 +48,10 @@ interface DietOption {
   l: string;
 }
 
-export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth }: GuideTabProps) {
+export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth, countryConfig }: GuideTabProps) {
+  // Country-specific data
+  const VACCINES = countryConfig.vaccines;
+  const VISITS = countryConfig.visits;
   // Initialize expanded state from subNavRef
   const initExp = (): Expanded => {
     if (subNavRef && subNavRef.current) {
@@ -81,18 +84,20 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth 
     }
   }, [subNavRef]);
 
-  // Age mapping for vaccine schedules
-  const ageMap: { [key: string]: number } = {
-    Birth: 0,
-    '1 Month': 1,
-    '2 Months': 2,
-    '4 Months': 4,
-    '6 Months': 6,
-    '9 Months': 9,
-    '12 Months': 12,
-    '15 Months': 15,
-    '18 Months': 18,
-  };
+  // Dynamic age mapping for vaccine schedules (works for any country's schedule)
+  const ageMap: { [key: string]: number } = (() => {
+    const map: { [key: string]: number } = { Birth: 0 };
+    // Parse age strings like "2 Months", "6 Weeks", "16–18 Months" into month numbers
+    VACCINES.forEach((v) => {
+      const a = v.age;
+      if (a === 'Birth') { map[a] = 0; return; }
+      const weekMatch = a.match(/(\d+)\s*weeks?/i);
+      if (weekMatch) { map[a] = Math.round(parseInt(weekMatch[1]) / 4.33 * 10) / 10; return; }
+      const moMatch = a.match(/(\d+)/);
+      if (moMatch) { map[a] = parseInt(moMatch[1]); }
+    });
+    return map;
+  })();
 
   // Toggle vaccine done
   const toggleV = (ai: number, vi: number) => {
@@ -499,7 +504,7 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth 
         'solids',
         '🥄',
         'Solid Foods',
-        age < 6 ? 'Starting at 6 months' : 'WHO & AAP by diet',
+        age < 6 ? 'Starting at 6 months' : `WHO & ${countryConfig.medical.authority} by diet`,
         C.a,
         age >= 6
       )}
@@ -1042,7 +1047,7 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth 
         : null}
 
       {/* Screen Time */}
-      {Sec('screen', '🌈', 'Screen Time', 'AAP guidelines', C.s, false)}
+      {Sec('screen', '🌈', 'Screen Time', `${countryConfig.medical.authority} guidelines`, C.s, false)}
       {expanded.screen
         ? SecBody(
             <>
@@ -1572,7 +1577,7 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth 
 
       {/* Medicine Dosage Calculator */}
       {Sec('medcalc', '⚖️', 'Meds Calculator', 'Tylenol & Motrin dosing by weight', C.bl, false)}
-      {expanded.medcalc ? SecBody(<MedCalc />) : null}
+      {expanded.medcalc ? SecBody(<MedCalc countryConfig={countryConfig} />) : null}
     </div>
   );
 }

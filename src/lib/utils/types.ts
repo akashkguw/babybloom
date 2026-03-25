@@ -8,6 +8,11 @@
 export type Locale = "en-US" | "en-IN" | "hi-IN";
 
 /**
+ * Country code
+ */
+export type Country = "US" | "IN";
+
+/**
  * Volume unit (ounces or milliliters)
  */
 export type VolumeUnit = "oz" | "ml";

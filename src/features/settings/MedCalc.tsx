@@ -2,21 +2,42 @@ import React, { useState } from 'react';
 import { C } from '@/lib/constants/colors';
 import Input from '@/components/shared/Input';
 import Card from '@/components/shared/Card';
-import { clampNum, LIMITS } from '@/lib/utils/validate';
+import { clampNum } from '@/lib/utils/validate';
+import type { CountryConfig } from '@/lib/constants/countries';
 
-export default function MedCalc() {
+interface MedCalcProps {
+  countryConfig: CountryConfig;
+}
+
+export default function MedCalc({ countryConfig }: MedCalcProps) {
   const [wt, setWt] = useState('');
-  const handleWt = (v: string) => setWt(clampNum(v, LIMITS.weightLbs.min, LIMITS.weightLbs.max));
+  const { defaults, medicines } = countryConfig;
+  const { antipyretic: med1, antiInflammatory: med2, tips } = medicines;
 
-  const kg = wt ? parseFloat(wt) / 2.205 : 0;
-  const tylenolLow = Math.round(kg * 10 * 10) / 10;
-  const tylenolHigh = Math.round(kg * 15 * 10) / 10;
-  const tylenolMlLow = Math.round((tylenolLow / 160) * 5 * 10) / 10;
-  const tylenolMlHigh = Math.round((tylenolHigh / 160) * 5 * 10) / 10;
-  const ibuprofenLow = Math.round(kg * 5 * 10) / 10;
-  const ibuprofenHigh = Math.round(kg * 10 * 10) / 10;
-  const ibuprofenMlLow = Math.round((ibuprofenLow / 100) * 5 * 10) / 10;
-  const ibuprofenMlHigh = Math.round((ibuprofenHigh / 100) * 5 * 10) / 10;
+  const handleWt = (v: string) =>
+    setWt(clampNum(v, defaults.weightLimits.min, defaults.weightLimits.max));
+
+  // Convert input weight to kg
+  const kg = wt ? parseFloat(wt) / defaults.weightToKgDivisor : 0;
+
+  // Medicine 1 (Paracetamol / Acetaminophen) dosing
+  const med1Low = Math.round(kg * med1.doseLowPerKg * 10) / 10;
+  const med1High = Math.round(kg * med1.doseHighPerKg * 10) / 10;
+  const med1MlLow = Math.round((med1Low / med1.concentrationMg) * 5 * 10) / 10;
+  const med1MlHigh = Math.round((med1High / med1.concentrationMg) * 5 * 10) / 10;
+
+  // Medicine 2 (Ibuprofen) dosing
+  const med2Low = Math.round(kg * med2.doseLowPerKg * 10) / 10;
+  const med2High = Math.round(kg * med2.doseHighPerKg * 10) / 10;
+  const med2MlLow = Math.round((med2Low / med2.concentrationMg) * 5 * 10) / 10;
+  const med2MlHigh = Math.round((med2High / med2.concentrationMg) * 5 * 10) / 10;
+
+  // Weight display
+  const wtDisplay = wt
+    ? defaults.weightUnit === 'kg'
+      ? `${parseFloat(wt).toFixed(1)} kg`
+      : `${parseFloat(wt).toFixed(1)} lbs = ${kg.toFixed(1)} kg`
+    : '';
 
   return (
     <>
@@ -31,23 +52,24 @@ export default function MedCalc() {
           Important Disclaimer
         </div>
         <div style={{ fontSize: 13, color: C.t, lineHeight: 1.5 }}>
-          Always confirm dosages with your pediatrician. This calculator is for reference only. Never give ibuprofen
+          Always confirm dosages with your {countryConfig.code === 'IN' ? 'paediatrician' : 'pediatrician'}. This calculator is for reference only. Never give ibuprofen
           to babies under 6 months.
         </div>
       </Card>
 
       <Card style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.t, marginBottom: 8 }}>Enter Baby's Weight</div>
-        <Input type="number" value={wt} onChange={handleWt} placeholder="Weight in lbs (1–60)" />
+        <Input type="number" value={wt} onChange={handleWt} placeholder={defaults.weightPlaceholder} />
         {wt && (
           <div style={{ fontSize: 12, color: C.tl, marginTop: 4 }}>
-            {parseFloat(wt).toFixed(1)} lbs = {kg.toFixed(1)} kg
+            {wtDisplay}
           </div>
         )}
       </Card>
 
       {wt && parseFloat(wt) > 0 && (
         <>
+          {/* Medicine 1: Paracetamol/Acetaminophen */}
           <Card
             style={{
               marginBottom: 12,
@@ -55,25 +77,26 @@ export default function MedCalc() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 20 }}>🟣</div>
+              <div style={{ fontSize: 20 }}>{med1.emoji}</div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>
-                  Infant Acetaminophen (Tylenol)
+                  {med1.name}
                 </div>
-                <div style={{ fontSize: 12, color: C.tl }}>Concentration: 160 mg / 5 mL</div>
+                <div style={{ fontSize: 12, color: C.tl }}>Concentration: {med1.concentrationLabel}</div>
               </div>
             </div>
             <div style={{ fontSize: 13, color: C.t, marginBottom: 4 }}>
-              Dose: {tylenolLow} – {tylenolHigh} mg
+              Dose: {med1Low} – {med1High} mg
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, color: C.bl }}>
-              {tylenolMlLow} – {tylenolMlHigh} mL
+              {med1MlLow} – {med1MlHigh} mL
             </div>
             <div style={{ fontSize: 11, color: C.tl, marginTop: 4 }}>
-              Every 4-6 hours as needed. Max 5 doses in 24 hrs.
+              {med1.frequency}. {med1.maxDoses}.
             </div>
           </Card>
 
+          {/* Medicine 2: Ibuprofen */}
           <Card
             style={{
               marginBottom: 12,
@@ -81,36 +104,37 @@ export default function MedCalc() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 20 }}>🟠</div>
+              <div style={{ fontSize: 20 }}>{med2.emoji}</div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>
-                  Infant Ibuprofen (Advil/Motrin)
+                  {med2.name}
                 </div>
-                <div style={{ fontSize: 12, color: C.tl }}>Concentration: 100 mg / 5 mL</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: C.p }}>6+ months only!</div>
+                <div style={{ fontSize: 12, color: C.tl }}>Concentration: {med2.concentrationLabel}</div>
+                {med2.ageRestriction && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: C.p }}>{med2.ageRestriction}</div>
+                )}
               </div>
             </div>
             <div style={{ fontSize: 13, color: C.t, marginBottom: 4 }}>
-              Dose: {ibuprofenLow} – {ibuprofenHigh} mg
+              Dose: {med2Low} – {med2High} mg
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, color: C.w }}>
-              {ibuprofenMlLow} – {ibuprofenMlHigh} mL
+              {med2MlLow} – {med2MlHigh} mL
             </div>
             <div style={{ fontSize: 11, color: C.tl, marginTop: 4 }}>
-              Every 6-8 hours as needed. Max 4 doses in 24 hrs.
+              {med2.frequency}. {med2.maxDoses}.
             </div>
           </Card>
 
+          {/* Quick Reference */}
           <Card style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: C.t, marginBottom: 6 }}>
               Quick Reference
             </div>
             <ul style={{ fontSize: 13, color: C.t, lineHeight: 1.6, paddingLeft: 16 }}>
-              <li>Never alternate Tylenol & Motrin without doctor's OK</li>
-              <li>Use the syringe that comes with the medicine</li>
-              <li>Don't use adult formulations</li>
-              <li>Fever reducers treat discomfort, not the infection</li>
-              <li>Call doctor before giving meds to babies under 3 months</li>
+              {tips.map((tip, i) => (
+                <li key={i}>{tip}</li>
+              ))}
             </ul>
           </Card>
         </>

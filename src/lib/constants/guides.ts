@@ -23,7 +23,7 @@ export const SLEEP: SleepGuide[] = [
       "Firm flat mattress only",
       "Room-share 6+ months",
       "No blankets/pillows/toys",
-      "Temp 68-72°F",
+      "Room temp 20-22°C (68-72°F)",
       "Swaddling OK until rolling",
       "White noise helps",
     ],
@@ -111,7 +111,7 @@ export const FEEDING: FeedingGuide[] = [
     e: "👀",
     foods: ["Continue milk as primary", "Watch readiness signs"],
     amt: "Milk still primary",
-    tips: ["AAP: solids around 6 mo", "Never cereal in bottle"],
+    tips: ["Paediatricians recommend solids around 6 mo", "Never cereal in bottle"],
   },
   {
     age: "6–8 Mo",
@@ -178,7 +178,7 @@ export const SAFETY: SafetySection[] = [
       "No bumpers/blankets/toys",
       "Room-share 6+ months",
       "Pacifier reduces SIDS",
-      "Temp 68-72°F",
+      "Room temp 20-22°C (68-72°F)",
     ],
   },
   {
@@ -1163,7 +1163,7 @@ export const REMEDIES: { [key: string]: RemedySection } = {
       },
       {
         r: "Gas drops (simethicone)",
-        d: "Mylicon/Little Remedies — safe, ask pediatrician for dosing.",
+        d: "Simethicone drops (gas drops) — safe, ask your doctor for dosing.",
       },
       {
         r: "Check bottle flow",
@@ -1273,7 +1273,7 @@ export const REMEDIES: { [key: string]: RemedySection } = {
       },
       {
         r: "Diaper rash",
-        d: "Barrier cream (Aquaphor/Desitin) every change. Air dry when possible. Oatmeal bath. Call doctor if yeasty (bright red with dots).",
+        d: "Barrier cream (zinc oxide based) every change. Air dry when possible. Oatmeal bath. Call doctor if yeasty (bright red with dots).",
       },
       {
         r: "Congestion",
@@ -1285,7 +1285,7 @@ export const REMEDIES: { [key: string]: RemedySection } = {
       },
       {
         r: "Teething pain",
-        d: "Cold washcloth to chew. Refrigerated teething ring. Gum massage. Tylenol if needed (6mo+).",
+        d: "Cold washcloth to chew. Refrigerated teething ring. Gum massage. Fever reducer if needed (6mo+), consult doctor.",
       },
     ],
   },
@@ -1460,7 +1460,7 @@ export const MASSAGE_GUIDE: { [key: string]: MassageSection } = {
       },
       {
         r: "Keep baby warm",
-        d: "Room should be warm (75-80°F). Undress only the part you're massaging, or use a warm room with full undress.",
+        d: "Room should be warm (24-27°C / 75-80°F). Undress only the part you're massaging, or use a warm room with full undress.",
       },
     ],
   },
@@ -1573,7 +1573,7 @@ export const FORMULA_GUIDE: { [key: string]: BottleGuideSection } = {
     items: [
       {
         r: "Cow's Milk-Based (standard)",
-        d: "Most common type. Suitable for most babies. Iron-fortified. AAP recommends iron-fortified formula from birth if not breastfeeding.",
+        d: "Most common type. Suitable for most babies. Iron-fortified formula is recommended from birth if not breastfeeding.",
       },
       {
         r: "Partially Hydrolyzed (gentle)",
@@ -1593,7 +1593,7 @@ export const FORMULA_GUIDE: { [key: string]: BottleGuideSection } = {
       },
       {
         r: "Organic Formula",
-        d: "Made with organic ingredients. Meets same FDA nutritional requirements as non-organic. Personal preference.",
+        d: "Made with organic ingredients. Meets same nutritional standards as non-organic. Personal preference.",
       },
       {
         r: "European-Style Formula",
@@ -1606,7 +1606,7 @@ export const FORMULA_GUIDE: { [key: string]: BottleGuideSection } = {
     items: [
       {
         r: "Start with standard cow's milk formula",
-        d: "AAP recommends this as the default for non-breastfed babies. It works for 80%+ of infants.",
+        d: "Recommended as the default for non-breastfed babies. It works for 80%+ of infants.",
       },
       {
         r: "Signs formula isn't working",
@@ -1618,11 +1618,11 @@ export const FORMULA_GUIDE: { [key: string]: BottleGuideSection } = {
       },
       {
         r: "Generic/store brands are fine",
-        d: "All formula sold in the US meets strict FDA standards. Generic brands have the same nutrients at lower cost.",
+        d: "All formula sold must meet strict regulatory standards. Generic or store brands have the same nutrients at lower cost.",
       },
       {
         r: "Check for iron fortification",
-        d: "All infant formula should be iron-fortified. Low-iron formula is not recommended by AAP.",
+        d: "All infant formula should be iron-fortified. Low-iron formula is not recommended by paediatric authorities.",
       },
       {
         r: "Ask your pediatrician",
@@ -1639,11 +1639,11 @@ export const FORMULA_GUIDE: { [key: string]: BottleGuideSection } = {
       },
       {
         r: "Water safety",
-        d: "Use cold tap water (hot may contain lead from pipes). Most municipal water is fine. If on well water, test first.",
+        d: "Use clean, safe water. Boil and cool water for infant formula preparation. If water quality is uncertain, use bottled water or a reliable filter.",
       },
       {
         r: "Temperature",
-        d: "Body temperature (98.6°F) or room temperature is fine. Test on your wrist. Never microwave formula.",
+        d: "Body temperature (37°C / 98.6°F) or room temperature is fine. Test on your wrist. Never microwave formula.",
       },
       {
         r: "Use within 1 hour",
@@ -1790,7 +1790,7 @@ export const TUMMY_TIME_GUIDE: { [key: string]: MassageSection } = {
       "Builds the arm and hand strength needed for future milestones",
       "Improves visual development — a new perspective from the floor",
       "Supports motor development and coordination",
-      "AAP recommends tummy time from the very first day home",
+      "Paediatricians recommend tummy time from the very first day home",
     ],
   },
   ageGuide: {

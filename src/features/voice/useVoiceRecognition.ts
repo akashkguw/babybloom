@@ -32,7 +32,9 @@ export default function useVoiceRecognition(onResult: (parsed: VoiceParseResult)
     setParsed(null);
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
-    rec.lang = 'en-US';
+    // Set voice recognition language based on browser locale
+    const browserLang = navigator.language || 'en-US';
+    rec.lang = browserLang.startsWith('hi') ? 'hi-IN' : browserLang.includes('IN') ? 'en-IN' : 'en-US';
     rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
