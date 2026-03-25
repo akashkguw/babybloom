@@ -107,6 +107,7 @@ export default function HomeTab({
   const [flashBtn, setFlashBtn] = useState<string | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [revealStage, setRevealStage] = useState<number | null>(null);
 
   const triggerFlash = useCallback((label: string) => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -240,7 +241,15 @@ export default function HomeTab({
       <WelcomeCarousel
         countryConfig={countryConfig}
         babyName={babyName}
-        onDismiss={() => setShowWelcome(false)}
+        onDismiss={() => {
+          setShowWelcome(false);
+          setRevealStage(0);
+          setTimeout(() => setRevealStage(1), 150);
+          setTimeout(() => setRevealStage(2), 400);
+          setTimeout(() => setRevealStage(3), 650);
+          setTimeout(() => setRevealStage(4), 900);
+          setTimeout(() => setRevealStage(null), 1400);
+        }}
       />
     );
   }
@@ -652,6 +661,16 @@ export default function HomeTab({
         ? ageWeeks + ' weeks'
         : ageMonths + ' month' + (ageMonths !== 1 ? 's' : '');
 
+  // Staggered reveal after onboarding carousel
+  const reveal = (stage: number): React.CSSProperties =>
+    revealStage !== null
+      ? {
+          opacity: revealStage >= stage ? 1 : 0,
+          transform: revealStage >= stage ? 'translateY(0)' : 'translateY(16px)',
+          transition: 'opacity 0.45s ease-out, transform 0.45s ease-out',
+        }
+      : {};
+
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
       {/* Hero — premium baby dashboard */}
@@ -661,6 +680,7 @@ export default function HomeTab({
           overflow: 'hidden',
           borderRadius: 24,
           marginBottom: 12,
+          ...reveal(0),
           background: `linear-gradient(145deg, ${C.p}, ${C.s} 55%, ${C.pu} 100%)`,
           boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
         }}
@@ -760,6 +780,7 @@ export default function HomeTab({
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 
       {/* ═══ CAROUSEL: Red → Yellow → Green priority ═══ */}
+      <div style={reveal(1)}>
       {(() => {
         const slides: { id: string; node: React.ReactNode; priority: number }[] = [];
 
@@ -938,9 +959,10 @@ export default function HomeTab({
           </div>
         );
       })()}
+      </div>
 
       {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
-      <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden' }}>
+      <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden', ...reveal(2) }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
         {(() => {
           const isMl = volumeUnit === 'ml';
@@ -1235,7 +1257,7 @@ export default function HomeTab({
                   return (
                     <div
                       key={q.l}
-                      className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '')}
+                      className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
                       onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
                       onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
                       onTouchEnd={warnInfo ? () => { clearLongPress(); } : undefined}
@@ -1276,6 +1298,7 @@ export default function HomeTab({
       </Cd>
 
       {/* ═══ MOM WELLNESS — postpartum self-care tracker ═══ */}
+      <div style={reveal(3)}>
       <MomCare />
 
       {/* Quick Actions — with stats */}
@@ -1314,6 +1337,8 @@ export default function HomeTab({
         Based on AAP, CDC & WHO guidelines
         <br />
         Data stored locally • Not medical advice
+      </div>
+
       </div>
 
       {/* ═══ VOICE LOG BUTTON ═══ */}

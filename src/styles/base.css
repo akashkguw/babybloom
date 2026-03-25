@@ -88,6 +88,25 @@ button,
   pointer-events: none;
 }
 
+/* Subtle pulsating glow for danger-state quick-log items */
+@keyframes ql-danger-pulse {
+  0%   { border-color: rgba(220, 38, 38, 0.35); background-color: rgba(220, 38, 38, 0.07); }
+  50%  { border-color: rgba(220, 38, 38, 0.65); background-color: rgba(220, 38, 38, 0.14); }
+  100% { border-color: rgba(220, 38, 38, 0.35); background-color: rgba(220, 38, 38, 0.07); }
+}
+
+.ql-btn.ql-danger {
+  animation: ql-danger-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ql-btn.ql-danger {
+    animation: none;
+    border-color: rgba(220, 38, 38, 0.5) !important;
+    background-color: rgba(220, 38, 38, 0.12) !important;
+  }
+}
+
 /* Confirmation flash animation for instant quick-log taps */
 @keyframes ql-border-flash {
   0%   { border-color: rgba(76, 175, 80, 0.0); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.0); }

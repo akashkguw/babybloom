@@ -98,8 +98,45 @@ function ensureStyles() {
       0%,100% { transform:scale(1); opacity:0.5; }
       50% { transform:scale(1.8); opacity:0.15; }
     }
+    @keyframes obTapHint {
+      0%,100% { transform:translate(-50%,-30%) scale(1); opacity:0.9; }
+      40% { transform:translate(-50%,-30%) scale(0.85); opacity:1; }
+      50% { transform:translate(-50%,-30%) scale(0.85); opacity:1; }
+      60% { transform:translate(-50%,-30%) scale(1); opacity:0.9; }
+    }
+    @keyframes obRipple {
+      0% { transform:translate(-50%,-50%) scale(0.5); opacity:0.5; }
+      50% { transform:translate(-50%,-50%) scale(1.8); opacity:0.15; }
+      100% { transform:translate(-50%,-50%) scale(2.5); opacity:0; }
+    }
   `;
   document.head.appendChild(s);
+}
+
+/* ── Tap hint overlay — animated finger + ripple that disappears after first interaction ── */
+function TapHint({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {/* Ripple ring */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%', width: 40, height: 40,
+        borderRadius: '50%', border: `2px solid ${C.a}`,
+        animation: 'obRipple 2s ease-out infinite',
+      }} />
+      {/* Finger */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%', fontSize: 22,
+        animation: 'obTapHint 2s ease-in-out infinite',
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+      }}>
+        👆
+      </div>
+    </div>
+  );
 }
 
 /* ── Mini mock button ── */
@@ -216,7 +253,6 @@ function MiniDemo() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, padding: '0 2px' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.t }}>Quick Log</span>
-          <span style={{ fontSize: 8, color: C.a, fontWeight: 600 }}>Try tapping!</span>
         </div>
 
         {/* Quantity selector — slides in over the grid */}
@@ -245,36 +281,39 @@ function MiniDemo() {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {/* Breast L — timer + side-switch */}
-            <MockBtn emoji="🤱" label="Breast L"
-              border={activeTimer === 'Breast L' ? C.a : undefined}
-              bg={activeTimer === 'Breast L' ? C.al : undefined}
-              color={activeTimer === 'Breast L' ? C.a : undefined}
-              onClick={() => startTimer('Breast L')}
-              flash={isFlashed('Breast L')}
-            />
-            {/* Formula — quantity selector */}
-            <MockBtn emoji="🍼" label="Formula" onClick={handleFormula} flash={isFlashed('Formula')} />
-            {/* Wet — starts with danger pulse, goes neutral after tap */}
-            <MockBtn emoji="💧" label="Wet"
-              border={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.5)'}
-              bg={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.10)'}
-              color={tapped['Wet'] ? undefined : '#dc2626'}
-              anim={tapped['Wet'] ? undefined : 'obDemoPulse 2s ease-in-out infinite'}
-              onClick={() => tap('Wet', '💧')} flash={isFlashed('Wet')}
-            />
-            {/* Sleep — starts with amber "due soon" pulse, goes neutral after first tap */}
-            <MockBtn
-              emoji={sleeping ? '⏰' : '😴'}
-              label={sleeping ? 'Wake Up' : 'Sleep'}
-              border={sleeping ? C.pu : !tapped['Sleep'] ? 'rgba(245,158,11,0.5)' : undefined}
-              bg={sleeping ? C.pul : !tapped['Sleep'] ? 'rgba(245,158,11,0.10)' : undefined}
-              color={sleeping ? C.pu : !tapped['Sleep'] ? '#d97706' : undefined}
-              anim={!tapped['Sleep'] && !sleeping ? 'obDemoAmber 2.5s ease-in-out infinite' : undefined}
-              onClick={toggleSleep}
-              flash={isFlashed('Sleep')}
-            />
+          <div style={{ position: 'relative' }}>
+            <TapHint visible={Object.keys(tapped).length === 0 && !activeTimer && !sleeping} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {/* Breast L — timer + side-switch */}
+              <MockBtn emoji="🤱" label="Breast L"
+                border={activeTimer === 'Breast L' ? C.a : undefined}
+                bg={activeTimer === 'Breast L' ? C.al : undefined}
+                color={activeTimer === 'Breast L' ? C.a : undefined}
+                onClick={() => startTimer('Breast L')}
+                flash={isFlashed('Breast L')}
+              />
+              {/* Formula — quantity selector */}
+              <MockBtn emoji="🍼" label="Formula" onClick={handleFormula} flash={isFlashed('Formula')} />
+              {/* Wet — starts with danger pulse, goes neutral after tap */}
+              <MockBtn emoji="💧" label="Wet"
+                border={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.5)'}
+                bg={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.10)'}
+                color={tapped['Wet'] ? undefined : '#dc2626'}
+                anim={tapped['Wet'] ? undefined : 'obDemoPulse 2s ease-in-out infinite'}
+                onClick={() => tap('Wet', '💧')} flash={isFlashed('Wet')}
+              />
+              {/* Sleep — starts with amber "due soon" pulse, goes neutral after first tap */}
+              <MockBtn
+                emoji={sleeping ? '⏰' : '😴'}
+                label={sleeping ? 'Wake Up' : 'Sleep'}
+                border={sleeping ? C.pu : !tapped['Sleep'] ? 'rgba(245,158,11,0.5)' : undefined}
+                bg={sleeping ? C.pul : !tapped['Sleep'] ? 'rgba(245,158,11,0.10)' : undefined}
+                color={sleeping ? C.pu : !tapped['Sleep'] ? '#d97706' : undefined}
+                anim={!tapped['Sleep'] && !sleeping ? 'obDemoAmber 2.5s ease-in-out infinite' : undefined}
+                onClick={toggleSleep}
+                flash={isFlashed('Sleep')}
+              />
+            </div>
           </div>
         )}
 
@@ -393,18 +432,177 @@ function Confetti() {
   );
 }
 
+/* ── Mom Wellness interactive demo ── */
+function MomWellnessDemo() {
+  const [meals, setMeals] = useState<Record<string, boolean>>({});
+  const [water, setWater] = useState(0);
+  const [mood, setMood] = useState(0);
+  const [vitamin, setVitamin] = useState(false);
+  const [moved, setMoved] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1200);
+  }, []);
+
+  const hasInteracted = Object.keys(meals).length > 0 || water > 0 || mood > 0 || vitamin || moved;
+
+  const totalDone = Object.values(meals).filter(Boolean).length
+    + (water >= 3 ? 1 : 0) + (mood > 0 ? 1 : 0) + (vitamin ? 1 : 0) + (moved ? 1 : 0);
+  const progress = Math.round((totalDone / 7) * 100);
+
+  const mealItems = [
+    { key: 'breakfast', icon: '🥣', label: 'Bfast' },
+    { key: 'lunch', icon: '🥗', label: 'Lunch' },
+    { key: 'dinner', icon: '🍲', label: 'Dinner' },
+  ];
+
+  const moods = ['🥀', '🌥️', '🌤️', '☀️', '✨'];
+
+  const pillStyle = (active: boolean, clr: string): React.CSSProperties => ({
+    padding: '5px 0', borderRadius: 10, textAlign: 'center', cursor: 'pointer',
+    fontSize: 10, fontWeight: 600, flex: 1, userSelect: 'none',
+    background: active ? clr + '20' : C.bg,
+    color: active ? clr : C.tl,
+    border: `1px solid ${active ? clr + '40' : C.b}`,
+    transition: 'all 0.15s',
+  });
+
+  return (
+    <div style={{ maxWidth: 300, margin: '14px auto 0' }}>
+      <div style={{
+        background: C.cd, borderRadius: 16, padding: '12px 12px 10px',
+        border: `1px solid ${C.b}`, boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+        animation: 'obScaleIn 0.5s 0.2s both',
+      }}>
+        {/* Header with progress ring */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13 }}>🌿</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.t }}>My Wellness</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" fill="none" stroke={C.b} strokeWidth="2.5" />
+              <circle cx="12" cy="12" r="10" fill="none"
+                stroke={progress >= 100 ? '#4CAF50' : '#9C7CF4'}
+                strokeWidth="2.5"
+                strokeDasharray={`${(progress / 100) * 62.8} 62.8`}
+                strokeLinecap="round"
+                transform="rotate(-90 12 12)"
+                style={{ transition: 'stroke-dasharray 0.3s ease' }}
+              />
+              <text x="12" y="12" textAnchor="middle" dominantBaseline="central"
+                style={{ fontSize: 7, fontWeight: 700, fill: C.t }}>
+                {progress}%
+              </text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Tap hint overlay */}
+        <div style={{ position: 'relative' }}>
+        <TapHint visible={!hasInteracted} />
+
+        {/* Meals row */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Meals</div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {mealItems.map((m) => (
+              <div key={m.key}
+                onClick={() => {
+                  const next = !meals[m.key];
+                  setMeals(prev => ({ ...prev, [m.key]: next }));
+                  showToast(next ? `${m.icon} ${m.label} logged!` : `${m.label} cleared`);
+                }}
+                style={pillStyle(!!meals[m.key], '#FF8A65')}
+              >
+                {m.icon} {m.label}{meals[m.key] ? ' ✓' : ''}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Water */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+            Water <span style={{ fontWeight: 400, textTransform: 'none', color: water >= 3 ? '#4CAF50' : C.tl }}>{water}/8</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div onClick={() => { if (water > 0) { setWater(w => w - 1); } }}
+              style={{ width: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, border: `1px solid ${C.b}`, fontSize: 13, cursor: 'pointer', color: C.tl }}>−</div>
+            <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.bg, overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min((water / 8) * 100, 100)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4FC3F7, #29B6F6)', transition: 'width 0.2s' }} />
+            </div>
+            <div onClick={() => { setWater(w => Math.min(w + 1, 8)); showToast('💧 +1 glass'); }}
+              style={{ width: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#4FC3F720', border: '1px solid #4FC3F740', fontSize: 13, cursor: 'pointer', color: '#29B6F6', fontWeight: 700 }}>+</div>
+          </div>
+        </div>
+
+        {/* Mood */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>How are you feeling?</div>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {moods.map((face, i) => (
+              <div key={i}
+                onClick={() => {
+                  const val = i + 1;
+                  setMood(mood === val ? 0 : val);
+                  if (mood !== val) showToast(`${face} Mood logged`);
+                }}
+                style={{
+                  flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 10, fontSize: 16,
+                  cursor: 'pointer', userSelect: 'none',
+                  background: mood === i + 1 ? '#9C7CF420' : 'transparent',
+                  border: `1.5px solid ${mood === i + 1 ? '#9C7CF4' : 'transparent'}`,
+                  transition: 'all 0.15s',
+                }}
+              >{face}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick toggles */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          <div onClick={() => { setVitamin(v => !v); showToast(vitamin ? 'Vitamin cleared' : '💊 Vitamin logged!'); }}
+            style={pillStyle(vitamin, '#AB47BC')}>
+            💊 Vitamin{vitamin ? ' ✓' : ''}
+          </div>
+          <div onClick={() => { setMoved(m => !m); showToast(moved ? 'Movement cleared' : '🧘 Movement logged!'); }}
+            style={pillStyle(moved, '#66BB6A')}>
+            🧘 Moved{moved ? ' ✓' : ''}
+          </div>
+        </div>
+        </div>{/* close TapHint wrapper */}
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          marginTop: 6, padding: '5px 10px', borderRadius: 10,
+          background: C.okl, border: `1px solid ${C.ok}33`,
+          fontSize: 9, fontWeight: 700, color: C.ok, textAlign: 'center',
+          animation: 'obFadeUp 0.2s ease-out',
+        }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: WelcomeCarouselProps) {
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState<'fwd' | 'rev'>('fwd');
   const [animKey, setAnimKey] = useState(0);
   const [dismissing, setDismissing] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const touchX = useRef<number | null>(null);
   const name = babyName || 'your baby';
 
   useEffect(() => { ensureStyles(); }, []);
 
-  const totalRef = useRef(5); // updated after slides defined
+  const totalRef = useRef(7); // updated after slides defined
 
   const goTo = useCallback((next: number, direction: 'fwd' | 'rev') => {
     setDir(direction);
@@ -413,9 +611,8 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
   }, []);
 
   const handleDismiss = useCallback(() => {
-    setShowConfetti(true);
     setDismissing(true);
-    setTimeout(() => onDismiss(), 900);
+    setTimeout(() => onDismiss(), 600);
   }, [onDismiss]);
 
   const goNext = useCallback(() => {
@@ -506,6 +703,9 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
     </div>
   );
 
+  /* ── Slide 5 visual: Mom Wellness interactive demo ── */
+  const wellnessVisual = <MomWellnessDemo />;
+
   /* ── Slide 2 visual: Smart alerts ── */
   const alertsVisual = (
     <div style={{ maxWidth: 300, margin: '16px auto 0', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -558,6 +758,13 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
       p0: true,
     },
     {
+      icon: '🌿',
+      bg: `linear-gradient(135deg, #66BB6A, #26A69A)`,
+      title: 'Your Wellness Matters',
+      desc: 'Track meals, water, mood, sleep & vitamins — one-tap daily self-care that resets each morning.',
+      visual: wellnessVisual,
+    },
+    {
       icon: '🤝',
       bg: `linear-gradient(135deg, ${C.s}, ${C.pu})`,
       title: 'Built for Your Team',
@@ -585,13 +792,11 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: `linear-gradient(180deg, ${C.bg} 0%, ${C.pl} 100%)`,
+      background: C.bg,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
       animation: dismissing ? 'obDismissFade 0.6s 0.3s ease-out forwards' : 'obFadeUp 0.4s ease-out',
     }}>
-      {showConfetti && <Confetti />}
-
       {/* Skip button — hidden on final hero slide */}
       <div style={{
         padding: '12px 20px 0', display: 'flex', justifyContent: 'flex-end',
@@ -616,8 +821,8 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
         key={animKey}
         style={{
           flex: 1, display: 'flex', flexDirection: 'column',
-          justifyContent: slide.heroSlide ? 'center' : hasVisual ? 'flex-start' : 'center',
-          padding: slide.heroSlide ? '0 28px' : hasVisual ? '12px 24px 0' : '0 28px',
+          justifyContent: 'center',
+          padding: '0 24px',
           overflowY: 'auto',
           animation: `${slideAnim} 0.4s cubic-bezier(0.22,1,0.36,1)`,
         }}
@@ -753,20 +958,12 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
           onClick={goNext}
           style={{
             width: '100%', padding: '14px 0', borderRadius: 28, cursor: 'pointer',
-            background: isLast
-              ? `linear-gradient(135deg, ${C.p}, ${C.s})`
-              : C.p,
+            background: isLast ? C.p : C.p,
             color: 'white', fontSize: 15, fontWeight: 600,
             textAlign: 'center',
             letterSpacing: 0.2,
-            boxShadow: isLast
-              ? `0 4px 16px ${C.p}30`
-              : `0 2px 10px ${C.p}25`,
+            boxShadow: `0 2px 10px ${C.p}20`,
             transition: 'all 0.3s',
-            animation: isLast
-              ? 'obShimmer 4s linear infinite'
-              : 'none',
-            backgroundSize: isLast ? '200% 100%' : undefined,
           }}
         >
           {isLast ? 'Get Started' : 'Continue'}
