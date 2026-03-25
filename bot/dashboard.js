@@ -11,9 +11,10 @@ const path       = require('path');
 const { spawn }  = require('child_process');
 
 // ─── Pipeline runner state ───────────────────────────────────────
-let pipelineRunning = false;
-let pipelineStarted = null;  // ISO timestamp of last manual trigger
-let pipelinePid     = null;
+let pipelineRunning   = false;
+let pipelineStarted   = null;   // ISO timestamp of last manual trigger
+let pipelinePid       = null;
+let pipelineLogOffset = 0;      // byte offset in pipeline.log when run was triggered
 
 const PORT    = 4040;
 const BOT_DIR = __dirname;                        // bot/
@@ -187,6 +188,115 @@ function dot(healthy, size=8) {
   return `<span style="display:inline-block;width:${size}px;height:${size}px;border-radius:50%;background:${c};margin-right:6px;animation:pulse 2s infinite"></span>`;
 }
 
+// ─── Stage Parser ────────────────────────────────────────────────
+// Returns ordered stages with status for a single pipeline run
+const STAGE_DEFS = [
+  { id:'queue',   label:'Queue Sync',    icon:'📋', desc:'' },
+  { id:'sentry',  label:'Sentry',        icon:'🛡️', desc:'' },
+  { id:'changes', label:'Changes',       icon:'🔍', desc:'' },
+  { id:'scan',    label:'Secret Scan',   icon:'🔒', desc:'' },
+  { id:'ci',      label:'Local CI',      icon:'🧪', desc:'' },
+  { id:'push',    label:'Git Push',      icon:'🚀', desc:'' },
+  { id:'actions', label:'GH Actions',    icon:'⚙️', desc:'' },
+  { id:'notify',  label:'Telegram',      icon:'📱', desc:'' },
+];
+
+// pass | fail | skip | warn | running
+function parseStages(run) {
+  const e = run.events.join('\n');
+  const hasChanges   = e.includes('Uncommitted changes') || e.includes('unpushed commits') || e.includes('Found unpushed');
+  const nothingToPush = e.includes('Nothing to push') && !hasChanges;
+  const pushed       = !!run.sha || e.includes('Push successful');
+
+  return STAGE_DEFS.map(s => {
+    const st = Object.assign({}, s);
+    switch (s.id) {
+      case 'queue':
+        st.status = e.includes('Queue already up to date') ? 'pass'
+                  : e.includes('Synced') ? 'pass' : 'skip';
+        st.desc = e.match(/Synced (\d+ issues?)/)?.[1] || (st.status === 'pass' ? 'Up to date' : '');
+        break;
+      case 'sentry':
+        st.status = e.includes('No new Sentry') ? 'pass'
+                  : e.includes('Sentry error') ? 'fail' : 'skip';
+        st.desc = st.status === 'pass' ? 'No new errors' : st.status === 'fail' ? 'Errors found' : '';
+        break;
+      case 'changes':
+        st.status = nothingToPush ? 'skip' : hasChanges ? 'pass' : 'skip';
+        st.label  = nothingToPush ? 'No Changes' : hasChanges ? 'Changes' : 'Changes';
+        st.desc   = nothingToPush ? 'Nothing to push' : run.files.length ? run.files.slice(0,2).join(', ') : '';
+        break;
+      case 'scan':
+        st.status = !hasChanges ? 'skip'
+                  : e.includes('Secret scan passed') ? 'pass'
+                  : e.includes('Secret') ? 'fail' : 'skip';
+        st.desc = st.status === 'pass' ? 'No secrets' : st.status === 'fail' ? 'BLOCKED' : '';
+        break;
+      case 'ci':
+        st.status = !hasChanges ? 'skip'
+                  : e.includes('All CI stages passed') ? 'pass'
+                  : e.includes('CI failed') || e.includes('CI checks failed') ? 'fail'
+                  : e.includes('node: command not found') ? 'warn'
+                  : e.includes('feature checks passed') ? 'pass'
+                  : e.includes('CI checks') ? 'pass' : 'skip';
+        { const stagesPass = (e.match(/✅.*passed/g)||[]).length;
+          const stagesFail = (e.match(/❌.*FAILED/g)||[]).length;
+          st.desc = e.includes('All CI stages passed') ? '3/3 stages'
+                  : stagesPass||stagesFail ? `${stagesPass} ok${stagesFail?' · '+stagesFail+' fail':''}`
+                  : e.match(/All (\d+) feature checks passed/)?.[0]?.replace('All ','') || ''; }
+        break;
+      case 'push':
+        st.status = !hasChanges ? 'skip'
+                  : pushed ? 'pass'
+                  : e.includes('Push failed') || e.includes('rejected') ? 'fail' : 'skip';
+        st.desc = run.sha || '';
+        break;
+      case 'actions':
+        st.status = run.ciResult === 'success' ? 'pass'
+                  : run.ciResult === 'failure' ? 'fail'
+                  : e.includes('Waiting for GitHub Actions') ? 'running' : 'skip';
+        st.desc = run.ciResult ? 'CI ' + run.ciResult : e.includes('Waiting') ? 'Waiting…' : '';
+        break;
+      case 'notify':
+        st.status = e.includes('Telegram notified') || e.includes('Pipeline complete') ? 'pass'
+                  : 'skip';
+        st.desc = st.status === 'pass' ? 'Notified' : '';
+        break;
+    }
+    return st;
+  });
+}
+
+// Visual stage card for one stage
+const STAGE_STYLE = {
+  pass:    { border:'#00C9A7', bg:'#E0FFF8', iconBg:'#00C9A720', badge:'✅', badgeColor:'#00C9A7' },
+  fail:    { border:'#FF6B8A', bg:'#FFE8EC', iconBg:'#FF6B8A20', badge:'❌', badgeColor:'#FF6B8A' },
+  skip:    { border:'#E8E4DE', bg:'#FAFAF8', iconBg:'#F0EBE3',   badge:'·',  badgeColor:'#C8C0B8' },
+  warn:    { border:'#FFB347', bg:'#FFF3E0', iconBg:'#FFB34720', badge:'⚠️', badgeColor:'#FFB347' },
+  running: { border:'#6C63FF', bg:'#E8E6FF', iconBg:'#6C63FF20', badge:'⏳', badgeColor:'#6C63FF' },
+};
+
+function stageCard(st, size='full') {
+  const style = STAGE_STYLE[st.status] || STAGE_STYLE.skip;
+  const muted  = st.status === 'skip';
+  const isRunning = st.status === 'running';
+
+  if (size === 'mini') {
+    const c = st.status==='pass'?'#00C9A7':st.status==='fail'?'#FF6B8A':
+              st.status==='warn'?'#FFB347':st.status==='running'?'#6C63FF':'#D8D0C8';
+    return `<span title="${esc(st.label)}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0"></span>`;
+  }
+
+  return `<div class="stage-card" style="border:2px solid ${style.border};background:${style.bg};opacity:${muted?.5:1};${isRunning?'animation:runpulse 1.5s infinite':''}">
+    <div style="width:30px;height:30px;border-radius:9px;background:${style.iconBg};display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:6px;flex-shrink:0">${st.icon}</div>
+    <div style="font-size:9.5px;font-weight:800;color:${muted?'#B0A898':'#2D2D3A'};letter-spacing:.1px;text-align:center;line-height:1.3;margin-bottom:3px">${st.label}</div>
+    ${st.desc ? `<div style="font-size:8.5px;color:${muted?'#C8C0B8':'#8E8E9A'};text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${esc(st.desc)}</div>` : '<div style="height:11px"></div>'}
+    <div style="margin-top:6px;font-size:13px;line-height:1">${style.badge}</div>
+  </div>`;
+}
+
+const STAGE_CONNECTOR = `<div class="stage-connector"><div class="stage-connector-line"></div></div>`;
+
 // ─── Render ─────────────────────────────────────────────────────
 function render() {
   const runs   = parsePipelineLog();
@@ -202,28 +312,38 @@ function render() {
   const pStatus      = lastRun?.status || 'idle';
   const pSt          = STATUS_MAP[pStatus] || STATUS_MAP.idle;
 
-  // ── Pipeline runs HTML ────────────────────────────────────────
-  const runsHtml = runs.slice(0, 25).map((run, i) => {
-    const st = STATUS_MAP[run.status] || STATUS_MAP.idle;
-    const isFirst = i === 0;
+  // ── Latest run: full visual pipeline ─────────────────────────
+  let latestPipelineHtml = `<div style="color:${COLORS.textLight};font-size:13px;text-align:center;padding:24px">No runs yet</div>`;
+  if (lastRun) {
+    const stages = parseStages(lastRun);
+    latestPipelineHtml = `
+      <div class="pipeline-flow">
+        ${stages.map((s,i) => stageCard(s,'full') + (i < stages.length-1 ? STAGE_CONNECTOR : '')).join('')}
+      </div>
+      ${lastRun.closed.length ? `<div style="margin-top:10px;padding:9px 12px;background:#E0FFF8;border-radius:10px;font-size:11px;color:#00A882">✅ Closed in this run: ${lastRun.closed.map(c=>`<a href="#" style="color:#007A60;font-weight:700">#${c.num}</a> ${esc(c.title.slice(0,45))}`).join(' · ')}</div>` : ''}
+      ${lastRun.errors.length ? `<div style="margin-top:10px;padding:9px 12px;background:#FFE8EC;border-radius:10px;font-size:11px;color:#CC3355;font-family:monospace">${esc(lastRun.errors[0].slice(0,140))}</div>` : ''}
+    `;
+  }
+
+  // ── Run history: compact rows with mini stage dots ────────────
+  const historyHtml = runs.slice(1, 35).map(run => {
+    const stages   = parseStages(run);
+    const dots     = stages.map(s => stageCard(s,'mini')).join('<span style="width:6px;height:1.5px;background:#E0D8D0;display:inline-block;vertical-align:middle;flex-shrink:0"></span>');
+    const isError  = run.status === 'error';
+    const isDeploy = !!run.sha;
+    const tsShort  = run.ts.replace(/ PDT.*$/,'').replace(/^\w+ /,''); // "Mar 24 20:44:06"
     return `
-      <div style="background:${isFirst ? '#FFFDF8' : '#fff'};border:1.5px solid ${isFirst ? COLORS.border : '#F5F0EB'};border-radius:12px;padding:13px 15px;margin-bottom:7px;transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 2px 12px rgba(255,107,138,.08)'" onmouseleave="this.style.boxShadow=''">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-              <span style="font-size:11px;color:${COLORS.textLight};font-family:monospace">${esc(run.ts)}</span>
-              ${badge(run.status)}
-              ${run.sentry === 'clean' ? `<span style="font-size:10px;color:${COLORS.accent}">🛡️ Sentry OK</span>` : ''}
-              ${run.ciResult ? `<span style="font-size:10px;color:${run.ciResult==='success'?COLORS.accent:COLORS.primary}">CI ${run.ciResult}</span>` : ''}
-            </div>
-            ${run.sha ? `<div style="font-size:11px;margin-bottom:3px">SHA <code style="background:#F0EBE3;padding:1px 6px;border-radius:4px;font-size:11px">${run.sha}</code>${run.ciResult ? ` · CI ${run.ciResult==='success'?'✅':'❌'}` : ''}</div>` : ''}
-            ${run.files.length ? `<div style="font-size:11px;color:${COLORS.secondary};margin-bottom:3px">📦 ${run.files.map(esc).join(' · ')}</div>` : ''}
-            ${run.closed.length ? `<div style="font-size:11px;color:${COLORS.accent}">${run.closed.map(c=>`✅ Closed #${c.num}: ${esc(c.title.slice(0,50))}`).join(' · ')}</div>` : ''}
-            ${run.errors.length && run.status==='error' ? `<div style="font-size:10px;color:${COLORS.primary};margin-top:3px;font-family:monospace">${esc(run.errors[0].slice(0,90))}</div>` : ''}
-          </div>
+      <div class="hist-row ${isDeploy?'is-deploy':''} ${isError?'is-error':''}">
+        <span style="font-size:10px;color:#A8A098;font-family:monospace;white-space:nowrap">${esc(tsShort)}</span>
+        <div class="stage-dots">${dots}</div>
+        <div style="display:flex;align-items:center;gap:6px;overflow:hidden;min-width:0">
+          ${isDeploy ? `<code style="background:#E8E6FF;color:#6C63FF;padding:1px 6px;border-radius:5px;font-size:10px;flex-shrink:0">${run.sha}</code>` : ''}
+          <span style="font-size:10px;color:${isDeploy?'#6C63FF':isError?'#FF6B8A':'#C0B8B0'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${run.files.length ? '📦 '+run.files.map(esc).join(', ') : isError ? (run.errors[0]||'error').slice(0,60) : 'nothing to push'}
+          </span>
         </div>
       </div>`;
-  }).join('') || `<div style="color:${COLORS.textLight};font-size:13px;text-align:center;padding:24px">No runs yet</div>`;
+  }).join('') || '';
 
   // ── Issues HTML ───────────────────────────────────────────────
   const issueStatusIcon = s => s==='done'?'✅':s==='skipped'?'⏭️':s==='closed'?'🔒':'⏳';
@@ -295,9 +415,8 @@ function render() {
   .sc .lbl{font-size:11px;color:#8E8E9A;margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 
   /* Status strip */
-  .strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+  .strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
   @media(max-width:600px){.strip{grid-template-columns:1fr}}
-  .scard{background:#fff;border:1.5px solid #F0EBE3;border-radius:16px;padding:18px}
 
   /* Sections */
   .section{background:#fff;border:1.5px solid #F0EBE3;border-radius:16px;padding:20px;margin-bottom:16px}
@@ -306,21 +425,39 @@ function render() {
   .cnt2{background:#E8E6FF;color:#6C63FF;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
   .cnt3{background:#E0FFF8;color:#00C9A7;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
 
-  /* Two col layout */
-  .two{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
-  @media(max-width:720px){.two{grid-template-columns:1fr}}
-
   /* Bot log box */
   .logbox{background:#1E1E2E;border-radius:10px;padding:12px 14px;margin-top:8px;overflow:hidden}
 
+  /* Pipeline stage cards — full-width flow */
+  .pipeline-flow{display:flex;align-items:center;gap:0;width:100%}
+  .stage-card{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 6px 12px;border-radius:14px;flex:1;min-width:0;transition:transform .15s,box-shadow .15s;cursor:default;position:relative}
+  .stage-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.09)}
+  .stage-connector{flex-shrink:0;width:28px;display:flex;align-items:center;justify-content:center;padding-bottom:14px}
+  .stage-connector-line{width:100%;height:2px;background:linear-gradient(90deg,#E0D8D0 0%,#C8C0B8 100%)}
+
+  /* Run history rows */
+  .hist-row{display:grid;grid-template-columns:148px auto 1fr;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;transition:background .12s}
+  .hist-row:hover{background:#F8F5F0}
+  .hist-row.is-deploy:hover{background:#F0FFF8}
+  .hist-row.is-error:hover{background:#FFF0F3}
+  .stage-dots{display:flex;align-items:center;gap:3px}
+
+  /* Info / status strip */
+  .scard{background:#fff;border:1.5px solid #F0EBE3;border-radius:16px;padding:16px 18px}
+
   /* Animations */
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @keyframes runpulse{0%,100%{box-shadow:0 0 0 0 rgba(108,99,255,.35)}70%{box-shadow:0 0 0 6px rgba(108,99,255,0)}}
 
   /* Divider */
-  .div{height:1px;background:#F0EBE3;margin:14px 0}
+  .div{height:1px;background:#F0EBE3;margin:12px 0}
 
   /* Meta pill */
   .meta{display:inline-flex;align-items:center;gap:5px;background:#F0EBE3;border-radius:10px;padding:3px 9px;font-size:11px;color:#8E8E9A;font-weight:600}
+
+  /* Bottom two col */
+  .bottom-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.bottom-two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -406,35 +543,54 @@ function render() {
     </div>
   </div>
 
-  <!-- ── Main Two-Col ───────────────────────────────────────── -->
-  <div class="two">
+  <!-- ── Latest Run: full-width visual pipeline ────────────── -->
+  <div class="section" style="margin-bottom:16px">
+    <div class="sec-title" style="justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span>🔄 Latest Run</span>
+        ${lastRun ? badge(lastRun.status) : ''}
+        ${lastRun ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${esc(lastRun.ts)}</span>` : ''}
+      </div>
+    </div>
+    ${latestPipelineHtml}
+  </div>
 
-    <!-- LEFT: Pipeline Runs -->
+  <!-- ── Run History: full-width compact list ───────────────── -->
+  <div class="section" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="sec-title" style="margin-bottom:0">📜 Run History <span class="cnt">${runs.length}</span> <span class="cnt2">${deploys.length} deploys</span> <span style="background:#FFE8EC;color:#FF6B8A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${errors.length} errors</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        ${[['#00C9A7','Deploy'],['#FF6B8A','Error'],['#FFB347','Warn'],['#D8D0C8','Idle']].map(([c,l])=>
+          `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#8E8E9A"><span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block"></span>${l}</span>`
+        ).join('')}
+        <span style="font-size:10px;color:#C0B8B0;font-family:monospace">Q Se Ch Sc CI Push GHA TG</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px">
+      ${historyHtml || `<div style="color:${COLORS.textLight};font-size:12px;padding:12px 0;grid-column:1/-1">Only one run so far</div>`}
+    </div>
+  </div>
+
+  <!-- ── Bottom two-col: Issues | Bot Log + Commits ─────────── -->
+  <div class="bottom-two">
+
+    <!-- Issues -->
     <div class="section">
-      <div class="sec-title">🔄 Pipeline Runs <span class="cnt">${runs.length}</span> <span class="cnt2">${deploys.length} deploys</span> <span style="background:#FFE8EC;color:#FF6B8A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${errors.length} errors</span></div>
-      ${runsHtml}
+      <div class="sec-title">📋 Issue Queue
+        <span class="cnt">${issues.pending.length} pending</span>
+        <span style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${issues.skipped.length} skipped</span>
+        <span class="cnt3">${issues.done.length} done</span>
+      </div>
+      ${issuesHtml}
     </div>
 
-    <!-- RIGHT: Issues + Bot + Git -->
+    <!-- Bot + Git -->
     <div>
-      <!-- Issues -->
       <div class="section" style="margin-bottom:16px">
-        <div class="sec-title">📋 Issue Queue
-          <span class="cnt">${issues.pending.length} pending</span>
-          <span style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${issues.skipped.length} skipped</span>
-          <span class="cnt3">${issues.done.length} done</span>
-        </div>
-        ${issuesHtml}
-      </div>
-
-      <!-- Bot Log -->
-      <div class="section" style="margin-bottom:16px">
-        <div class="sec-title">🤖 Bot Log Tail</div>
+        <div class="sec-title">🤖 Bot Log</div>
         <div class="logbox">${botLogHtml || '<span style="color:#555;font-size:11px">No log data</span>'}</div>
-        <div style="font-size:10px;color:#8E8E9A;margin-top:6px">${bot.totalLines} total lines</div>
+        <div style="font-size:10px;color:#8E8E9A;margin-top:6px">${bot.totalLines} total lines · 409 conflicts: ${bot.conflicts}</div>
       </div>
-
-      <!-- Recent Commits -->
       ${git.log.length ? `
       <div class="section">
         <div class="sec-title">🗂 Recent Commits <span class="meta">${esc(git.branch)}</span></div>
@@ -488,11 +644,22 @@ function render() {
     box.scrollTop = box.scrollHeight;
   }
 
-  function startSSE() {
+  function startSSE(fromOffset) {
     if (sseSource) sseSource.close();
-    sseSource = new EventSource('/api/log-stream');
+    const url = '/api/log-stream' + (fromOffset != null ? '?from=' + fromOffset : '');
+    sseSource = new EventSource(url);
     sseSource.onmessage = (e) => {
       const raw = JSON.parse(e.data);
+      // Separator marker — render a visual divider
+      if (raw === '__sep__') {
+        const box = document.getElementById('consoleLog');
+        const div = document.createElement('div');
+        div.style.cssText = 'border-top:1px solid #333;margin:6px 0;padding-top:6px;color:#555;font-size:10px;letter-spacing:.5px';
+        div.textContent = '── new run ─────────────────────────────────';
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+        return;
+      }
       // Status heartbeat
       if (typeof raw === 'string' && raw.startsWith('__status:')) {
         const st = JSON.parse(raw.slice(9));
@@ -540,10 +707,7 @@ function render() {
     document.getElementById('consoleLog').innerHTML = '';
     appendLog('🍼 Triggering BabyBloom pipeline…');
 
-    // Start SSE stream
-    startSSE();
-
-    // POST to trigger
+    // POST to trigger first — get the log offset before starting SSE
     try {
       const r = await fetch('/api/run-pipeline', { method: 'POST' });
       const data = await r.json();
@@ -553,6 +717,8 @@ function render() {
       }
       updateRunBtn(true, data.pid);
       appendLog('✅ Pipeline started (PID ' + data.pid + ')');
+      // Start SSE from the exact byte offset captured at trigger time
+      startSSE(data.logOffset);
     } catch(e) {
       appendLog('❌ Fetch error: ' + e.message);
     }
@@ -623,6 +789,10 @@ const server = http.createServer((req, res) => {
       PATH: '/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:' + process.env.PATH,
     });
 
+    // Snapshot log size BEFORE spawning — stream will start from here
+    const LOG_FILE = path.join(BOT_DIR, 'pipeline.log');
+    try { pipelineLogOffset = fs.statSync(LOG_FILE).size; } catch { pipelineLogOffset = 0; }
+
     const child = spawn('/bin/bash', [PIPELINE_SH], {
       cwd: REPO_DIR,
       env,
@@ -639,12 +809,12 @@ const server = http.createServer((req, res) => {
     });
 
     res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ ok: true, pid: child.pid, started: pipelineStarted }));
+    res.end(JSON.stringify({ ok: true, pid: child.pid, started: pipelineStarted, logOffset: pipelineLogOffset }));
     return;
   }
 
-  // ── Live log tail via SSE (/api/log-stream) ───────────────────
-  if (req.url === '/api/log-stream') {
+  // ── Live log tail via SSE (/api/log-stream?from=OFFSET) ──────
+  if (req.url.startsWith('/api/log-stream')) {
     const LOG_FILE = path.join(BOT_DIR, 'pipeline.log');
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -653,28 +823,35 @@ const server = http.createServer((req, res) => {
       'Access-Control-Allow-Origin': '*',
     });
 
-    // Send last 30 lines immediately
-    const existing = readFile(LOG_FILE).split('\n').filter(Boolean).slice(-30);
-    existing.forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+    // Parse ?from= offset — only stream lines written after this byte position
+    const fromParam = new URL(req.url, 'http://localhost').searchParams.get('from');
+    let lastSize = fromParam !== null ? parseInt(fromParam, 10) : pipelineLogOffset;
+    // Clamp to actual file size in case log rolled
+    try {
+      const s = fs.statSync(LOG_FILE).size;
+      if (lastSize > s) lastSize = s;
+    } catch {}
 
-    // Watch for new lines
-    let lastSize = fs.existsSync(LOG_FILE) ? fs.statSync(LOG_FILE).size : 0;
+    // Send separator so it's clear this is a fresh run
+    res.write(`data: ${JSON.stringify('__sep__')}\n\n`);
+
     const watcher = setInterval(() => {
       try {
         const stat = fs.statSync(LOG_FILE);
         if (stat.size > lastSize) {
-          const buf = Buffer.alloc(stat.size - lastSize);
+          const len = stat.size - lastSize;
+          const buf = Buffer.alloc(len);
           const fd  = fs.openSync(LOG_FILE, 'r');
-          fs.readSync(fd, buf, 0, buf.length, lastSize);
+          fs.readSync(fd, buf, 0, len, lastSize);
           fs.closeSync(fd);
           lastSize = stat.size;
-          const newLines = buf.toString('utf8').split('\n').filter(Boolean);
-          newLines.forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+          buf.toString('utf8').split('\n').filter(Boolean)
+            .forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
         }
-        // Also send pipeline status as a heartbeat
+        // Heartbeat with current pipeline status
         res.write(`data: ${JSON.stringify('__status:' + JSON.stringify({running:pipelineRunning,pid:pipelinePid}))}\n\n`);
       } catch {}
-    }, 800);
+    }, 600);
 
     req.on('close', () => clearInterval(watcher));
     return;

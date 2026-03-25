@@ -243,8 +243,12 @@ if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
     source "$BOT_DIR/.deploy_env"
     rm -f "$BOT_DIR/.deploy_env"
   fi
-  [ -z "$DEPLOY_PUSHED_SHA" ] && DEPLOY_PUSHED_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "")
-  echo "📌 deploy.sh pushed: $DEPLOY_PUSHED_SHA"
+  # Only log if deploy.sh actually pushed something
+  if [ -n "$DEPLOY_PUSHED_SHA" ]; then
+    echo "📌 deploy.sh pushed: $DEPLOY_PUSHED_SHA"
+  else
+    echo "ℹ️  deploy.sh ran but did not push (nothing staged after filtering)"
+  fi
 fi
 
 # ─── Always: notify any rejected issues first ───

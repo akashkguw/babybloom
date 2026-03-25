@@ -68,6 +68,9 @@ BOT_SAFE_FILES=(
   bot/.gitignore
   bot/README.md
   bot/deploy.sh
+  bot/ci.sh
+  bot/dashboard.js
+  bot/start-dashboard.sh
   bot/WORKER_SKILL.md
   bot/TRIAGE_SKILL.md
   bot/IMPL_SKILL.md
