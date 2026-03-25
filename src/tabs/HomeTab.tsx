@@ -204,7 +204,7 @@ export default function HomeTab({
     types: string[];
     history: LogEntry[];
     tips: string[];
-    settingKey?: string; // key for default-value setting (e.g. 'Formula', 'Pumped')
+    settingKey?: string; // key for default-value setting (e.g. 'Formula', 'Bottle')
     timerToggleKey?: string; // key for timer vs instant-tap toggle (e.g. 'Tummy')
   }
   const [qlInfoPanel, setQlInfoPanel] = useState<QlInfoPanel | null>(null);
@@ -259,11 +259,6 @@ export default function HomeTab({
   // "See more" expansion state for quick log grid
   const [qlExpanded, setQlExpanded] = useState(false);
 
-  // One-time long-press discovery hint (hidden forever after first use)
-  const [qlHintSeen, setQlHintSeen] = useState(true); // default true = hidden until loaded
-  useEffect(() => {
-    dg('ql_hint_seen').then((v: boolean | null) => { setQlHintSeen(!!v); });
-  }, []);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
@@ -282,10 +277,10 @@ export default function HomeTab({
     'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'] },
     'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'], timerToggleKey: 'Tummy' },
     'Solids': { cat: 'feed', types: ['Solids'], tips: ['Introduce one new food every 3-5 days', 'Watch for allergic reactions after new foods', 'Let baby set the pace — never force feed'] },
-    'Pumped': { cat: 'feed', types: ['Pumped Milk'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], settingKey: 'Pumped' },
+    'Bottle': { cat: 'feed', types: ['Pumped Milk'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], settingKey: 'Bottle' },
     'Bath': { cat: 'bath', types: ['Full Bath', 'Sponge Bath', 'Hair Wash'], tips: ['2-3 baths per week is enough for most babies', 'Test water temp with your elbow or wrist', 'Sponge baths until umbilical cord stump falls off'] },
     'Massage': { cat: 'massage', types: ['Full Body', 'Legs & Feet', 'Tummy', 'Back', 'Arms'], tips: ['Gentle strokes help bonding and circulation', 'Best when baby is calm and alert', 'Use natural oils — coconut or sesame work well'] },
-    'Pump': { cat: 'pump', types: ['Left', 'Right', 'Both'], tips: ['Pump every 2-3 hours to maintain supply', 'Store in clean BPA-free containers', 'Breast milk is good 4 hours at room temp, 4 days in fridge'] },
+    'Express': { cat: 'pump', types: ['Left', 'Right', 'Both'], tips: ['Pump every 2-3 hours to maintain supply', 'Store in clean BPA-free containers', 'Breast milk is good 4 hours at room temp, 4 days in fridge'] },
     'Meds': { cat: 'meds', types: ['Medicine'], tips: ['Always check dosage with your pediatrician', 'Note the exact time for proper spacing', 'Watch for any reactions after new medications'] },
     'Temp': { cat: 'temp', types: ['Temperature'], tips: ['Normal range: 97.5-99.5°F (36.4-37.5°C)', 'Rectal is most accurate for infants under 3 months', 'Call doctor for fever over 100.4°F (38°C) in newborns'] },
   };
@@ -314,7 +309,7 @@ export default function HomeTab({
         settingKey: info.settingKey,
         timerToggleKey: info.timerToggleKey,
       });
-      if (!qlHintSeen) { setQlHintSeen(true); ds('ql_hint_seen', true); }
+
     }, 400);
   }, [clearLongPress, quickLogWarnings, logs, qlCategoryInfo]);
 
@@ -1171,7 +1166,7 @@ export default function HomeTab({
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden', ...reveal(2) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>Quick Log</div>
-          {!qlHintSeen && <div style={{ fontSize: 9, color: C.tl, fontWeight: 500 }}>Hold for details</div>}
+          <div style={{ fontSize: 9, color: C.tl, fontWeight: 500 }}>Hold for details</div>
         </div>
         {(() => {
           const isMl = volumeUnit === 'ml';
@@ -1247,7 +1242,7 @@ export default function HomeTab({
           const qlBreastL = { e: '🤱', l: 'Nurse Left', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
           const qlBreastR = { e: '🤱', l: 'Nurse Right', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Formula'], qType: 'Formula' };
-          const qlPumped  = { e: '🍶', l: 'Pumped', fn: () => { if (!feedTimer) { const def = qlDefaults['Pumped']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Pumped'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Pumped'], qType: 'Pumped Milk' };
+          const qlPumped  = { e: '🍶', l: 'Bottle', fn: () => { if (!feedTimer) { const def = qlDefaults['Bottle']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Bottle'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Bottle'], qType: 'Pumped Milk' };
           const qlTummy   = qlTapOnly['Tummy']
             ? { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false }
             : { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
@@ -1257,7 +1252,7 @@ export default function HomeTab({
           const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: false, needsQty: false };
           const qlBath    = { e: '🛁', l: 'Bath', fn: () => quickLog('bath', { type: 'Full Bath' }, 'Bath'), active: false, dis: false, needsQty: false };
           const qlMassage = { e: '💆', l: 'Massage', fn: () => quickLog('massage', { type: 'Full Body' }, 'Massage'), active: false, dis: false, needsQty: false };
-          const qlPump    = { e: '🫙', l: 'Pump', fn: () => quickLog('pump', { type: 'Both' }, 'Pump'), active: false, dis: false, needsQty: false };
+          const qlPump    = { e: '🫙', l: 'Express', fn: () => quickLog('pump', { type: 'Both' }, 'Express'), active: false, dis: false, needsQty: false };
           const qlMeds    = { e: '💊', l: 'Meds', fn: () => quickLog('meds', { type: 'Medicine' }, 'Meds'), active: false, dis: false, needsQty: false };
           const qlTemp    = { e: '🌡️', l: 'Temp', fn: () => quickLog('temp', { type: 'Temperature' }, 'Temp'), active: false, dis: false, needsQty: false };
 
@@ -1276,10 +1271,10 @@ export default function HomeTab({
           const sl = isSleeping ? 'Wake Up' : 'Sleep';
           const agePriority: Record<string, number> =
             ageMonths >= 12
-              ? { 'Solids': 1, [sl]: 2, 'Wet': 3, 'Dirty': 4, 'Formula': 5, 'Bath': 6, 'Nurse Left': 7, 'Nurse Right': 8, 'Massage': 9, 'Pumped': 10, 'Meds': 11, 'Temp': 12, 'Pump': 13 }
+              ? { 'Solids': 1, [sl]: 2, 'Wet': 3, 'Dirty': 4, 'Formula': 5, 'Bath': 6, 'Nurse Left': 7, 'Nurse Right': 8, 'Massage': 9, 'Bottle': 10, 'Meds': 11, 'Temp': 12, 'Express': 13 }
               : ageMonths >= 6
-                ? { 'Nurse Left': 1, 'Nurse Right': 2, 'Solids': 3, 'Formula': 4, 'Wet': 5, 'Dirty': 6, [sl]: 7, 'Tummy': 8, 'Bath': 9, 'Massage': 10, 'Pumped': 11, 'Pump': 12, 'Meds': 13, 'Temp': 14 }
-                : { 'Nurse Left': 1, 'Nurse Right': 2, 'Formula': 3, 'Wet': 4, 'Dirty': 5, [sl]: 6, 'Tummy': 7, 'Bath': 8, 'Massage': 9, 'Pumped': 10, 'Pump': 11, 'Meds': 12, 'Temp': 13 };
+                ? { 'Nurse Left': 1, 'Nurse Right': 2, 'Solids': 3, 'Formula': 4, 'Wet': 5, 'Dirty': 6, [sl]: 7, 'Tummy': 8, 'Bath': 9, 'Massage': 10, 'Bottle': 11, 'Express': 12, 'Meds': 13, 'Temp': 14 }
+                : { 'Nurse Left': 1, 'Nurse Right': 2, 'Formula': 3, 'Wet': 4, 'Dirty': 5, [sl]: 6, 'Tummy': 7, 'Bath': 8, 'Massage': 9, 'Bottle': 10, 'Express': 11, 'Meds': 12, 'Temp': 13 };
 
           // Sort: usage count (desc) as primary, age priority as tiebreaker
           const totalUsage = Object.values(qlUsage).reduce((a, b) => a + b, 0);

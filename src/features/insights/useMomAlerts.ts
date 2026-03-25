@@ -5,7 +5,7 @@
  * so they slot seamlessly into the existing priority system.
  *
  * Alerts fire at sensible times of day:
- * - Hydration: after 14:00 if < 4 glasses
+ * - Hydration: after 14:00 if water not checked off
  * - Meals: after 10:00 (breakfast), 14:00 (lunch), 19:00 (dinner)
  * - Sleep quality: after 10:00 if still "poor"
  * - Mood: after 16:00 if set to 1 (rough)
@@ -19,7 +19,7 @@ import type { DynamicRedFlag } from './useDynamicRedFlags';
 interface MomDay {
   date: string;
   meals: { breakfast: boolean; lunch: boolean; dinner: boolean; snack: boolean };
-  water: number;
+  water: boolean;
   vitamin: boolean;
   sleep: 0 | 1 | 2 | 3;
   mood: 0 | 1 | 2 | 3 | 4 | 5;
@@ -54,14 +54,12 @@ export default function useMomAlerts(): DynamicRedFlag[] {
       }
 
       // ── Hydration ──
-      if (hour >= 14 && data.water < 4) {
+      if (hour >= 14 && !data.water) {
         flags.push({
           id: 'mom-water',
           emoji: '💧',
-          text: data.water === 0
-            ? 'No water logged today — staying hydrated helps recovery'
-            : `Only ${data.water} glass${data.water !== 1 ? 'es' : ''} of water — aim for 8`,
-          severity: data.water === 0 && hour >= 16 ? 'critical' : 'warning',
+          text: 'Remember to stay hydrated — it helps recovery & milk supply',
+          severity: hour >= 16 ? 'critical' : 'warning',
         });
       }
 
