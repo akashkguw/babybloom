@@ -205,6 +205,7 @@ export default function HomeTab({
     history: LogEntry[];
     tips: string[];
     settingKey?: string; // key for default-value setting (e.g. 'Formula', 'Pumped')
+    timerToggleKey?: string; // key for timer vs instant-tap toggle (e.g. 'Tummy')
   }
   const [qlInfoPanel, setQlInfoPanel] = useState<QlInfoPanel | null>(null);
 
@@ -224,6 +225,46 @@ export default function HomeTab({
       return next;
     });
   }, []);
+
+  // ─── Quick-log usage counts (for smart prioritization) ───
+  const [qlUsage, setQlUsage] = useState<Record<string, number>>({});
+  const qlUsageRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    dg('ql_usage').then((saved: Record<string, number> | null) => {
+      if (saved) { setQlUsage(saved); qlUsageRef.current = saved; }
+    });
+  }, []);
+  const bumpQlUsage = useCallback((label: string) => {
+    const next = { ...qlUsageRef.current, [label]: (qlUsageRef.current[label] || 0) + 1 };
+    qlUsageRef.current = next;
+    setQlUsage(next);
+    ds('ql_usage', next);
+  }, []);
+
+  // ─── Quick-log tap mode: timer vs instant tap (e.g. Tummy Time) ───
+  const [qlTapOnly, setQlTapOnly] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    dg('ql_tap_only').then((saved: Record<string, boolean> | null) => {
+      if (saved) setQlTapOnly(saved);
+    });
+  }, []);
+  const toggleTapOnly = useCallback((key: string) => {
+    setQlTapOnly((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      ds('ql_tap_only', next);
+      return next;
+    });
+  }, []);
+
+  // "See more" expansion state for quick log grid
+  const [qlExpanded, setQlExpanded] = useState(false);
+
+  // One-time long-press discovery hint (hidden forever after first use)
+  const [qlHintSeen, setQlHintSeen] = useState(true); // default true = hidden until loaded
+  useEffect(() => {
+    dg('ql_hint_seen').then((v: boolean | null) => { setQlHintSeen(!!v); });
+  }, []);
+
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const clearLongPress = useCallback(() => {
@@ -231,7 +272,7 @@ export default function HomeTab({
   }, []);
 
   // Category info for long-press panels
-  const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; settingKey?: string }> = {
+  const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; settingKey?: string; timerToggleKey?: string }> = {
     'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], settingKey: 'Formula' },
@@ -239,7 +280,7 @@ export default function HomeTab({
     'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'] },
     'Sleep': { cat: 'sleep', types: ['Nap', 'Night Sleep'], tips: ['Newborns sleep 14-17 hours total per day', 'Always place on back for safe sleep', 'Consistent routine helps establish patterns'] },
     'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'] },
-    'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'] },
+    'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'], timerToggleKey: 'Tummy' },
     'Solids': { cat: 'feed', types: ['Solids'], tips: ['Introduce one new food every 3-5 days', 'Watch for allergic reactions after new foods', 'Let baby set the pace — never force feed'] },
     'Pumped': { cat: 'feed', types: ['Pumped'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], settingKey: 'Pumped' },
   };
@@ -266,7 +307,9 @@ export default function HomeTab({
         history,
         tips: info.tips,
         settingKey: info.settingKey,
+        timerToggleKey: info.timerToggleKey,
       });
+      if (!qlHintSeen) { setQlHintSeen(true); ds('ql_hint_seen', true); }
     }, 400);
   }, [clearLongPress, quickLogWarnings, logs, qlCategoryInfo]);
 
@@ -492,7 +535,7 @@ export default function HomeTab({
 
   // ═══ Quick log helper ═══
   function quickLog(cat: string, entry: Partial<LogEntry>, btnLabel?: string) {
-    if (btnLabel) triggerFlash(btnLabel);
+    if (btnLabel) { triggerFlash(btnLabel); bumpQlUsage(btnLabel); }
     const e: LogEntry = Object.assign(
       { date: today(), time: now(), id: Date.now() },
       entry
@@ -551,8 +594,12 @@ export default function HomeTab({
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   }
 
+  // Map timer types to button labels for usage tracking
+  const timerToLabel: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
   function startFeedTimer(type: string) {
     if (feedTimer) return;
+    const label = timerToLabel[type];
+    if (label) bumpQlUsage(label);
     setFeedTimerApp({
       type: type,
       startTime: Date.now(),
@@ -1103,7 +1150,10 @@ export default function HomeTab({
 
       {/* ═══ QUICK LOG — unified card with timer, quantity selector & grid ═══ */}
       <Cd style={{ marginBottom: 12, padding: '14px 14px 12px', overflow: 'hidden', ...reveal(2) }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>Quick Log</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>Quick Log</div>
+          {!qlHintSeen && <div style={{ fontSize: 9, color: C.tl, fontWeight: 500 }}>Hold for details</div>}
+        </div>
         {(() => {
           const isMl = volumeUnit === 'ml';
           const presets = isMl ? [30, 60, 90, 120, 150, 180] : [1, 2, 3, 4, 5, 6];
@@ -1180,22 +1230,51 @@ export default function HomeTab({
           const qlBreastR = { e: '🤱', l: 'Nurse Right', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Formula'], qType: 'Formula' };
           const qlPumped  = { e: '🍼', l: 'Pumped', fn: () => { if (!feedTimer) { const def = qlDefaults['Pumped']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Pumped'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Pumped'], qType: 'Pumped Milk' };
-          const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false };
+          const qlTummy   = qlTapOnly['Tummy']
+            ? { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false }
+            : { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
           const qlWet     = { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false };
           const qlDirty   = { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false };
           const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: false, highlight: isSleeping, needsQty: false };
           const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: false, needsQty: false };
 
-          // Select age-appropriate items:
-          // 12+ months (toddler): solids first, no tummy time (walking age)
-          // 6–11 months (solids intro): add solids, keep tummy time (crawling/rolling)
-          // 0–5 months (newborn/infant): classic nursing/bottle/tummy/diaper/sleep set
-          const qlItems =
+          // ─── All available items (full pool) ───
+          const allQlPool = [qlBreastL, qlBreastR, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem, qlSolids];
+
+          // Age-based default priority (lower = higher priority)
+          // Each stage defines the top-8 defaults before usage data kicks in
+          const agePriority: Record<string, number> =
             ageMonths >= 12
-              ? [qlSolids, qlSleepItem, qlWet, qlDirty, qlBreastL, qlBreastR, qlFormula, qlPumped]
+              ? { 'Solids': 1, [isSleeping ? 'Wake Up' : 'Sleep']: 2, 'Wet': 3, 'Dirty': 4, 'Formula': 5, 'Pumped': 6, 'Nurse Left': 7, 'Nurse Right': 8, 'Tummy': 9 }
               : ageMonths >= 6
-                ? [qlBreastL, qlBreastR, qlSolids, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem]
-                : [qlBreastL, qlBreastR, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem];
+                ? { 'Nurse Left': 1, 'Nurse Right': 2, 'Solids': 3, 'Formula': 4, 'Wet': 5, 'Dirty': 6, [isSleeping ? 'Wake Up' : 'Sleep']: 7, 'Tummy': 8, 'Pumped': 9 }
+                : { 'Nurse Left': 1, 'Nurse Right': 2, 'Formula': 3, 'Wet': 4, 'Dirty': 5, [isSleeping ? 'Wake Up' : 'Sleep']: 6, 'Tummy': 7, 'Pumped': 8, 'Solids': 9 };
+
+          // Sort: usage count (desc) as primary, age priority as tiebreaker
+          const totalUsage = Object.values(qlUsage).reduce((a, b) => a + b, 0);
+          const hasUsage = totalUsage >= 10; // need at least 10 taps before usage-based reordering
+          const qlItems = [...allQlPool].sort((a, b) => {
+            if (hasUsage) {
+              const ua = qlUsage[a.l] || 0;
+              const ub = qlUsage[b.l] || 0;
+              if (ua !== ub) return ub - ua; // more used = first
+            }
+            return (agePriority[a.l] || 99) - (agePriority[b.l] || 99);
+          });
+
+          // Always keep warning/active items in top 8
+          const topItems: typeof qlItems = [];
+          const restItems: typeof qlItems = [];
+          for (const q of qlItems) {
+            const hasWarn = !!(quickLogWarnings[q.l]);
+            const isActive = !!(q as any).active || !!(q as any).highlight;
+            if (topItems.length < 8 || hasWarn || isActive) topItems.push(q);
+            else restItems.push(q);
+          }
+          // If warnings/active pushed us past 8, trim rest from end of topItems
+          const visibleItems = qlExpanded ? qlItems : topItems.slice(0, 8);
+          const hiddenCount = qlItems.length - 8;
+          const showSeeMore = hiddenCount > 0 && !qlExpanded;
 
           // ─── Expanded inline quantity selector (Formula / Pumped) ───
           if (quickFeedType) {
@@ -1390,7 +1469,7 @@ export default function HomeTab({
 
               {/* ─── Inline info panel (replaces grid on long-press) ─── */}
               {qlInfoPanel ? (
-                <div style={{ animation: 'fadeIn 0.15s ease' }}>
+                <div style={{ animation: 'fadeIn 0.15s ease', userSelect: 'none', WebkitUserSelect: 'none' as any }}>
                   {/* Header with icon + label + close */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1400,9 +1479,9 @@ export default function HomeTab({
                     <div
                       onClick={() => setQlInfoPanel(null)}
                       style={{
-                        width: 24, height: 24, borderRadius: 12,
+                        width: 32, height: 32, borderRadius: 16,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: C.bg, cursor: 'pointer', fontSize: 12, color: C.tl,
+                        background: C.bg, cursor: 'pointer', fontSize: 15, color: C.tl,
                         border: '1px solid ' + C.b,
                       }}
                     >
@@ -1423,17 +1502,6 @@ export default function HomeTab({
                       <div style={{ fontSize: 11, color: C.t, lineHeight: 1.4 }}>{qlInfoPanel.warn.reason}</div>
                     </div>
                   )}
-
-                  {/* Tips */}
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Good to know</div>
-                    {qlInfoPanel.tips.map((tip, i) => (
-                      <div key={i} style={{ fontSize: 11, color: C.t, lineHeight: 1.45, padding: '2px 0', display: 'flex', gap: 5 }}>
-                        <span style={{ color: C.a, flexShrink: 0 }}>•</span>
-                        <span>{tip}</span>
-                      </div>
-                    ))}
-                  </div>
 
                   {/* Default amount setting (Formula / Pumped) */}
                   {qlInfoPanel.settingKey && (() => {
@@ -1484,6 +1552,43 @@ export default function HomeTab({
                     );
                   })()}
 
+                  {/* Timer vs instant-tap toggle (Tummy Time) */}
+                  {qlInfoPanel.timerToggleKey && (() => {
+                    const tk = qlInfoPanel.timerToggleKey!;
+                    const isInstant = !!qlTapOnly[tk];
+                    return (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tap behavior</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <div
+                            onClick={() => { if (isInstant) toggleTapOnly(tk); }}
+                            style={{
+                              flex: 1, padding: '8px 6px', borderRadius: 10, textAlign: 'center',
+                              fontSize: 10, fontWeight: 600, cursor: 'pointer', userSelect: 'none',
+                              background: !isInstant ? C.s + '18' : C.bg,
+                              color: !isInstant ? C.s : C.tl,
+                              border: '1px solid ' + (!isInstant ? C.s + '40' : C.b),
+                            }}
+                          >
+                            ⏱️ Start timer
+                          </div>
+                          <div
+                            onClick={() => { if (!isInstant) toggleTapOnly(tk); }}
+                            style={{
+                              flex: 1, padding: '8px 6px', borderRadius: 10, textAlign: 'center',
+                              fontSize: 10, fontWeight: 600, cursor: 'pointer', userSelect: 'none',
+                              background: isInstant ? C.a + '18' : C.bg,
+                              color: isInstant ? C.a : C.tl,
+                              border: '1px solid ' + (isInstant ? C.a + '40' : C.b),
+                            }}
+                          >
+                            👆 Just tap
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Recent history */}
                   <div>
                     <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Recent</div>
@@ -1506,42 +1611,67 @@ export default function HomeTab({
                       ))
                     )}
                   </div>
+
+                  {/* Good to know (tips — last) */}
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Good to know</div>
+                    {qlInfoPanel.tips.map((tip, i) => (
+                      <div key={i} style={{ fontSize: 11, color: C.t, lineHeight: 1.45, padding: '2px 0', display: 'flex', gap: 5 }}>
+                        <span style={{ color: C.a, flexShrink: 0 }}>•</span>
+                        <span>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
-                  {qlItems.map((q: any) => {
-                    const warnInfo = quickLogWarnings[q.l] || null;
-                    const warn = warnInfo?.level || null;
-                    const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
-                    const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
-                    const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
-                    return (
-                      <div
-                        key={q.l}
-                        className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
-                        onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
-                        onTouchStart={() => startLongPress(q.l, q.e)}
-                        onTouchEnd={() => { clearLongPress(); }}
-                        onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
-                        onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, settingKey: info.settingKey }); } }}
-                        style={{
-                          textAlign: 'center',
-                          padding: '8px 2px',
-                          borderRadius: 12,
-                          background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
-                          border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
-                          cursor: q.dis ? 'default' : 'pointer',
-                          opacity: q.dis ? 0.35 : 1,
-                        }}
-                      >
-                        <div style={{ fontSize: 18 }}>{q.e}</div>
-                        <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
-                          {q.l}
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
+                    {visibleItems.map((q: any) => {
+                      const warnInfo = quickLogWarnings[q.l] || null;
+                      const warn = warnInfo?.level || null;
+                      const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
+                      const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
+                      const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
+                      return (
+                        <div
+                          key={q.l}
+                          className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
+                          onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
+                          onTouchStart={() => startLongPress(q.l, q.e)}
+                          onTouchEnd={() => { clearLongPress(); }}
+                          onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
+                          onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, settingKey: info.settingKey, timerToggleKey: info.timerToggleKey }); } }}
+                          style={{
+                            textAlign: 'center',
+                            padding: '8px 2px',
+                            borderRadius: 12,
+                            background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
+                            border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
+                            cursor: q.dis ? 'default' : 'pointer',
+                            opacity: q.dis ? 0.35 : 1,
+                          }}
+                        >
+                          <div style={{ fontSize: 18 }}>{q.e}</div>
+                          <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
+                            {q.l}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                  {(showSeeMore || qlExpanded) && (
+                    <div
+                      onClick={() => setQlExpanded(!qlExpanded)}
+                      style={{
+                        textAlign: 'center', padding: '6px 0 0', cursor: 'pointer',
+                        fontSize: 10, fontWeight: 600, color: C.s,
+                        userSelect: 'none', WebkitUserSelect: 'none' as any,
+                      }}
+                    >
+                      {qlExpanded ? 'Show less ▴' : `See more (${hiddenCount}) ▾`}
+                    </div>
+                  )}
+                </>
               )}
             </>
           );
