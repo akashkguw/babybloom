@@ -107,12 +107,14 @@ export default function HomeTab({
   const quickLogWarnings = useMemo(() => {
     // Thresholds in hours: [warningStart, dangerStart]
     // After warningStart hours → amber tint; after dangerStart hours → red tint
+    const babyAgeMonths = Math.floor(age);
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
       'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6, warnMsg: 'Left breast not fed in over {h}h', dangerMsg: 'Left breast not fed in over {h}h — feed soon', neverMsg: 'No left breast feeds logged yet' },
       'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6, warnMsg: 'Right breast not fed in over {h}h', dangerMsg: 'Right breast not fed in over {h}h — feed soon', neverMsg: 'No right breast feeds logged yet' },
-      'Tummy':    { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' },
+      ...(babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' } } : {}),
       'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — check hydration', neverMsg: 'No wet diapers logged yet' },
       'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — monitor closely', neverMsg: 'No dirty diapers logged yet' },
+      ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 8, dangerH: 12, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — try a meal or snack', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
     };
     const warnings: Record<string, { level: 'warn' | 'danger'; reason: string } | null> = {};
     const nowMs = Date.now();
@@ -921,55 +923,32 @@ export default function HomeTab({
             );
           }
 
-          // All quick log items for normal grid
-          const qlItems = [
-            {
-              e: '🤱', l: 'Breast L',
-              fn: () => startFeedTimer('Breast L'),
-              active: feedTimer && feedTimer.type === 'Breast L',
-              dis: feedTimer && feedTimer.type !== 'Breast L',
-              needsQty: false,
-            },
-            {
-              e: '🤱', l: 'Breast R',
-              fn: () => startFeedTimer('Breast R'),
-              active: feedTimer && feedTimer.type === 'Breast R',
-              dis: feedTimer && feedTimer.type !== 'Breast R',
-              needsQty: false,
-            },
-            {
-              e: '🍼', l: 'Formula',
-              fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } },
-              dis: !!feedTimer, needsQty: true, qType: 'Formula',
-            },
-            {
-              e: '🍼', l: 'Breast Milk',
-              fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } },
-              dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk',
-            },
-            {
-              e: '🧒', l: 'Tummy',
-              fn: () => startFeedTimer('Tummy Time'),
-              active: feedTimer && feedTimer.type === 'Tummy Time',
-              dis: feedTimer && feedTimer.type !== 'Tummy Time',
-              needsQty: false,
-            },
-            { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false },
-            { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false },
-            {
-              e: isSleeping ? '⏰' : '😴',
-              l: isSleeping ? 'Wake Up' : 'Sleep',
-              fn: () => {
-                if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up');
-                else quickLog('sleep', { type: autoSleepType() }, 'Sleep');
-              },
-              active: false, dis: false, highlight: isSleeping, needsQty: false,
-            },
-          ];
+          // Age-adaptive quick log items
+          // Shared item definitions
+          const qlBreastL = { e: '🤱', l: 'Breast L', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
+          const qlBreastR = { e: '🤱', l: 'Breast R', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
+          const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Formula' };
+          const qlPumped  = { e: '🍼', l: 'Breast Milk', fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk' };
+          const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
+          const qlWet     = { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false };
+          const qlDirty   = { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false };
+          const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: false, highlight: isSleeping, needsQty: false };
+          const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: false, needsQty: false };
+
+          // Select age-appropriate items:
+          // 12+ months (toddler): solids first, no tummy time (walking age)
+          // 6–11 months (solids intro): add solids, keep tummy time (crawling/rolling)
+          // 0–5 months (newborn/infant): classic nursing/bottle/tummy/diaper/sleep set
+          const qlItems =
+            ageMonths >= 12
+              ? [qlSolids, qlSleepItem, qlWet, qlDirty, qlBreastL, qlBreastR, qlFormula, qlPumped]
+              : ageMonths >= 6
+                ? [qlBreastL, qlBreastR, qlSolids, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem]
+                : [qlBreastL, qlBreastR, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem];
 
           // ─── Expanded inline quantity selector (Formula / Breast Milk) ───
           if (quickFeedType) {
-            const activeItem = qlItems.find((q) => q.qType === quickFeedType);
+            const activeItem = qlItems.find((q) => (q as any).qType === quickFeedType);
             const displayVal = isMl ? Math.round(sliderVal) : sliderVal.toFixed(1);
             return (
               <div className="ql-expand" style={{ animation: 'qlSlideIn 0.25s cubic-bezier(0.22,1,0.36,1)' }}>
