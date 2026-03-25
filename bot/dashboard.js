@@ -385,15 +385,15 @@ function stageCard(st, size='full') {
     return `<span title="${esc(st.label)}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0"></span>`;
   }
 
-  return `<div class="stage-card" style="border:2px solid ${style.border};background:${style.bg};opacity:${muted?.5:1};${isRunning?'animation:runpulse 1.5s infinite':''}">
-    <div style="width:30px;height:30px;border-radius:9px;background:${style.iconBg};display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:6px;flex-shrink:0">${st.icon}</div>
-    <div style="font-size:9.5px;font-weight:800;color:${muted?'#B0A898':'#2D2D3A'};letter-spacing:.1px;text-align:center;line-height:1.3;margin-bottom:3px">${st.label}</div>
-    ${st.desc ? `<div style="font-size:8.5px;color:${muted?'#C8C0B8':'#8E8E9A'};text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${esc(st.desc)}</div>` : '<div style="height:11px"></div>'}
-    <div style="margin-top:6px;font-size:13px;line-height:1">${style.badge}</div>
+  return `<div class="stage-card" style="border-color:${style.border};background:${style.bg};opacity:${muted?.5:1};${isRunning?'animation:runpulse 1.5s infinite':''}">
+    <div class="stage-ico" style="background:${style.iconBg}">${st.icon}</div>
+    <div class="stage-lbl" style="color:${muted?'#B0A898':'#2D2D3A'}">${st.label}</div>
+    <div class="stage-desc">${st.desc ? esc(st.desc) : ''}</div>
+    <div class="stage-bge">${style.badge}</div>
   </div>`;
 }
 
-const STAGE_CONNECTOR = `<div class="stage-connector"><div class="stage-connector-line"></div></div>`;
+const STAGE_CONNECTOR = `<div class="stage-conn"><div class="stage-conn-ln"></div></div>`;
 
 // ─── Render ─────────────────────────────────────────────────────
 function render() {
@@ -465,14 +465,12 @@ function render() {
                 : isPushOnly        ? ''
                 : 'no changes';
     return `
-      <div class="hist-row ${isDeploy?'is-deploy':''} ${isError?'is-error':''}">
+      <div class="hist-row ${isDeploy?'hd':''} ${isError?'he':''}">
         <span style="font-size:10px;color:#A8A098;font-family:monospace;white-space:nowrap">${esc(tsShort)}</span>
         <div class="stage-dots">${dots}</div>
         <div style="display:flex;align-items:center;gap:6px;overflow:hidden;min-width:0">
-          ${isDeploy ? `<code style="background:#E8E6FF;color:#6C63FF;padding:1px 6px;border-radius:5px;font-size:10px;flex-shrink:0">${run.sha}</code>` : ''}
-          <span style="font-size:10px;color:${isDeploy?'#6C63FF':isError?'#FF6B8A':'#C0B8B0'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${label}
-          </span>
+          ${isDeploy ? `<code style="background:#E8E6FF;color:#6C63FF;padding:1px 7px;border-radius:6px;font-size:10px;flex-shrink:0">${run.sha}</code>` : ''}
+          <span style="font-size:10px;color:${isDeploy?'#6C63FF':isError?'#FF6B8A':'#C0B8B0'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
         </div>
       </div>`;
   }).join('') || '';
@@ -480,50 +478,173 @@ function render() {
   // ── Issues HTML ───────────────────────────────────────────────
   const issueStatusIcon = s => s==='done'?'✅':s==='skipped'?'⏭️':s==='closed'?'🔒':'⏳';
   const issuesHtml = issues.all.slice(0, 20).map(issue => `
-    <div style="border:1px solid ${COLORS.border};border-radius:11px;padding:11px 14px;margin-bottom:7px">
+    <div class="issue-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
-            <span style="font-size:10px;color:${COLORS.textLight};font-weight:700">#${issue.number}</span>
-            <span style="font-size:12px;font-weight:600;color:${COLORS.text}">${esc(issue.title)}</span>
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+            <span style="font-size:10px;color:#8E8E9A;font-weight:700;flex-shrink:0">#${issue.number}</span>
+            <span style="font-size:12px;font-weight:700;color:#2D2D3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(issue.title)}</span>
           </div>
-          <div>${(issue.labels||[]).map(pill).join('')}</div>
-          ${issue.skip_reason ? `<div style="font-size:10px;color:${COLORS.textLight};margin-top:5px;line-height:1.4">↪ ${esc(issue.skip_reason.slice(0,110))}${issue.skip_reason.length>110?'…':''}</div>` : ''}
+          <div style="margin-bottom:${issue.skip_reason?'5px':'0'}">${(issue.labels||[]).map(pill).join('')}</div>
+          ${issue.skip_reason ? `<div style="font-size:10px;color:#8E8E9A;line-height:1.45">↪ ${esc(issue.skip_reason.slice(0,100))}${issue.skip_reason.length>100?'…':''}</div>` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-top:2px">
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-top:1px">
           <span style="font-size:14px">${issueStatusIcon(issue.status)}</span>
-          <a href="${esc(issue.url||'#')}" target="_blank" style="font-size:10px;color:${COLORS.secondary};text-decoration:none;font-weight:600">↗</a>
+          <a href="${esc(issue.url||'#')}" target="_blank" style="font-size:11px;color:#6C63FF;text-decoration:none;font-weight:700;line-height:1">↗</a>
         </div>
       </div>
-    </div>`).join('') || `<div style="color:${COLORS.textLight};font-size:13px;text-align:center;padding:20px">No issues</div>`;
+    </div>`).join('') || `<div style="color:#8E8E9A;font-size:13px;text-align:center;padding:24px 0">No issues</div>`;
 
   // ── Bot Log HTML ──────────────────────────────────────────────
   const botLogHtml = bot.recentLines.slice(-10).map(l => {
     const c = l.includes('error')||l.includes('❌') ? '#FF6B8A'
             : l.includes('✅')||l.includes('started')||l.includes('Lock acquired') ? '#00C9A7'
-            : '#9090A0';
-    return `<div style="font-size:10.5px;color:${c};padding:1.5px 0;font-family:'SF Mono',Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.slice(0,130))}</div>`;
+            : '#7070A0';
+    return `<div style="font-size:10.5px;color:${c};padding:2px 0;font-family:'SF Mono',Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6">${esc(l.slice(0,130))}</div>`;
   }).join('');
 
   // ── Git log HTML ──────────────────────────────────────────────
   const gitHtml = git.log.map(l => {
     const m = l.match(/^([a-f0-9]{7,})\s+(.+)/);
     if (!m) return '';
-    return `<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #F0EBE3;display:flex;gap:8px;align-items:center">
-      <code style="background:#F0EBE3;padding:1px 5px;border-radius:4px;font-size:10px;flex-shrink:0">${m[1]}</code>
-      <span style="color:${COLORS.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m[2])}</span>
+    return `<div style="font-size:11px;padding:6px 0;border-bottom:1px solid #F4EFE8;display:flex;gap:8px;align-items:center">
+      <code style="background:#E8E6FF;color:#6C63FF;padding:2px 7px;border-radius:6px;font-size:10px;flex-shrink:0">${m[1]}</code>
+      <span style="color:#2D2D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px">${esc(m[2])}</span>
     </div>`;
   }).join('');
+
+  // ── Telegram bot health ────────────────────────────────────────
+  const botDotClass  = bot.isHealthy ? 'dot-ok' : 'dot-err';
+  const botStatusTxt = bot.isHealthy ? 'Running' : 'May be offline';
+
+  // ── Worker info helpers ────────────────────────────────────────
+  const cw          = claudeTasks.worker;
+  const cwLastRan   = cw?.lastRunAt  ? new Date(cw.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+  const cwNextRun   = cw?.nextRunAt  ? new Date(cw.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+  const cwMinAgo    = cw?.lastRunAt  ? Math.round((Date.now()-new Date(cw.lastRunAt))/60000) : null;
+  const cwHealthy   = cw?.enabled && cwMinAgo !== null && cwMinAgo < 90;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🍼 BabyBloom · Internal Dashboard</title>
+<title>🍼 BabyBloom · Dashboard</title>
 <style>
+  /* ── Reset ── */
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#FFF8F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2D2D3A;min-height:100vh}
+  body{background:#FFF8F0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Segoe UI',sans-serif;color:#2D2D3A;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+  /* ── Layout ── */
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 20px}
+  .mb16{margin-bottom:16px}
+  .mb20{margin-bottom:20px}
+
+  /* ── Header ── */
+  .hdr{background:linear-gradient(135deg,#FF6B8A 0%,#AB47BC 50%,#6C63FF 100%);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 4px 28px rgba(255,107,138,.22)}
+  .hdr h1{color:#fff;font-size:21px;font-weight:800;letter-spacing:-.4px}
+  .hdr-sub{color:rgba(255,255,255,.72);font-size:12px;margin-top:3px;font-weight:500}
+  .hdr-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .run-btn{background:rgba(255,255,255,.2);backdrop-filter:blur(8px);color:#fff;border:1.5px solid rgba(255,255,255,.35);padding:9px 22px;border-radius:24px;font-size:12px;cursor:pointer;font-weight:700;transition:background .15s,transform .1s;white-space:nowrap;letter-spacing:.1px}
+  .run-btn:hover{background:rgba(255,255,255,.3);transform:translateY(-1px)}
+  .run-btn:disabled{opacity:.6;cursor:default;transform:none}
+  .cd-txt{color:rgba(255,255,255,.6);font-size:11px;font-weight:600}
+
+  /* ── Cards ── */
+  .card{background:#fff;border:1.5px solid #F0EBE3;border-radius:20px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.04);transition:box-shadow .2s}
+  .card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08)}
+
+  /* ── Stat strip ── */
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
+  @media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .sc{background:#fff;border:1.5px solid #F0EBE3;border-radius:18px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.03);transition:transform .15s}
+  .sc:hover{transform:translateY(-2px)}
+  .sc-ico{font-size:20px;margin-bottom:8px}
+  .sc-val{font-size:28px;font-weight:800;line-height:1;letter-spacing:-.5px}
+  .sc-lbl{font-size:10px;color:#8E8E9A;margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+  /* ── Status row ── */
+  .status-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.status-row{grid-template-columns:1fr}}
+
+  /* ── Section heading ── */
+  .sec-hd{font-size:13px;font-weight:800;color:#2D2D3A;margin-bottom:14px;display:flex;align-items:center;gap:8px;letter-spacing:-.1px;flex-wrap:wrap}
+
+  /* ── Badges ── */
+  .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .b-ok{background:#E0FFF8;color:#00A882}
+  .b-err{background:#FFE8EC;color:#CC3355}
+  .b-warn{background:#FFF3E0;color:#CC7700}
+  .b-run{background:#E8E6FF;color:#5A51FF}
+  .b-off{background:#F0EBE3;color:#8E8E9A}
+  .b-cnt{background:#FFE0E8;color:#FF6B8A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+  .b-cnt2{background:#E8E6FF;color:#6C63FF;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+  .b-cnt3{background:#E0FFF8;color:#00C9A7;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+
+  /* ── Pill labels ── */
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin:1px 2px}
+
+  /* ── Dot ── */
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;animation:pulse 2s infinite}
+  .dot-ok{background:#00C9A7}
+  .dot-err{background:#FF6B8A}
+  .dot-warn{background:#FFB347}
+  .dot-blue{background:#6C63FF}
+
+  /* ── Divider ── */
+  .div{height:1px;background:#F0EBE3;margin:13px 0}
+
+  /* ── Chip (meta label) ── */
+  .chip{display:inline-flex;align-items:center;gap:5px;background:#F4F0EC;border-radius:10px;padding:3px 10px;font-size:11px;color:#8E8E9A;font-weight:600}
+
+  /* ── Pipeline flow ── */
+  .pipeline-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .pipeline-flow{display:flex;align-items:stretch;min-width:max-content;gap:0}
+  .stage-card{width:96px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 8px 12px;border-radius:16px;border-width:2px;border-style:solid;transition:transform .15s,box-shadow .15s;cursor:default}
+  .stage-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.09)}
+  .stage-ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:7px;flex-shrink:0}
+  .stage-lbl{font-size:9.5px;font-weight:800;text-align:center;line-height:1.3;margin-bottom:3px}
+  .stage-desc{font-size:8.5px;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;color:#8E8E9A;height:12px}
+  .stage-bge{margin-top:6px;font-size:13px;line-height:1}
+  .stage-conn{flex-shrink:0;width:22px;display:flex;align-items:center;justify-content:center;padding-bottom:16px}
+  .stage-conn-ln{width:100%;height:2px;background:linear-gradient(90deg,#E0D8D0,#C8C0B8)}
+
+  /* ── History ── */
+  .hist-row{display:grid;grid-template-columns:148px 96px 1fr;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;transition:background .12s}
+  .hist-row:hover{background:#F8F5F0}
+  .hist-row.hd{background:#F0FFF8}
+  .hist-row.hd:hover{background:#E8FFF5}
+  .hist-row.he:hover{background:#FFF2F4}
+  .stage-dots{display:flex;align-items:center;gap:3px}
+
+  /* ── Issues ── */
+  .issue-card{border:1.5px solid #F0EBE3;border-radius:14px;padding:12px 14px;margin-bottom:8px;transition:border-color .15s}
+  .issue-card:hover{border-color:#D4CECC}
+
+  /* ── Log box ── */
+  .logbox{background:#1A1A2E;border-radius:12px;padding:12px 14px;overflow:hidden}
+
+  /* ── Two-col layouts ── */
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .g2-wide{display:grid;grid-template-columns:3fr 2fr;gap:16px}
+  @media(max-width:860px){.g2,.g2-wide{grid-template-columns:1fr}}
+
+  /* ── Worker stat mini boxes ── */
+  .wstat{background:#F8F6FF;border-radius:12px;padding:11px 14px;flex:1}
+  .wstat-lbl{font-size:9px;color:#8E8E9A;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .wstat-val{font-size:13px;font-weight:700;color:#2D2D3A;line-height:1.3}
+  .wstat-sub{font-size:10px;color:#8E8E9A;margin-top:2px}
+
+  /* ── Claude task rows ── */
+  .task-row{border:1.5px solid #F0EBE3;border-radius:14px;padding:11px 14px;margin-bottom:8px;transition:border-color .15s}
+  .task-row.t-on{border-color:#00C9A7;background:#F5FFFD}
+  .task-row:hover{border-color:#D4CECC}
+  .task-row.t-on:hover{border-color:#00B897}
+
+  /* ── Animations ── */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes runpulse{0%,100%{box-shadow:0 0 0 0 rgba(108,99,255,.4)}70%{box-shadow:0 0 0 8px rgba(108,99,255,0)}}
 
   /* Header */
   .hdr{background:linear-gradient(135deg,#FF6B8A 0%,#6C63FF 100%);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 2px 16px rgba(255,107,138,.25)}
@@ -594,211 +715,227 @@ function render() {
 </head>
 <body>
 
-<!-- Header -->
+<!-- ═══ HEADER ═══ -->
 <div class="hdr">
-  <div class="hdr-title">
+  <div>
     <h1>🍼 BabyBloom Dashboard</h1>
-    <p>Pipeline · Bot · Issues · Sentry &nbsp;·&nbsp; ${now}</p>
+    <div class="hdr-sub">Pipeline · Issues · Bot · Workers &nbsp;·&nbsp; ${now}</div>
   </div>
   <div class="hdr-right">
-    <span class="countdown" id="cd"></span>
+    <span class="cd-txt" id="cd"></span>
+    <button id="runBtn" class="run-btn" onclick="runPipeline()" ${pipelineRunning?'disabled':''}>
+      ${pipelineRunning ? '⏳ Running…' : '▶ Run Pipeline'}
+    </button>
   </div>
 </div>
 
-
 <div class="wrap">
 
-  <!-- ── Stats ─────────────────────────────────────────────── -->
-  <div class="stats">
+  <!-- ═══ STAT STRIP ═══ -->
+  <div class="stats mb20">
     <div class="sc">
-      <div class="ico">🔄</div>
-      <div class="val" style="color:#6C63FF">${runs.length}</div>
-      <div class="lbl">Pipeline Runs</div>
+      <div class="sc-ico">🔄</div>
+      <div class="sc-val" style="color:#6C63FF">${runs.length}</div>
+      <div class="sc-lbl">Runs</div>
     </div>
     <div class="sc">
-      <div class="ico">🚀</div>
-      <div class="val" style="color:#00C9A7">${deploys.length}</div>
-      <div class="lbl">Deploys</div>
+      <div class="sc-ico">🚀</div>
+      <div class="sc-val" style="color:#00C9A7">${deploys.length}</div>
+      <div class="sc-lbl">Deploys</div>
     </div>
     <div class="sc">
-      <div class="ico">📋</div>
-      <div class="val" style="color:#FFB347">${issues.total}</div>
-      <div class="lbl">Issues</div>
+      <div class="sc-ico">⏳</div>
+      <div class="sc-val" style="color:#FFB347">${issues.pending.length}</div>
+      <div class="sc-lbl">Pending</div>
     </div>
     <div class="sc">
-      <div class="ico">❌</div>
-      <div class="val" style="color:#FF6B8A">${errors.length}</div>
-      <div class="lbl">Run Errors</div>
+      <div class="sc-ico">✅</div>
+      <div class="sc-val" style="color:#4CAF50">${issues.done.length}</div>
+      <div class="sc-lbl">Done</div>
+    </div>
+    <div class="sc">
+      <div class="sc-ico">❌</div>
+      <div class="sc-val" style="color:#FF6B8A">${errors.length}</div>
+      <div class="sc-lbl">Errors</div>
+    </div>
+    <div class="sc">
+      <div class="sc-ico">🛡️</div>
+      <div class="sc-val" style="color:#42A5F5">${sentry.tracked}</div>
+      <div class="sc-lbl">Sentry</div>
     </div>
   </div>
 
-  <!-- ── Status Strip ──────────────────────────────────────── -->
-  <div class="strip">
-    <!-- Pipeline status -->
-    <div class="scard">
-      <div class="sec-title">⚡ Pipeline</div>
-      <div style="display:flex;align-items:center;margin-bottom:10px">
-        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${pSt.color};margin-right:8px;animation:pulse 2s infinite"></span>
-        <span style="font-size:13px;font-weight:700;color:#2D2D3A">${pStatus==='success'?'Last deploy succeeded':pStatus==='error'?'Last run had errors':pStatus==='deploying'?'Deploying…':'Watching for changes'}</span>
+  <!-- ═══ STATUS ROW (3 cards) ═══ -->
+  <div class="status-row mb20">
+
+    <!-- Pipeline -->
+    <div class="card">
+      <div class="sec-hd">⚡ Pipeline
+        <span class="badge ${pStatus==='success'?'b-ok':pStatus==='error'?'b-err':pStatus==='deploying'?'b-run':'b-off'}">
+          ${pStatus==='success'?'✅ Deployed':pStatus==='error'?'❌ Error':pStatus==='deploying'?'⏳ Running':'· Idle'}
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="dot ${pStatus==='success'?'dot-ok':pStatus==='error'?'dot-err':pStatus==='deploying'?'dot-blue':'dot-warn'}"></span>
+        <span style="font-size:13px;font-weight:700">${pStatus==='success'?'Last deploy succeeded':pStatus==='error'?'Last run had errors':pStatus==='deploying'?'Deploying now…':'Watching for changes'}</span>
       </div>
       ${lastRun ? `<div style="font-size:11px;color:#8E8E9A;margin-bottom:4px">Last run: ${esc(lastRun.ts)}</div>` : ''}
-      ${lastRun?.sha ? `<div style="font-size:11px;margin-bottom:4px">Latest SHA: <code style="background:#F0EBE3;padding:1px 6px;border-radius:4px">${lastRun.sha}</code></div>` : ''}
-      ${lastRun?.files.length ? `<div style="font-size:11px;color:#6C63FF">📦 ${lastRun.files.map(esc).join(', ')}</div>` : ''}
+      ${lastRun?.sha ? `<div style="font-size:11px;margin-bottom:6px">SHA: <code style="background:#E8E6FF;color:#6C63FF;padding:2px 8px;border-radius:6px;font-size:11px">${lastRun.sha}</code></div>` : ''}
+      ${lastRun?.files.length ? `<div style="font-size:11px;color:#6C63FF;margin-bottom:8px">📦 ${lastRun.files.map(esc).join(', ')}</div>` : ''}
       <div class="div"></div>
-      <div class="meta">⏱ Every 30 min · LaunchAgent</div>
+      <span class="chip">⏱ Every 30 min · LaunchAgent</span>
     </div>
 
-    <!-- Bot status -->
-    <div class="scard">
-      <div class="sec-title">🤖 Telegram Bot</div>
-      <div style="display:flex;align-items:center;margin-bottom:10px">
-        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${bot.isHealthy?'#00C9A7':'#FF6B8A'};margin-right:8px;animation:pulse 2s infinite"></span>
-        <span style="font-size:13px;font-weight:700">${bot.isHealthy ? '🟢 Bot is running' : '🔴 May be offline'}</span>
+    <!-- Issue Worker -->
+    <div class="card">
+      <div class="sec-hd">🔧 Issue Worker
+        ${cw ? (cw.enabled
+          ? `<span class="badge b-ok">● Enabled</span>`
+          : `<span class="badge b-off">○ Paused</span>`) : ''}
       </div>
-      <div style="font-size:11px;color:#8E8E9A;margin-bottom:3px">409 conflicts: <strong style="color:#2D2D3A">${bot.conflicts}</strong></div>
-      ${bot.lastError ? `<div style="font-size:10px;color:#FF6B8A;margin-top:5px;font-family:monospace">${esc(bot.lastError.slice(0,80))}</div>` : ''}
-      <div class="div"></div>
-      <div class="meta">🛡️ Sentry tracked: ${sentry.tracked} · Seq ${sentry.maxSeq}</div>
+      ${cw ? `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="dot ${cwHealthy?'dot-ok':'dot-warn'}"></span>
+        <span style="font-size:13px;font-weight:700">${cwHealthy?'Running on schedule':'Waiting or stale'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="wstat">
+          <div class="wstat-lbl">Last Run</div>
+          <div class="wstat-val">${esc(cwLastRan)}</div>
+          ${cwMinAgo !== null ? `<div class="wstat-sub">${cwMinAgo}m ago</div>` : ''}
+        </div>
+        <div class="wstat" style="background:#F0FFF8">
+          <div class="wstat-lbl">Next Run</div>
+          <div class="wstat-val" style="color:#6C63FF">${esc(cwNextRun)}</div>
+          <div class="wstat-sub">Hourly</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="chip">📋 ${issues.pending.length} pending</span>
+        <span class="chip">✅ ${issues.done.length} done</span>
+        <span class="chip">⏭ ${issues.skipped.length} skipped</span>
+      </div>` : `<div style="color:#8E8E9A;font-size:12px;padding:8px 0">No worker data</div>`}
     </div>
+
+    <!-- Telegram Bot -->
+    <div class="card">
+      <div class="sec-hd">📱 Telegram Bot
+        <span class="badge ${bot.isHealthy?'b-ok':'b-err'}">${bot.isHealthy?'● Online':'● Offline'}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="dot ${bot.isHealthy?'dot-ok':'dot-err'}"></span>
+        <span style="font-size:13px;font-weight:700">${botStatusTxt}</span>
+      </div>
+      <div style="font-size:12px;color:#8E8E9A;margin-bottom:6px">
+        409 conflicts: <strong style="color:#2D2D3A;font-weight:700">${bot.conflicts}</strong>
+      </div>
+      ${bot.lastError ? `
+      <div style="background:#FFF0F3;border-radius:10px;padding:8px 10px;font-size:10px;color:#CC3355;font-family:'SF Mono',Menlo,monospace;line-height:1.5;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${esc(bot.lastError.slice(0,90))}
+      </div>` : ''}
+      <div class="div"></div>
+      <span class="chip">🛡️ Sentry: ${sentry.tracked} tracked · seq ${sentry.maxSeq}</span>
+    </div>
+
   </div>
 
-  <!-- ── Latest Run: full-width visual pipeline ────────────── -->
-  <div class="section" id="latest-run-wrap" style="margin-bottom:16px">
-    <div class="sec-title" id="latest-run-title" style="justify-content:space-between;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px">
+  <!-- ═══ LATEST RUN ═══ -->
+  <div class="card mb16" id="latest-run-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">
+      <div class="sec-hd" style="margin-bottom:0;flex:1">
         <span id="latest-run-label">${latestRunLabel}</span>
         <span id="latest-run-badge">${latestRunBadge}</span>
         ${latestRunTs ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${latestRunTs}</span>` : ''}
       </div>
-      <button id="runBtn" onclick="runPipeline()" style="background:linear-gradient(135deg,#FF6B8A,#6C63FF);color:#fff;border:none;padding:7px 18px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;transition:opacity .2s;min-width:110px;${pipelineRunning ? 'opacity:.6;cursor:default' : ''}">
-        ${pipelineRunning ? '⏳ Running…' : '▶ Run Pipeline'}
-      </button>
     </div>
-    <div id="live-pipeline-flow">${latestPipelineHtml}</div>
-    <div id="live-log-strip" style="${pipelineRunning && latestLogStrip ? '' : 'display:none;'}margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${latestLogStrip}</div>
+    <div class="pipeline-scroll">
+      <div id="live-pipeline-flow">${latestPipelineHtml}</div>
+    </div>
+    <div id="live-log-strip" style="${pipelineRunning && latestLogStrip ? '' : 'display:none;'}margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:12px;padding:12px 16px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${latestLogStrip}</div>
   </div>
 
-  <!-- ── Run History: full-width compact list ───────────────── -->
-  <div class="section" style="margin-bottom:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div class="sec-title" style="margin-bottom:0">📜 Run History <span class="cnt">${runs.length}</span> <span class="cnt2">${deploys.length} deploys</span> <span style="background:#FFE8EC;color:#FF6B8A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${errors.length} errors</span></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        ${[['#00C9A7','Deploy'],['#FF6B8A','Error'],['#FFB347','Warn'],['#D8D0C8','Idle']].map(([c,l])=>
-          `<span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#8E8E9A"><span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block"></span>${l}</span>`
-        ).join('')}
-        <span style="font-size:10px;color:#C0B8B0;font-family:monospace">Q Se Ch Sc CI Push GHA TG</span>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px">
-      ${historyHtml || `<div style="color:${COLORS.textLight};font-size:12px;padding:12px 0;grid-column:1/-1">Only one run so far</div>`}
-    </div>
-  </div>
+  <!-- ═══ HISTORY + ISSUES ═══ -->
+  <div class="g2-wide mb16">
 
-  <!-- ── Bottom two-col: Issues | Bot Log + Commits ─────────── -->
-  <div class="bottom-two">
-
-    <!-- Issues -->
-    <div class="section">
-      <div class="sec-title">📋 Issue Queue
-        <span class="cnt">${issues.pending.length} pending</span>
-        <span style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${issues.skipped.length} skipped</span>
-        <span class="cnt3">${issues.done.length} done</span>
-      </div>
-      ${issuesHtml}
-    </div>
-
-    <!-- Bot + Git -->
-    <div>
-      <div class="section" style="margin-bottom:16px">
-        <div class="sec-title">🤖 Bot Log</div>
-        <div class="logbox">${botLogHtml || '<span style="color:#555;font-size:11px">No log data</span>'}</div>
-        <div style="font-size:10px;color:#8E8E9A;margin-top:6px">${bot.totalLines} total lines · 409 conflicts: ${bot.conflicts}</div>
-      </div>
-      ${git.log.length ? `
-      <div class="section">
-        <div class="sec-title">🗂 Recent Commits <span class="meta">${esc(git.branch)}</span></div>
-        ${gitHtml}
-      </div>` : ''}
-    </div>
-
-  </div>
-
-  <!-- ── Issue Worker + Claude Workers ─────────────────────────── -->
-  <div class="bottom-two" style="margin-top:16px">
-
-    <!-- BabyBloom Issue Worker -->
-    <div class="section">
-      <div class="sec-title">🔧 Issue Worker
-        ${claudeTasks.worker
-          ? (claudeTasks.worker.enabled
-              ? `<span style="background:#E0FFF8;color:#00C9A7;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">● Enabled</span>`
-              : `<span style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">○ Paused</span>`)
-          : ''}
-      </div>
-      ${claudeTasks.worker ? (() => {
-        const w = claudeTasks.worker;
-        const lastRan  = w.lastRunAt  ? new Date(w.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
-        const nextRun  = w.nextRunAt  ? new Date(w.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
-        const minAgo   = w.lastRunAt  ? Math.round((Date.now() - new Date(w.lastRunAt)) / 60000) : null;
-        const healthy  = w.enabled && minAgo !== null && minAgo < 90;
-        return `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${healthy?'#00C9A7':'#FFB347'};animation:pulse 2s infinite"></span>
-          <span style="font-size:13px;font-weight:700;color:#2D2D3A">${w.description}</span>
+    <!-- Run History -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="sec-hd" style="margin-bottom:0">📜 Run History
+          <span class="b-cnt">${runs.length}</span>
+          <span class="b-cnt2">${deploys.length} deploys</span>
+          <span class="b-cnt" style="background:#FFE8EC;color:#FF6B8A">${errors.length} errors</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div style="background:#F8F5F0;border-radius:10px;padding:10px 12px">
-            <div style="font-size:9px;color:#8E8E9A;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Last Run</div>
-            <div style="font-size:12px;font-weight:700;color:#2D2D3A">${esc(lastRan)}</div>
-            ${minAgo !== null ? `<div style="font-size:10px;color:#8E8E9A;margin-top:2px">${minAgo}m ago</div>` : ''}
-          </div>
-          <div style="background:#F8F5F0;border-radius:10px;padding:10px 12px">
-            <div style="font-size:9px;color:#8E8E9A;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Next Run</div>
-            <div style="font-size:12px;font-weight:700;color:#6C63FF">${esc(nextRun)}</div>
-            <div style="font-size:10px;color:#8E8E9A;margin-top:2px">${esc(w.schedule)}</div>
-          </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          ${[['#00C9A7','Deploy'],['#FF6B8A','Error'],['#FFB347','Warn'],['#D0C8C0','Idle']].map(([c,l])=>
+            `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#8E8E9A"><span style="width:7px;height:7px;border-radius:50%;background:${c};display:inline-block"></span>${l}</span>`
+          ).join('')}
+          <code style="font-size:9px;color:#C0B8B0;letter-spacing:.5px">Q Se Ch Sc CI → GH TG</code>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="meta">📋 Pending: ${issues.pending.length}</span>
-          <span class="meta">✅ Done: ${issues.done.length}</span>
-          <span class="meta">⏭️ Skipped: ${issues.skipped.length}</span>
-          <span class="meta">⏱ Jitter: ${w.jitterSeconds}s</span>
-        </div>`;
-      })() : `<div style="color:${COLORS.textLight};font-size:13px;padding:12px 0">No worker data — claude-tasks.json not found</div>`}
+      </div>
+      ${historyHtml || `<div style="color:#8E8E9A;font-size:12px;padding:16px 0;text-align:center">No runs yet</div>`}
     </div>
+
+    <!-- Issue Queue -->
+    <div class="card" style="overflow:hidden">
+      <div class="sec-hd">📋 Issues
+        <span class="b-cnt">${issues.pending.length} pending</span>
+        <span class="b-off" style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">${issues.skipped.length} skip</span>
+        <span class="b-cnt3">${issues.done.length} done</span>
+      </div>
+      <div style="max-height:480px;overflow-y:auto;padding-right:2px">
+        ${issuesHtml}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ CLAUDE WORKERS + BOT LOG ═══ -->
+  <div class="g2 mb16">
 
     <!-- Claude Scheduled Workers -->
-    <div class="section">
-      <div class="sec-title">🤖 Claude Scheduled Workers
-        <span class="cnt2">${claudeTasks.all.length} total</span>
-        <span class="cnt3">${claudeTasks.all.filter(t=>t.enabled).length} active</span>
+    <div class="card">
+      <div class="sec-hd">🤖 Claude Workers
+        <span class="b-cnt2">${claudeTasks.all.length} total</span>
+        <span class="b-cnt3">${claudeTasks.all.filter(t=>t.enabled).length} active</span>
       </div>
       ${claudeTasks.all.length ? claudeTasks.all.map(t => {
-        const isWorker = t.taskId === 'babybloom-issue-worker';
-        const lastRan  = t.lastRunAt ? new Date(t.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
-        const nextRun  = t.nextRunAt ? new Date(t.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
-        return `
-        <div style="border:1.5px solid ${isWorker?'#00C9A7':'#F0EBE3'};border-radius:12px;padding:11px 14px;margin-bottom:8px;background:${isWorker?'#F0FFFB':'#FAFAFA'}">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
-            <div>
-              <span style="font-size:11px;font-weight:700;color:#2D2D3A">${esc(t.taskId)}</span>
-              ${isWorker?'<span style="margin-left:6px;font-size:9px;background:#00C9A722;color:#00A882;padding:1px 6px;border-radius:8px;font-weight:800">THIS APP</span>':''}
+        const isW    = t.taskId === 'babybloom-issue-worker';
+        const tLast  = t.lastRunAt ? new Date(t.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        const tNext  = t.nextRunAt ? new Date(t.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        return `<div class="task-row ${t.enabled?'t-on':''}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px">
+            <div style="display:flex;align-items:center;gap:6px;min-width:0">
+              <span class="dot ${t.enabled?'dot-ok':'dot-warn'}" style="flex-shrink:0"></span>
+              <span style="font-size:11.5px;font-weight:700;color:#2D2D3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.taskId)}</span>
+              ${isW?'<span style="font-size:9px;background:#00C9A722;color:#00A882;padding:1px 6px;border-radius:8px;font-weight:800;flex-shrink:0">THIS APP</span>':''}
             </div>
-            <span style="flex-shrink:0">${t.enabled
-              ? `<span style="background:#E0FFF8;color:#00C9A7;font-size:9px;padding:1px 7px;border-radius:8px;font-weight:800">● ON</span>`
-              : `<span style="background:#F0EBE3;color:#8E8E9A;font-size:9px;padding:1px 7px;border-radius:8px;font-weight:800">○ OFF</span>`}</span>
+            <span class="badge ${t.enabled?'b-ok':'b-off'}" style="flex-shrink:0;font-size:10px;padding:2px 8px">${t.enabled?'ON':'OFF'}</span>
           </div>
-          <div style="font-size:10.5px;color:#8E8E9A;margin-bottom:6px;line-height:1.4">${esc(t.description)}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:#A8A098">
-            <span>🕐 ${esc(t.schedule)}</span>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">
-            <span class="meta">Last: ${esc(lastRan)}</span>
-            ${t.enabled ? `<span class="meta" style="color:#6C63FF">Next: ${esc(nextRun)}</span>` : ''}
+          <div style="font-size:10.5px;color:#8E8E9A;margin-bottom:7px;line-height:1.45">${esc(t.description)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip" style="font-size:10px">🕐 Last: ${esc(tLast)}</span>
+            ${t.enabled?`<span class="chip" style="font-size:10px;color:#6C63FF">Next: ${esc(tNext)}</span>`:''}
           </div>
         </div>`;
-      }).join('') : `<div style="color:${COLORS.textLight};font-size:13px;padding:12px 0">No tasks found</div>`}
-      <div style="font-size:10px;color:#C0B8B0;margin-top:4px;text-align:right">Data from claude-tasks.json · refresh to update</div>
+      }).join('') : `<div style="color:#8E8E9A;font-size:12px;padding:12px 0">No tasks found</div>`}
+      <div style="font-size:10px;color:#C0B8B0;margin-top:8px;text-align:right">claude-tasks.json · auto-updates each worker run</div>
+    </div>
+
+    <!-- Bot Log + Git -->
+    <div>
+      <div class="card mb16">
+        <div class="sec-hd">📟 Bot Log
+          <span class="chip" style="font-size:10px">${bot.totalLines} lines · ${bot.conflicts} conflicts</span>
+        </div>
+        <div class="logbox">
+          ${botLogHtml || '<span style="color:#666;font-size:11px">No log data</span>'}
+        </div>
+      </div>
+      ${git.log.length ? `
+      <div class="card">
+        <div class="sec-hd">🗂 Commits <span class="chip">${esc(git.branch)}</span></div>
+        ${gitHtml}
+      </div>` : ''}
     </div>
 
   </div>
@@ -838,23 +975,21 @@ function render() {
     warn:    {border:'#FFB347', bg:'#FFF3E0', badge:'⚠️'},
     running: {border:'#6C63FF', bg:'#E8E6FF', badge:'⏳'},
   };
-  const CONNECTOR_HTML = '<div class="stage-connector"><div class="stage-connector-line"></div></div>';
+  const CONNECTOR_HTML = '<div class="stage-conn"><div class="stage-conn-ln"></div></div>';
 
   function escHtml(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function renderStageCard(st) {
-    const sty  = STAGE_STYLE_JS[st.status] || STAGE_STYLE_JS.skip;
+    const sty   = STAGE_STYLE_JS[st.status] || STAGE_STYLE_JS.skip;
     const muted = st.status === 'skip';
     const spin  = st.status === 'running' ? 'animation:runpulse 1.5s infinite' : '';
-    return '<div class="stage-card" style="border:2px solid '+sty.border+';background:'+sty.bg+';opacity:'+(muted?.5:1)+';'+spin+'">'
-      + '<div style="width:30px;height:30px;border-radius:9px;background:'+sty.border+'22;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:6px;flex-shrink:0">' + st.icon + '</div>'
-      + '<div style="font-size:9.5px;font-weight:800;color:'+(muted?'#B0A898':'#2D2D3A')+';letter-spacing:.1px;text-align:center;line-height:1.3;margin-bottom:3px">' + escHtml(st.label) + '</div>'
-      + (st.desc
-          ? '<div style="font-size:8.5px;color:'+(muted?'#C8C0B8':'#8E8E9A')+';text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">' + escHtml(st.desc) + '</div>'
-          : '<div style="height:11px"></div>')
-      + '<div style="margin-top:6px;font-size:13px;line-height:1">' + sty.badge + '</div>'
+    return '<div class="stage-card" style="border-color:'+sty.border+';background:'+sty.bg+';opacity:'+(muted?.5:1)+';'+spin+'">'
+      + '<div class="stage-ico" style="background:'+sty.border+'22">' + st.icon + '</div>'
+      + '<div class="stage-lbl" style="color:'+(muted?'#B0A898':'#2D2D3A')+'">' + escHtml(st.label) + '</div>'
+      + '<div class="stage-desc">' + (st.desc ? escHtml(st.desc) : '') + '</div>'
+      + '<div class="stage-bge">' + sty.badge + '</div>'
       + '</div>';
   }
 
