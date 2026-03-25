@@ -418,16 +418,21 @@ function render() {
   }
 
   // ── Run history: compact rows with mini stage dots ────────────
-  // When a pipeline is actively running, runs[0] is still the LAST COMPLETED run
-  // (the current in-progress run has no log header yet), so start history from 0.
-  // When idle, runs[0] is shown in Latest Run above, so start from 1.
-  const historyStartIdx = pipelineRunning ? 0 : 1;
-  const historyHtml = runs.slice(historyStartIdx, 35).map(run => {
+  // Always include runs[0] — Latest Run is a featured view of the same data,
+  // not a reason to exclude it from history.
+  const historyHtml = runs.slice(0, 36).map(run => {
     const stages   = parseStages(run);
     const dots     = stages.map(s => stageCard(s,'mini')).join('<span style="width:6px;height:1.5px;background:#E0D8D0;display:inline-block;vertical-align:middle;flex-shrink:0"></span>');
     const isError  = run.status === 'error';
     const isDeploy = !!run.sha;
+    const isPushOnly = isDeploy && run.files.length === 0; // unpushed-commits path, no staged files
     const tsShort  = run.ts.replace(/ PDT.*$/,'').replace(/^\w+ /,''); // "Mar 24 20:44:06"
+    // Label: show staged files if present; for push-only runs show nothing extra (sha already shown);
+    // for true idle runs (no sha, no error) show "no changes"
+    const label = run.files.length  ? '📦 ' + run.files.map(esc).join(', ')
+                : isError           ? (run.errors[0]||'error').slice(0,60)
+                : isPushOnly        ? ''
+                : 'no changes';
     return `
       <div class="hist-row ${isDeploy?'is-deploy':''} ${isError?'is-error':''}">
         <span style="font-size:10px;color:#A8A098;font-family:monospace;white-space:nowrap">${esc(tsShort)}</span>
@@ -435,7 +440,7 @@ function render() {
         <div style="display:flex;align-items:center;gap:6px;overflow:hidden;min-width:0">
           ${isDeploy ? `<code style="background:#E8E6FF;color:#6C63FF;padding:1px 6px;border-radius:5px;font-size:10px;flex-shrink:0">${run.sha}</code>` : ''}
           <span style="font-size:10px;color:${isDeploy?'#6C63FF':isError?'#FF6B8A':'#C0B8B0'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${run.files.length ? '📦 '+run.files.map(esc).join(', ') : isError ? (run.errors[0]||'error').slice(0,60) : 'nothing to push'}
+            ${label}
           </span>
         </div>
       </div>`;
