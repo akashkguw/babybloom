@@ -144,8 +144,8 @@ export default function HomeTab({
     // After warningStart hours → amber tint; after dangerStart hours → red tint
     const babyAgeMonths = Math.floor(age);
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
-      'Nurse L': { cat: 'feed', types: ['Breast L'], warnH: 5, dangerH: 8, warnMsg: 'Left side not nursed in over {h}h', dangerMsg: 'Left side not nursed in over {h}h — might be time for a feed', neverMsg: 'No left side nursing logged yet' },
-      'Nurse R': { cat: 'feed', types: ['Breast R'], warnH: 5, dangerH: 8, warnMsg: 'Right side not nursed in over {h}h', dangerMsg: 'Right side not nursed in over {h}h — might be time for a feed', neverMsg: 'No right side nursing logged yet' },
+      'Nurse Left': { cat: 'feed', types: ['Breast L'], warnH: 5, dangerH: 8, warnMsg: 'Left side not nursed in over {h}h', dangerMsg: 'Left side not nursed in over {h}h — might be time for a feed', neverMsg: 'No left side nursing logged yet' },
+      'Nurse Right': { cat: 'feed', types: ['Breast R'], warnH: 5, dangerH: 8, warnMsg: 'Right side not nursed in over {h}h', dangerMsg: 'Right side not nursed in over {h}h — might be time for a feed', neverMsg: 'No right side nursing logged yet' },
       // Tummy time warnings: skip for newborns < 1 month (warning fires immediately when never logged, causing alarm for brand-new parents)
       ...(babyAgeMonths >= 1 && babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — good time for some tummy play', neverMsg: 'No tummy time logged yet' } } : {}),
       'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 12, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — keep an eye on hydration', neverMsg: 'No wet diapers logged yet' },
@@ -156,7 +156,7 @@ export default function HomeTab({
     const nowMs = Date.now();
     for (const [label, cfg] of Object.entries(thresholds)) {
       // Suppress feed warnings when baby is sleeping
-      if (isSleeping && (label === 'Nurse L' || label === 'Nurse R' || label === 'Solids')) {
+      if (isSleeping && (label === 'Nurse Left' || label === 'Nurse Right' || label === 'Solids')) {
         warnings[label] = null;
         continue;
       }
@@ -215,8 +215,8 @@ export default function HomeTab({
 
   // Category info for long-press panels
   const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; hasTimer: boolean }> = {
-    'Nurse L': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
-    'Nurse R': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
+    'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
+    'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
     'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], hasTimer: false },
     'Wet': { cat: 'diaper', types: ['Wet'], tips: ['6+ wet diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 wet diapers may signal dehydration'], hasTimer: false },
     'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'], hasTimer: false },
@@ -1159,8 +1159,8 @@ export default function HomeTab({
 
           // Age-adaptive quick log items
           // Shared item definitions
-          const qlBreastL = { e: '🤱', l: 'Nurse L', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
-          const qlBreastR = { e: '🤱', l: 'Nurse R', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
+          const qlBreastL = { e: '🤱', l: 'Nurse Left', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
+          const qlBreastR = { e: '🤱', l: 'Nurse Right', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Formula' };
           const qlPumped  = { e: '🍼', l: 'Pumped', fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk' };
           const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };

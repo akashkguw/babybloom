@@ -16,8 +16,8 @@ export default function SiriShortcutsSetup({ volumeUnit }: SiriShortcutsSetupPro
   const baseUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
 
   const shortcuts = [
-    { name: 'Baby Nurse L', icon: '🤱', param: 'quick=breast_l', desc: 'Log left side nursing' },
-    { name: 'Baby Nurse R', icon: '🤱', param: 'quick=breast_r', desc: 'Log right side nursing' },
+    { name: 'Baby Nurse Left', icon: '🤱', param: 'quick=breast_l', desc: 'Log left side nursing' },
+    { name: 'Baby Nurse Right', icon: '🤱', param: 'quick=breast_r', desc: 'Log right side nursing' },
     { name: 'Baby Formula', icon: '🍼', param: 'quick=bottle_4', desc: `Log formula feed (${fmtVol(4, volumeUnit)})` },
     { name: 'Baby Pumped', icon: '🍼', param: 'quick=pumped', desc: 'Log pumped milk bottle' },
     { name: 'Baby Wet', icon: '💧', param: 'quick=wet', desc: 'Log wet diaper' },
@@ -94,7 +94,7 @@ export default function SiriShortcutsSetup({ volumeUnit }: SiriShortcutsSetupPro
             6. Tap <strong>Done</strong> — it's now on your Shortcuts page!
             <br />
             <br />
-            Say <strong>"Hey Siri, Baby Nurse L"</strong> to use it hands-free.
+            Say <strong>"Hey Siri, Baby Nurse Left"</strong> to use it hands-free.
           </div>
 
           <div style={{ fontSize: 12, fontWeight: 700, color: C.s, marginBottom: 8 }}>Available shortcuts:</div>

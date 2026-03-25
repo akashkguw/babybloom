@@ -111,8 +111,8 @@ export default function TimerView({
 
   const ttGoal = age < 3 ? 15 : age < 6 ? 30 : 45;
   const types = [
-    { type: 'Breast L', label: 'Nurse L' },
-    { type: 'Breast R', label: 'Nurse R' },
+    { type: 'Breast L', label: 'Nurse Left' },
+    { type: 'Breast R', label: 'Nurse Right' },
     { type: 'Formula', label: 'Formula' },
     { type: 'Pumped Milk', label: 'Pumped' },
     { type: 'Sleep', label: 'Sleep' },

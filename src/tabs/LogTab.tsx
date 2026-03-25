@@ -816,8 +816,8 @@ const LogTab: React.FC<LogTabProps> = ({
                   </label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {([
-                      { type: 'Breast L', label: 'Nurse L' },
-                      { type: 'Breast R', label: 'Nurse R' },
+                      { type: 'Breast L', label: 'Nurse Left' },
+                      { type: 'Breast R', label: 'Nurse Right' },
                       { type: 'Formula', label: 'Formula' },
                       { type: 'Pumped Milk', label: 'Pumped' },
                       { type: 'Solids', label: 'Solids' },
