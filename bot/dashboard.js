@@ -363,8 +363,31 @@ function render() {
   const pSt          = STATUS_MAP[pStatus] || STATUS_MAP.idle;
 
   // ── Latest run: full visual pipeline ─────────────────────────
+  // If a pipeline is actively running, use live data for the initial render so
+  // the page never shows stale stage cards — JS polling then keeps it updating.
   let latestPipelineHtml = `<div style="color:${COLORS.textLight};font-size:13px;text-align:center;padding:24px">No runs yet</div>`;
-  if (lastRun) {
+  let latestRunLabel  = '🔄 Latest Run';
+  let latestRunBadge  = lastRun ? badge(lastRun.status) : '';
+  let latestRunTs     = lastRun ? esc(lastRun.ts) : '';
+  let latestLogStrip  = '';
+
+  if (pipelineRunning) {
+    const live = parseLiveRun();
+    latestRunLabel = '⏳ Running Now';
+    latestRunBadge = `<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>`;
+    latestRunTs    = pipelineStarted ? new Date(pipelineStarted).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+    latestPipelineHtml = `<div class="pipeline-flow">${live.stages.map((s,i) => stageCard(s,'full') + (i < live.stages.length-1 ? STAGE_CONNECTOR : '')).join('')}</div>`;
+    if (live.recentLines.length) {
+      latestLogStrip = `<div style="margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${
+        live.recentLines.map(l => {
+          const c = l.includes('❌')||l.includes('error')||l.includes('fatal') ? '#CC3355'
+                  : l.includes('✅')||l.includes('complete')||l.includes('🎉') ? '#007A60'
+                  : l.includes('⏳')||l.includes('Waiting') ? '#996600' : '#4A4470';
+          return `<div style="color:${c}">${esc(l)}</div>`;
+        }).join('')
+      }</div>`;
+    }
+  } else if (lastRun) {
     const stages = parseStages(lastRun);
     latestPipelineHtml = `
       <div class="pipeline-flow">
@@ -376,7 +399,11 @@ function render() {
   }
 
   // ── Run history: compact rows with mini stage dots ────────────
-  const historyHtml = runs.slice(1, 35).map(run => {
+  // When a pipeline is actively running, runs[0] is still the LAST COMPLETED run
+  // (the current in-progress run has no log header yet), so start history from 0.
+  // When idle, runs[0] is shown in Latest Run above, so start from 1.
+  const historyStartIdx = pipelineRunning ? 0 : 1;
+  const historyHtml = runs.slice(historyStartIdx, 35).map(run => {
     const stages   = parseStages(run);
     const dots     = stages.map(s => stageCard(s,'mini')).join('<span style="width:6px;height:1.5px;background:#E0D8D0;display:inline-block;vertical-align:middle;flex-shrink:0"></span>');
     const isError  = run.status === 'error';
@@ -586,13 +613,13 @@ function render() {
   <div class="section" id="latest-run-wrap" style="margin-bottom:16px">
     <div class="sec-title" id="latest-run-title" style="justify-content:space-between;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px">
-        <span id="latest-run-label">🔄 Latest Run</span>
-        <span id="latest-run-badge">${lastRun ? badge(lastRun.status) : ''}</span>
-        ${lastRun ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${esc(lastRun.ts)}</span>` : ''}
+        <span id="latest-run-label">${latestRunLabel}</span>
+        <span id="latest-run-badge">${latestRunBadge}</span>
+        ${latestRunTs ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${latestRunTs}</span>` : ''}
       </div>
     </div>
     <div id="live-pipeline-flow">${latestPipelineHtml}</div>
-    <div id="live-log-strip" style="display:none;margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470"></div>
+    <div id="live-log-strip" style="${pipelineRunning && latestLogStrip ? '' : 'display:none;'}margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${latestLogStrip}</div>
   </div>
 
   <!-- ── Run History: full-width compact list ───────────────── -->
