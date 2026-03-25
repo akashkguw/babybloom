@@ -204,9 +204,26 @@ export default function HomeTab({
     types: string[];
     history: LogEntry[];
     tips: string[];
-    hasTimer: boolean;
+    settingKey?: string; // key for default-value setting (e.g. 'Formula', 'Pumped')
   }
   const [qlInfoPanel, setQlInfoPanel] = useState<QlInfoPanel | null>(null);
+
+  // ─── Quick-log default amounts (persisted in IndexedDB) ───
+  const [qlDefaults, setQlDefaults] = useState<Record<string, number>>({});
+  useEffect(() => {
+    dg('ql_defaults').then((saved: Record<string, number> | null) => {
+      if (saved) setQlDefaults(saved);
+    });
+  }, []);
+  const saveQlDefault = useCallback((key: string, val: number | null) => {
+    setQlDefaults((prev) => {
+      const next = { ...prev };
+      if (val === null) delete next[key];
+      else next[key] = val;
+      ds('ql_defaults', next);
+      return next;
+    });
+  }, []);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const clearLongPress = useCallback(() => {
@@ -214,17 +231,17 @@ export default function HomeTab({
   }, []);
 
   // Category info for long-press panels
-  const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; hasTimer: boolean }> = {
-    'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
-    'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
-    'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], hasTimer: false },
-    'Wet': { cat: 'diaper', types: ['Wet'], tips: ['6+ wet diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 wet diapers may signal dehydration'], hasTimer: false },
-    'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'], hasTimer: false },
-    'Sleep': { cat: 'sleep', types: ['Nap', 'Night Sleep'], tips: ['Newborns sleep 14-17 hours total per day', 'Always place on back for safe sleep', 'Consistent routine helps establish patterns'], hasTimer: false },
-    'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'], hasTimer: false },
-    'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'], hasTimer: true },
-    'Solids': { cat: 'feed', types: ['Solids'], tips: ['Introduce one new food every 3-5 days', 'Watch for allergic reactions after new foods', 'Let baby set the pace — never force feed'], hasTimer: false },
-    'Pumped': { cat: 'feed', types: ['Pumped'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], hasTimer: false },
+  const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; settingKey?: string }> = {
+    'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
+    'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
+    'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], settingKey: 'Formula' },
+    'Wet': { cat: 'diaper', types: ['Wet'], tips: ['6+ wet diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 wet diapers may signal dehydration'] },
+    'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'] },
+    'Sleep': { cat: 'sleep', types: ['Nap', 'Night Sleep'], tips: ['Newborns sleep 14-17 hours total per day', 'Always place on back for safe sleep', 'Consistent routine helps establish patterns'] },
+    'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'] },
+    'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'] },
+    'Solids': { cat: 'feed', types: ['Solids'], tips: ['Introduce one new food every 3-5 days', 'Watch for allergic reactions after new foods', 'Let baby set the pace — never force feed'] },
+    'Pumped': { cat: 'feed', types: ['Pumped'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], settingKey: 'Pumped' },
   };
 
   const startLongPress = useCallback((label: string, emoji: string) => {
@@ -248,7 +265,7 @@ export default function HomeTab({
         types: info.types,
         history,
         tips: info.tips,
-        hasTimer: info.hasTimer,
+        settingKey: info.settingKey,
       });
     }, 400);
   }, [clearLongPress, quickLogWarnings, logs, qlCategoryInfo]);
@@ -1153,7 +1170,7 @@ export default function HomeTab({
             companionItems.push(
               { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet') },
               { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty') },
-              { e: '🍼', l: 'Formula', fn: () => { setQuickFeedType('Formula'); setSliderVal(presets[0]); } },
+              { e: '🍼', l: 'Formula', fn: () => { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } },
             );
           }
 
@@ -1161,9 +1178,9 @@ export default function HomeTab({
           // Shared item definitions
           const qlBreastL = { e: '🤱', l: 'Nurse Left', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
           const qlBreastR = { e: '🤱', l: 'Nurse Right', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
-          const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Formula' };
-          const qlPumped  = { e: '🍼', l: 'Pumped', fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk' };
-          const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
+          const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Formula'], qType: 'Formula' };
+          const qlPumped  = { e: '🍼', l: 'Pumped', fn: () => { if (!feedTimer) { const def = qlDefaults['Pumped']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Pumped'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Pumped'], qType: 'Pumped Milk' };
+          const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false };
           const qlWet     = { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false };
           const qlDirty   = { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false };
           const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: false, highlight: isSleeping, needsQty: false };
@@ -1418,23 +1435,54 @@ export default function HomeTab({
                     ))}
                   </div>
 
-                  {/* Timer button (tummy time) */}
-                  {qlInfoPanel.hasTimer && (
-                    <div
-                      onClick={() => { setQlInfoPanel(null); }}
-                      style={{
-                        padding: '8px 10px', borderRadius: 10, marginBottom: 10,
-                        background: C.al, border: '1px solid ' + C.a + '40',
-                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ fontSize: 14 }}>⏱️</span>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.a }}>Start tummy time timer</div>
-                        <div style={{ fontSize: 9, color: C.tl }}>Track duration with a tap</div>
+                  {/* Default amount setting (Formula / Pumped) */}
+                  {qlInfoPanel.settingKey && (() => {
+                    const sk = qlInfoPanel.settingKey!;
+                    const isMl2 = volumeUnit === 'ml';
+                    const presets2 = isMl2 ? [30, 60, 90, 120, 150, 180] : [1, 2, 3, 4, 5, 6];
+                    const unit2 = volLabel(volumeUnit);
+                    const current = qlDefaults[sk];
+                    return (
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                          Default amount {current ? `· ${current} ${unit2}` : '· not set'}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.tl, marginBottom: 6, lineHeight: 1.3 }}>
+                          Set a default so each tap logs instantly
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {presets2.map((v) => (
+                            <div
+                              key={v}
+                              onClick={() => { saveQlDefault(sk, v); }}
+                              style={{
+                                padding: '5px 8px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                                cursor: 'pointer', userSelect: 'none',
+                                background: current === v ? C.s + '20' : C.bg,
+                                color: current === v ? C.s : C.tl,
+                                border: '1px solid ' + (current === v ? C.s + '40' : C.b),
+                              }}
+                            >
+                              {v} {unit2}
+                            </div>
+                          ))}
+                          {current && (
+                            <div
+                              onClick={() => { saveQlDefault(sk, null); }}
+                              style={{
+                                padding: '5px 8px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                                cursor: 'pointer', userSelect: 'none',
+                                background: 'rgba(220,38,38,0.06)', color: '#dc2626',
+                                border: '1px solid rgba(220,38,38,0.2)',
+                              }}
+                            >
+                              Clear
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Recent history */}
                   <div>
@@ -1475,7 +1523,7 @@ export default function HomeTab({
                         onTouchStart={() => startLongPress(q.l, q.e)}
                         onTouchEnd={() => { clearLongPress(); }}
                         onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
-                        onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, hasTimer: info.hasTimer }); } }}
+                        onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, settingKey: info.settingKey }); } }}
                         style={{
                           textAlign: 'center',
                           padding: '8px 2px',
