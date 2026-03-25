@@ -86,15 +86,9 @@ export default function useDynamicRedFlags(
             });
           }
         }
-      } else if (birth) {
-        // No feeds logged at all
-        flags.push({
-          id: 'feed-gap',
-          emoji: '🍼',
-          text: 'No feeds logged yet — track feeds to monitor intake',
-          severity: 'critical',
-        });
       }
+      // When no feeds are logged at all, stay quiet — warnings will
+      // kick in naturally once the user starts tracking.
     }
 
     // ── 2. Low wet diaper count (dehydration risk) ──

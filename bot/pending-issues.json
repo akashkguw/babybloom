@@ -135,9 +135,21 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/88",
     "created_at": "2026-03-25T22:42:47Z",
-    "status": "triaged",
+    "status": "infra_implemented",
     "route": "infrastructure",
     "enhanced_description": "Deploy pipeline (deploy.sh) detected a CI failure and auto-filed this issue to block deployment.\nThe issue body references bot/ci.log for details, but the code block is empty and no ci.log file exists in the repo.\nThe affected area is the CI/deploy infrastructure (deploy.sh, pipeline.sh, and related scripts).\nExpected behavior: CI passes and deploy proceeds. Current behavior: CI failed and deploy was blocked.\nAcceptance criteria: Investigate the CI failure root cause, fix failing tests or build issues, and ensure deploy can proceed. If ci.log is missing, check deploy.sh for how it runs CI and reproduce the failure.",
     "implementation_notes": "Fixed ci.log not being created when CI runs, causing deploy-failure GitHub issues to be filed with empty error details.\n\n- Files changed: bot/deploy.sh (piped ci.sh output through tee to bot/ci.log so failures are captured), bot/.gitignore (added ci.log to prevent it from being committed)\n- Root cause: deploy.sh ran ci.sh and on failure tried to read bot/ci.log for a summary, but ci.sh only wrote to stdout/stderr \u2014 ci.log was never created\n- Fix: Changed ci.sh invocation from direct execution to piping through tee, and used PIPESTATUS to preserve the exit code\n- Testing: deploy.sh passes bash -n syntax check\n- No manual steps needed \u2014 next deploy will automatically capture CI output to ci.log"
+  },
+  {
+    "number": 89,
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/89",
+    "created_at": "2026-03-25T23:44:30Z",
+    "status": "pending"
   }
 ]

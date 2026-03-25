@@ -82,14 +82,9 @@ function computeRedFlags(
           });
         }
       }
-    } else if (birth) {
-      flags.push({
-        id: 'feed-gap',
-        emoji: '🍼',
-        text: 'No feeds logged yet — track feeds to monitor intake',
-        severity: 'critical',
-      });
     }
+    // When no feeds are logged at all, stay quiet — warnings will
+    // kick in naturally once the user starts tracking.
   }
 
   // 2. Low wet diaper count
@@ -271,12 +266,11 @@ describe('dynamic red flags', () => {
       expect(flags.find((f) => f.id === 'feed-gap')).toBeUndefined();
     });
 
-    it('critical when no feeds logged at all', () => {
+    it('no flag when no feeds logged at all (clean start)', () => {
       vi.setSystemTime(new Date(2025, 2, 15, 10, 0));
       const flags = computeRedFlags({ feed: [] }, 1, '2025-02-01');
       const fg = flags.find((f) => f.id === 'feed-gap');
-      expect(fg).toBeDefined();
-      expect(fg!.severity).toBe('critical');
+      expect(fg).toBeUndefined();
     });
 
     it('no feed gap flag when recently fed', () => {

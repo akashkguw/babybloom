@@ -182,8 +182,8 @@ export default function HomeTab({
         }
       }
       if (lastMs === 0) {
-        // No log ever — show danger if birth exists (baby needs care)
-        warnings[label] = birth ? { level: 'danger', reason: cfg.neverMsg } : null;
+        // No log ever — start clean; warnings kick in once tracking begins
+        warnings[label] = null;
       } else {
         const hoursAgo = (nowMs - lastMs) / 3600000;
         const hStr = hoursAgo < 1 ? Math.round(hoursAgo * 60) + 'm' : Math.round(hoursAgo) + '';
