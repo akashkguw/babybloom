@@ -111,7 +111,8 @@ export default function HomeTab({
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
       'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6, warnMsg: 'Left breast not fed in over {h}h', dangerMsg: 'Left breast not fed in over {h}h — feed soon', neverMsg: 'No left breast feeds logged yet' },
       'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6, warnMsg: 'Right breast not fed in over {h}h', dangerMsg: 'Right breast not fed in over {h}h — feed soon', neverMsg: 'No right breast feeds logged yet' },
-      ...(babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' } } : {}),
+      // Tummy time warnings: skip for newborns < 1 month (warning fires immediately when never logged, causing alarm for brand-new parents)
+      ...(babyAgeMonths >= 1 && babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' } } : {}),
       'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — check hydration', neverMsg: 'No wet diapers logged yet' },
       'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — monitor closely', neverMsg: 'No dirty diapers logged yet' },
       ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 8, dangerH: 12, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — try a meal or snack', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
@@ -374,7 +375,14 @@ export default function HomeTab({
       parseInt(tp[1])
     );
     const diffMin = (Date.now() - lastTime.getTime()) / 60000;
-    if (diffMin <= 30 && (!type || last.type === type)) return last;
+    if (diffMin <= 30) {
+      if (!type || last.type === type) return last;
+      // Allow merging between breast sides (Breast L ↔ Breast R) only
+      const isMergeableBreast =
+        (type === 'Breast L' || type === 'Breast R') &&
+        (last.type === 'Breast L' || last.type === 'Breast R');
+      if (isMergeableBreast) return last;
+    }
     return null;
   }
 
@@ -419,9 +427,9 @@ export default function HomeTab({
     const isTummy = feedTimer.type === 'Tummy Time';
 
     if (!isTummy) {
-      const recent = getRecentFeed(null);
+      const recent = getRecentFeed(feedTimer.type);
       if (recent) {
-        // Auto-merge into previous feed silently
+        // Auto-merge into previous feed silently (only merges same-type or breast L↔R)
         mergeIntoLastFeed(minsInt, feedTimer.type);
         setFeedTimerApp(null);
         return;

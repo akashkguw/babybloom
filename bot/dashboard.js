@@ -138,6 +138,55 @@ function parseSentry() {
   return { tracked: keys.length, maxSeq };
 }
 
+// ─── Live Run Parser (manual trigger in progress) ──────────────
+function parseLiveRun() {
+  const LOG_FILE = path.join(BOT_DIR, 'pipeline.log');
+  const events   = [];
+  try {
+    const stat = fs.statSync(LOG_FILE);
+    const from = Math.min(pipelineLogOffset, stat.size);
+    if (stat.size > from) {
+      const len = stat.size - from;
+      const buf = Buffer.alloc(len);
+      const fd  = fs.openSync(LOG_FILE, 'r');
+      fs.readSync(fd, buf, 0, len, from);
+      fs.closeSync(fd);
+      events.push(...buf.toString('utf8').split('\n').filter(Boolean));
+    }
+  } catch {}
+
+  const e    = events.join('\n');
+  const run  = { events, sha: null, files: [], closed: [], ciResult: null, sentry: 'unknown', errors: [], status: 'deploying' };
+  let m;
+  if ((m = e.match(/(?:Pushed|Push successful)[:= ]*([a-f0-9]{7,})/i))) run.sha = m[1];
+  if ((m = e.match(/\[main ([a-f0-9]{7,})\]/)))                         run.sha = m[1];
+  if ((m = e.match(/Staged: (.+)/)))      run.files.push(...m[1].split(',').map(f => f.trim()));
+  if (e.includes('GitHub Actions completed: success')) { run.ciResult = 'success'; run.status = 'success'; }
+  if (e.includes('GitHub Actions completed: failure')) { run.ciResult = 'failure'; run.status = 'error';   }
+  const errLine = events.find(l => l.includes('❌') || l.toLowerCase().includes('fatal:'));
+  if (errLine) run.errors.push(errLine);
+
+  const stages = parseStages(run);
+
+  // If still running: mark the first not-yet-resolved stage as 'running'
+  if (pipelineRunning) {
+    let lastDone = -1;
+    for (let i = 0; i < stages.length; i++) {
+      if (['pass','fail','warn'].includes(stages[i].status)) lastDone = i;
+    }
+    for (let i = lastDone + 1; i < stages.length; i++) {
+      if (stages[i].status !== 'skip') { stages[i].status = 'running'; break; }
+    }
+  }
+
+  return {
+    stages,
+    recentLines: events.slice(-6),
+    running: pipelineRunning,
+    pid:     pipelinePid,
+  };
+}
+
 // ─── Git Stats ──────────────────────────────────────────────────
 function getGitInfo() {
   try {
@@ -471,21 +520,10 @@ function render() {
   <div class="hdr-right">
     <span class="countdown" id="cd"></span>
     <button class="rbtn" onclick="location.reload()">↻ Refresh</button>
-    <button class="rbtn run-btn" id="runBtn" onclick="runPipeline()" style="background:rgba(255,255,255,0.92);color:#FF6B8A;font-weight:800">▶ Run Pipeline</button>
+    <button class="rbtn" id="runBtn" onclick="runPipeline()" style="background:rgba(255,255,255,0.92);color:#FF6B8A;font-weight:800;border:none;min-width:120px">▶ Run Pipeline</button>
   </div>
 </div>
 
-<!-- Live console drawer (hidden by default) -->
-<div id="consoleDrawer" style="display:none;background:#1A1A2E;border-bottom:2px solid #6C63FF;padding:0">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #2A2A3E">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span id="consoleStatus" style="font-size:13px;color:#00C9A7;font-weight:700">● Pipeline running…</span>
-      <span id="consolePid" style="font-size:11px;color:#666;font-family:monospace"></span>
-    </div>
-    <button onclick="toggleConsole()" style="background:none;border:none;color:#666;cursor:pointer;font-size:18px;padding:0 4px">✕</button>
-  </div>
-  <div id="consoleLog" style="height:220px;overflow-y:auto;padding:12px 20px;font-family:'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.6"></div>
-</div>
 
 <div class="wrap">
 
@@ -544,15 +582,16 @@ function render() {
   </div>
 
   <!-- ── Latest Run: full-width visual pipeline ────────────── -->
-  <div class="section" style="margin-bottom:16px">
-    <div class="sec-title" style="justify-content:space-between;margin-bottom:16px">
+  <div class="section" id="latest-run-wrap" style="margin-bottom:16px">
+    <div class="sec-title" id="latest-run-title" style="justify-content:space-between;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px">
-        <span>🔄 Latest Run</span>
-        ${lastRun ? badge(lastRun.status) : ''}
+        <span id="latest-run-label">🔄 Latest Run</span>
+        <span id="latest-run-badge">${lastRun ? badge(lastRun.status) : ''}</span>
         ${lastRun ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${esc(lastRun.ts)}</span>` : ''}
       </div>
     </div>
-    ${latestPipelineHtml}
+    <div id="live-pipeline-flow">${latestPipelineHtml}</div>
+    <div id="live-log-strip" style="display:none;margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470"></div>
   </div>
 
   <!-- ── Run History: full-width compact list ───────────────── -->
@@ -602,134 +641,181 @@ function render() {
 </div><!-- /wrap -->
 
 <script>
-  // ── Auto-refresh countdown ──────────────────────────────────
-  let t = 60;
+  // ── Auto-refresh countdown (paused while pipeline runs) ──────
+  let autoRefreshT = 60;
   const cdEl = document.getElementById('cd');
-  setInterval(() => {
-    t--;
-    if (t <= 15) cdEl.textContent = 'Auto-refresh in ' + t + 's';
-    if (t <= 0) location.reload();
+  const autoRefreshTimer = setInterval(() => {
+    if (pipelineActive) { autoRefreshT = 60; cdEl.textContent = ''; return; }
+    autoRefreshT--;
+    if (autoRefreshT <= 15) cdEl.textContent = 'Refresh in ' + autoRefreshT + 's';
+    if (autoRefreshT <= 0) location.reload();
   }, 1000);
 
-  // ── Console state ───────────────────────────────────────────
-  let consoleOpen   = false;
-  let sseSource     = null;
+  // ── State ────────────────────────────────────────────────────
   let pipelineActive = ${pipelineRunning};
+  let livePoller     = null;
 
-  function toggleConsole() {
-    const drawer = document.getElementById('consoleDrawer');
-    consoleOpen = !consoleOpen;
-    drawer.style.display = consoleOpen ? 'block' : 'none';
+  // ── Client-side stage card renderer ─────────────────────────
+  const STAGE_DEFS_JS = [
+    {id:'queue',   label:'Queue Sync',  icon:'📋'},
+    {id:'sentry',  label:'Sentry',      icon:'🛡️'},
+    {id:'changes', label:'Changes',     icon:'🔍'},
+    {id:'scan',    label:'Secret Scan', icon:'🔒'},
+    {id:'ci',      label:'Local CI',    icon:'🧪'},
+    {id:'push',    label:'Git Push',    icon:'🚀'},
+    {id:'actions', label:'GH Actions',  icon:'⚙️'},
+    {id:'notify',  label:'Telegram',    icon:'📱'},
+  ];
+  const STAGE_STYLE_JS = {
+    pass:    {border:'#00C9A7', bg:'#E0FFF8', badge:'✅'},
+    fail:    {border:'#FF6B8A', bg:'#FFE8EC', badge:'❌'},
+    skip:    {border:'#E8E4DE', bg:'#FAFAF8', badge:'·'},
+    warn:    {border:'#FFB347', bg:'#FFF3E0', badge:'⚠️'},
+    running: {border:'#6C63FF', bg:'#E8E6FF', badge:'⏳'},
+  };
+  const CONNECTOR_HTML = '<div class="stage-connector"><div class="stage-connector-line"></div></div>';
+
+  function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  function colorLine(line) {
-    if (line.includes('❌') || line.includes('error') || line.includes('failed') || line.includes('fatal'))
-      return '#FF6B8A';
-    if (line.includes('✅') || line.includes('success') || line.includes('complete') || line.includes('🎉'))
-      return '#00C9A7';
-    if (line.includes('⏳') || line.includes('Waiting') || line.includes('🔄') || line.includes('📦'))
-      return '#FFB347';
-    if (line.includes('🔍') || line.includes('🧪') || line.includes('Sentry'))
-      return '#6C63FF';
-    return '#C0C0D0';
+  function renderStageCard(st) {
+    const sty  = STAGE_STYLE_JS[st.status] || STAGE_STYLE_JS.skip;
+    const muted = st.status === 'skip';
+    const spin  = st.status === 'running' ? 'animation:runpulse 1.5s infinite' : '';
+    return '<div class="stage-card" style="border:2px solid '+sty.border+';background:'+sty.bg+';opacity:'+(muted?.5:1)+';'+spin+'">'
+      + '<div style="width:30px;height:30px;border-radius:9px;background:'+sty.border+'22;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:6px;flex-shrink:0">' + st.icon + '</div>'
+      + '<div style="font-size:9.5px;font-weight:800;color:'+(muted?'#B0A898':'#2D2D3A')+';letter-spacing:.1px;text-align:center;line-height:1.3;margin-bottom:3px">' + escHtml(st.label) + '</div>'
+      + (st.desc
+          ? '<div style="font-size:8.5px;color:'+(muted?'#C8C0B8':'#8E8E9A')+';text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">' + escHtml(st.desc) + '</div>'
+          : '<div style="height:11px"></div>')
+      + '<div style="margin-top:6px;font-size:13px;line-height:1">' + sty.badge + '</div>'
+      + '</div>';
   }
 
-  function appendLog(text) {
-    const box = document.getElementById('consoleLog');
-    const div = document.createElement('div');
-    div.style.color = colorLine(text);
-    div.style.padding = '1px 0';
-    div.textContent = text;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
+  function renderFlow(stages) {
+    return '<div class="pipeline-flow">'
+      + stages.map((s,i) => renderStageCard(s) + (i < stages.length-1 ? CONNECTOR_HTML : '')).join('')
+      + '</div>';
   }
 
-  function startSSE(fromOffset) {
-    if (sseSource) sseSource.close();
-    const url = '/api/log-stream' + (fromOffset != null ? '?from=' + fromOffset : '');
-    sseSource = new EventSource(url);
-    sseSource.onmessage = (e) => {
-      const raw = JSON.parse(e.data);
-      // Separator marker — render a visual divider
-      if (raw === '__sep__') {
-        const box = document.getElementById('consoleLog');
-        const div = document.createElement('div');
-        div.style.cssText = 'border-top:1px solid #333;margin:6px 0;padding-top:6px;color:#555;font-size:10px;letter-spacing:.5px';
-        div.textContent = '── new run ─────────────────────────────────';
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-        return;
+  // ── Update Latest Run section live ───────────────────────────
+  function applyLiveRun(data) {
+    const flowEl  = document.getElementById('live-pipeline-flow');
+    const logEl   = document.getElementById('live-log-strip');
+    const labelEl = document.getElementById('latest-run-label');
+    const badgeEl = document.getElementById('latest-run-badge');
+
+    if (!flowEl) return;
+
+    // Stage flow
+    if (data.stages && data.stages.length) {
+      flowEl.innerHTML = renderFlow(data.stages);
+    }
+
+    // Recent log lines
+    if (data.recentLines && data.recentLines.length) {
+      logEl.style.display = 'block';
+      logEl.innerHTML = data.recentLines.map(l => {
+        const c = l.includes('❌')||l.includes('error')||l.includes('fatal') ? '#CC3355'
+                : l.includes('✅')||l.includes('complete')||l.includes('🎉') ? '#007A60'
+                : l.includes('⏳')||l.includes('Waiting') ? '#996600'
+                : '#4A4470';
+        return '<div style="color:'+c+'">' + escHtml(l) + '</div>';
+      }).join('');
+    }
+
+    // Title + badge
+    if (data.running) {
+      labelEl.textContent = '⏳ Running Now';
+      badgeEl.innerHTML   = '<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>';
+    } else {
+      // Determine final status from stages
+      const hasFail = data.stages && data.stages.some(s => s.status === 'fail');
+      const hasPass = data.stages && data.stages.some(s => s.status === 'pass');
+      if (hasFail) {
+        labelEl.textContent = '🔄 Latest Run';
+        badgeEl.innerHTML   = '<span style="background:#FFE8EC;color:#FF6B8A;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">❌ Error</span>';
+      } else if (hasPass) {
+        labelEl.textContent = '🔄 Latest Run';
+        badgeEl.innerHTML   = '<span style="background:#E0FFF8;color:#00C9A7;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Success</span>';
       }
-      // Status heartbeat
-      if (typeof raw === 'string' && raw.startsWith('__status:')) {
-        const st = JSON.parse(raw.slice(9));
-        updateRunBtn(st.running, st.pid);
-        return;
-      }
-      appendLog(raw);
-    };
-    sseSource.onerror = () => {
-      appendLog('⚠️  Connection to log stream lost — retrying…');
-    };
+    }
   }
 
-  function updateRunBtn(running, pid) {
+  // ── Polling loop ─────────────────────────────────────────────
+  function startLivePolling() {
+    if (livePoller) clearInterval(livePoller);
+    livePoller = setInterval(async () => {
+      try {
+        const r    = await fetch('/api/live-run');
+        const data = await r.json();
+        applyLiveRun(data);
+        if (!data.running) {
+          stopLivePolling();
+          setRunBtn(false);
+          // Reload full page after a moment so history updates
+          setTimeout(() => location.reload(), 2800);
+        }
+      } catch {}
+    }, 1200);
+  }
+
+  function stopLivePolling() {
+    if (livePoller) { clearInterval(livePoller); livePoller = null; }
+  }
+
+  // ── Button state ─────────────────────────────────────────────
+  function setRunBtn(running) {
     const btn = document.getElementById('runBtn');
-    const status = document.getElementById('consoleStatus');
-    const pidEl  = document.getElementById('consolePid');
     pipelineActive = running;
     if (running) {
-      btn.textContent   = '⏳ Running…';
-      btn.style.color   = '#FFB347';
-      btn.disabled      = true;
-      status.textContent = '● Pipeline running…';
-      status.style.color = '#FFB347';
-      pidEl.textContent  = pid ? 'PID ' + pid : '';
+      btn.textContent  = '⏳ Running…';
+      btn.style.color  = '#FFB347';
+      btn.disabled     = true;
     } else {
-      btn.textContent   = '▶ Run Pipeline';
-      btn.style.color   = '#FF6B8A';
-      btn.disabled      = false;
-      status.textContent = '✅ Pipeline finished';
-      status.style.color = '#00C9A7';
-      pidEl.textContent  = '';
-      // Reload page data after a short delay
-      setTimeout(() => location.reload(), 3000);
+      btn.textContent  = '▶ Run Pipeline';
+      btn.style.color  = '#FF6B8A';
+      btn.disabled     = false;
     }
   }
 
+  // ── Kick off run ─────────────────────────────────────────────
   async function runPipeline() {
     if (pipelineActive) return;
+    setRunBtn(true);
 
-    // Open console first
-    const drawer = document.getElementById('consoleDrawer');
-    consoleOpen = true;
-    drawer.style.display = 'block';
-    document.getElementById('consoleLog').innerHTML = '';
-    appendLog('🍼 Triggering BabyBloom pipeline…');
+    // Show an immediate "starting" state with all stages pending
+    const pendingStages = STAGE_DEFS_JS.map((s,i) => ({...s, status: i===0?'running':'skip', desc:''}));
+    const flowEl = document.getElementById('live-pipeline-flow');
+    const logEl  = document.getElementById('live-log-strip');
+    const label  = document.getElementById('latest-run-label');
+    const badge  = document.getElementById('latest-run-badge');
+    if (flowEl) flowEl.innerHTML = renderFlow(pendingStages);
+    if (logEl)  { logEl.style.display='block'; logEl.innerHTML='<div style="color:#6C63FF">🍼 Triggering pipeline…</div>'; }
+    if (label)  label.textContent = '⏳ Running Now';
+    if (badge)  badge.innerHTML = '<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>';
 
-    // POST to trigger first — get the log offset before starting SSE
     try {
-      const r = await fetch('/api/run-pipeline', { method: 'POST' });
+      const r    = await fetch('/api/run-pipeline', { method: 'POST' });
       const data = await r.json();
       if (!r.ok) {
-        appendLog('❌ ' + (data.error || 'Failed to start pipeline'));
+        if (logEl) logEl.innerHTML += '<div style="color:#CC3355">❌ ' + escHtml(data.error||'Failed to start') + '</div>';
+        setRunBtn(false);
         return;
       }
-      updateRunBtn(true, data.pid);
-      appendLog('✅ Pipeline started (PID ' + data.pid + ')');
-      // Start SSE from the exact byte offset captured at trigger time
-      startSSE(data.logOffset);
+      // Start polling to update stage cards in real time
+      startLivePolling();
     } catch(e) {
-      appendLog('❌ Fetch error: ' + e.message);
+      if (logEl) logEl.innerHTML += '<div style="color:#CC3355">❌ ' + escHtml(e.message) + '</div>';
+      setRunBtn(false);
     }
   }
 
-  // On load: if pipeline was already running, show console + stream
+  // On load: if pipeline was already running when page rendered, start polling immediately
   if (pipelineActive) {
-    document.getElementById('consoleDrawer').style.display = 'block';
-    consoleOpen = true;
-    updateRunBtn(true, ${pipelinePid || 'null'});
-    startSSE();
+    setRunBtn(true);
+    startLivePolling();
   }
 </script>
 </body>
@@ -767,6 +853,14 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/pipeline-status') {
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ running: pipelineRunning, started: pipelineStarted, pid: pipelinePid }));
+    return;
+  }
+
+  // ── Live run stages (poll during manual trigger) ──────────────
+  if (req.url === '/api/live-run') {
+    res.writeHead(200, {'Content-Type':'application/json','Cache-Control':'no-cache'});
+    try { res.end(JSON.stringify(parseLiveRun())); }
+    catch(e) { res.end(JSON.stringify({ error: e.message })); }
     return;
   }
 

@@ -110,5 +110,50 @@
     "created_at": "2026-03-24T20:18:19Z",
     "status": "skipped",
     "skip_reason": "This is an intentional Sentry test error ('BabyBloom Sentry test'), not a real bug. It was triggered to verify Sentry integration is working. No action needed."
+  },
+  {
+    "number": 84,
+    "title": "if formulae fed & then within 30 mins breast is used it is still marked as re...",
+    "body": "## \ud83d\udc1b Bug Report\n\nif formulae fed & then within 30 mins breast is used it is still marked as red in red\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/84",
+    "created_at": "2026-03-25T07:30:30.802Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Bug: Mixed feeding (formula then breast within 30 mins) incorrectly shows as red/overdue.\nAffected area: Feeding tracker component \u2014 the 30-minute interval check logic in src/.\nCurrent behaviour: When formula is given and then the breast is used within 30 minutes, the breast feeding session is still flagged as red (indicating the feed is overdue or too soon).\nExpected behaviour: If a breast feeding session occurs within 30 mins after a formula feed, the system should correctly recognise it as a valid follow-up feed and NOT mark it red.\nEdge cases: Formula\u2192breast, breast\u2192formula transitions; multiple feeding types in a short window; the 30-min threshold logic should distinguish between \"too soon\" and \"appropriate follow-up\".\nAcceptance criteria: After a formula feed, a breast feed within 30 mins should show the correct colour status (green/normal), not red."
+  },
+  {
+    "number": 85,
+    "title": "is tummy time in quick logs relevant for newborn",
+    "body": "## \ud83d\udc1b Bug Report\n\nis tummy time in quick logs relevant for newborn?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/85",
+    "created_at": "2026-03-25T07:32:25.526Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Feature/UX issue: Tummy time appears in the Quick Logs section but is not developmentally relevant for newborns (0-4 weeks).\nAffected area: Quick Logs component in src/ \u2014 the list of activities shown for newborns.\nCurrent behaviour: Tummy time is shown as a quick log option regardless of the baby's age, including for newborns who cannot safely do supervised tummy time the same way older infants can.\nExpected behaviour: Tummy time in quick logs should either be hidden for newborns (< ~4 weeks), shown with an age-appropriate note, or conditionally displayed based on the baby's age.\nEdge cases: Age boundary definition (what counts as \"newborn\"?); babies born early vs full term; transition age when tummy time becomes relevant.\nAcceptance criteria: Newborns (e.g. < 4 weeks old) should not see tummy time as a prominent quick log option, or it should be clearly marked as age-appropriate only for older infants."
+  },
+  {
+    "number": 86,
+    "title": "tummy time guide not available",
+    "body": "## \ud83d\udc1b Bug Report\n\ntummy time guide not available\n\n---\n\n**Category:** `bug` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/86",
+    "created_at": "2026-03-25T07:32:36.312Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Bug/missing content: The tummy time guide is not available in the app.\nAffected area: Guides or content section in src/ \u2014 wherever other activity guides (e.g. feeding guide, sleep guide) are displayed.\nCurrent behaviour: When the user navigates to or looks for a tummy time guide, it is missing or not accessible.\nExpected behaviour: A tummy time guide should be available, covering: what tummy time is, recommended frequency/duration by age, safety tips, and when to start.\nEdge cases: Guide should appear in the right section/screen; guide content should be age-appropriate; links from tummy time log entries to the guide should work.\nAcceptance criteria: A tummy time guide page/section exists in the app with accurate, helpful content, and is reachable from the relevant UI area."
   }
 ]
