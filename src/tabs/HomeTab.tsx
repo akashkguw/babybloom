@@ -6,7 +6,8 @@ import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
 import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
-import type { CountryConfig } from '@/lib/constants/countries';
+import type { CountryConfig, CountryCode } from '@/lib/constants/countries';
+import { getAvailableCountries } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { getEncouragement } from '@/lib/constants/encouragements';
@@ -63,6 +64,8 @@ interface HomeTabProps {
   sliderVal: number;
   setSliderVal: (v: number) => void;
   countryConfig: CountryConfig;
+  country: CountryCode;
+  setCountry: (code: CountryCode) => void;
 }
 
 export default function HomeTab({
@@ -85,8 +88,11 @@ export default function HomeTab({
   sliderVal,
   setSliderVal,
   countryConfig,
+  country,
+  setCountry,
 }: HomeTabProps) {
   const VACCINES = countryConfig.vaccines;
+  const countries = getAvailableCountries();
   const [td2, setTd] = useState('');
   const [showSlider] = useState(false); // kept for stable hook count
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -228,66 +234,115 @@ export default function HomeTab({
 
   // Welcome screen if no birth date
   if (!birth) {
+    const selCountry = countries.find((c) => c.code === country);
     return (
-      <div style={{ padding: '48px 20px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ padding: '40px 20px 32px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {/* Decorative header */}
         <div style={{
-          width: 88, height: 88, borderRadius: '50%', margin: '0 auto 20px',
+          width: 80, height: 80, borderRadius: '50%', margin: '0 auto 16px',
           background: `linear-gradient(135deg, ${C.p}, ${C.s})`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: `0 8px 24px ${C.p}44`,
         }}>
-          <span style={{ fontSize: 42 }}>🍼</span>
+          <span style={{ fontSize: 38 }}>🍼</span>
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: C.t, marginBottom: 6 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: C.t, marginBottom: 4 }}>
           Welcome to BabyBloom
         </h1>
-        <p style={{ color: C.tl, fontSize: 14, marginBottom: 32, lineHeight: 1.5 }}>
+        <p style={{ color: C.tl, fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>
           Your baby care companion
         </p>
 
-        <Cd style={{ maxWidth: 340, margin: '0 auto', padding: '28px 24px' }}>
-          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: C.t }}>
-            When was your baby born?
-          </p>
-          <p style={{ fontSize: 12, color: C.tl, marginBottom: 16 }}>
-            Tap below to pick a date
-          </p>
-
-          {/* Large tappable date picker area */}
-          <div
-            onClick={() => {
-              const inp = document.getElementById('bb-birth-input');
-              if (inp) (inp as HTMLInputElement).showPicker?.();
-              inp?.focus();
-            }}
-            style={{
-              position: 'relative', padding: '16px 14px', borderRadius: 14,
-              border: `2px solid ${td2 ? C.p : C.b}`,
-              background: td2 ? C.pl + '33' : C.bg,
-              cursor: 'pointer', transition: 'border 0.2s, background 0.2s',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            <span style={{ fontSize: 20 }}>📅</span>
-            <span style={{ fontSize: 16, fontWeight: 600, color: td2 ? C.t : C.tl }}>
-              {td2 ? new Date(td2 + 'T00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Select birth date'}
-            </span>
-            <input
-              id="bb-birth-input"
-              type="date"
-              value={td2}
-              onChange={(e) => setTd(e.target.value)}
-              style={{
-                position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%',
-                cursor: 'pointer',
-              }}
-            />
+        {/* Unified onboarding card */}
+        <Cd style={{ maxWidth: 360, margin: '0 auto', padding: '28px 24px 24px', borderRadius: 20 }}>
+          {/* Step 1: Country */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%', fontSize: 11, fontWeight: 700,
+                background: `linear-gradient(135deg, ${C.p}, ${C.s})`, color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>1</div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: C.t }}>Your country</span>
+              <span style={{ fontSize: 11, color: C.tl, marginLeft: 'auto' }}>
+                {selCountry ? `${selCountry.flag} ${selCountry.name}` : ''}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {countries.map((c) => {
+                const sel = country === c.code;
+                return (
+                  <div
+                    key={c.code}
+                    onClick={() => setCountry(c.code)}
+                    style={{
+                      flex: 1, padding: '12px 8px', borderRadius: 14, cursor: 'pointer',
+                      border: `2px solid ${sel ? C.p : C.b}`,
+                      background: sel ? `linear-gradient(135deg, ${C.pl}88, ${C.pl}44)` : C.bg,
+                      textAlign: 'center', transition: 'all 0.2s',
+                      transform: sel ? 'scale(1.03)' : 'scale(1)',
+                    }}
+                  >
+                    <div style={{ fontSize: 26, lineHeight: 1 }}>{c.flag}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginTop: 5 }}>{c.name}</div>
+                    <div style={{ fontSize: 9, color: sel ? C.p : C.tl, marginTop: 2, fontWeight: sel ? 600 : 400 }}>
+                      {c.code === 'US' ? 'AAP/CDC' : c.code === 'IN' ? 'IAP' : ''} schedule
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div style={{ marginTop: 20 }}>
+          {/* Divider */}
+          <div style={{ height: 1, background: C.b, margin: '0 -4px 20px' }} />
+
+          {/* Step 2: Birth date */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%', fontSize: 11, fontWeight: 700,
+                background: `linear-gradient(135deg, ${C.p}, ${C.s})`, color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>2</div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: C.t }}>Baby's birth date</span>
+            </div>
+
+            <div
+              onClick={() => {
+                const inp = document.getElementById('bb-birth-input');
+                if (inp) (inp as HTMLInputElement).showPicker?.();
+                inp?.focus();
+              }}
+              style={{
+                position: 'relative', padding: '14px 14px', borderRadius: 14,
+                border: `2px solid ${td2 ? C.p : C.b}`,
+                background: td2 ? C.pl + '33' : C.bg,
+                cursor: 'pointer', transition: 'border 0.2s, background 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📅</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: td2 ? C.t : C.tl }}>
+                {td2 ? new Date(td2 + 'T00:00').toLocaleDateString(countryConfig.defaultLocale, { month: 'long', day: 'numeric', year: 'numeric' }) : 'Tap to select date'}
+              </span>
+              <input
+                id="bb-birth-input"
+                type="date"
+                value={td2}
+                onChange={(e) => setTd(e.target.value)}
+                style={{
+                  position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%',
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ marginTop: 22 }}>
             <Btn
-              label={td2 ? 'Get Started' : 'Select a date above'}
+              label={td2 ? `Get Started ${selCountry?.flag || ''}` : 'Select a date to continue'}
               onClick={() => {
                 if (!td2 || !isValidBirthDate(td2)) { toast('Please enter a valid birth date (not in the future)'); return; }
                 setBirth(td2);
@@ -296,7 +351,7 @@ export default function HomeTab({
               full={true}
             />
           </div>
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 8 }}>
             <Btn
               label="Baby just born today"
               onClick={() => { setBirth(today()); }}
@@ -305,10 +360,11 @@ export default function HomeTab({
             />
           </div>
         </Cd>
-        <div style={{ marginTop: 24, fontSize: 11, color: C.tl, lineHeight: 1.5 }}>
-          Data stored locally on your device
-          <br />
-          Based on AAP, CDC & WHO guidelines
+
+        <div style={{ marginTop: 20, fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
+          {countryConfig.medical.authority} & WHO guidelines
+          <span style={{ margin: '0 6px', opacity: 0.4 }}>|</span>
+          Data stays on your device
         </div>
       </div>
     );

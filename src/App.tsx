@@ -61,11 +61,17 @@ function App() {
   const [birth, setBR] = useState<string | null>(null);
   const [selMo, setSelMo] = useState<number>(0);
   const [checked, setCkR] = useState<any>({});
-  const [vDone, setVDR] = useState<any>({});
+  // vDoneAll stores vaccine checkmarks namespaced by country: { US: {...}, IN: {...} }
+  // This ensures switching countries never loses data
+  const [vDoneAll, setVDAllR] = useState<any>({});
   const [logs, setLgR] = useState<any>({ feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
   const [teeth, setThR] = useState<any>({});
   const [firsts, setFiR] = useState<any[]>([]);
-  const [emergencyContacts, setECR] = useState<EmergencyContact[]>([]);
+  // Default to US contacts for backward compatibility — overridden by saved data or country switch
+  const [emergencyContacts, setECR] = useState<EmergencyContact[]>([
+    { id: 1, name: 'Emergency', phone: '911', role: 'Emergency' },
+    { id: 2, name: 'Poison Control', phone: '1-800-222-1222', role: 'Poison Control' },
+  ]);
   const [profiles, setProfilesR] = useState<Profile[]>([]);
   const [activeProfile, setActivePR] = useState<number | null>(null);
   const [showSet, setShowSet] = useState<boolean>(false);
@@ -199,16 +205,24 @@ function App() {
     }
   };
 
+  // Derived: current country's vaccine checkmarks
+  const vDone = useMemo(() => vDoneAll[country] || {}, [vDoneAll, country]);
+
   const setVDone = (fn: any) => {
     if (typeof fn === 'function') {
-      setVDR((p: any) => {
-        const n = fn(p);
-        spd('vaccines', n);
-        return n;
+      setVDAllR((prev: any) => {
+        const currentSlice = prev[country] || {};
+        const updated = fn(currentSlice);
+        const next = { ...prev, [country]: updated };
+        spd('vaccines', next);
+        return next;
       });
     } else {
-      setVDR(fn);
-      spd('vaccines', fn);
+      setVDAllR((prev: any) => {
+        const next = { ...prev, [country]: fn };
+        spd('vaccines', next);
+        return next;
+      });
     }
   };
 
@@ -243,10 +257,27 @@ function App() {
     }
   };
 
+  /**
+   * Migrate old flat vDone ({0_0: true, 2_3: true}) to country-namespaced format
+   * ({US: {0_0: true, 2_3: true}}).
+   * If already namespaced (has country code keys), return as-is.
+   */
+  const migrateVDone = (raw: any): any => {
+    if (!raw || typeof raw !== 'object') return {};
+    // Check if already namespaced: top-level keys should be country codes
+    const keys = Object.keys(raw);
+    if (keys.length === 0) return {};
+    const countryCodes = ['US', 'IN', 'UK', 'AU', 'CA']; // known + future
+    const isNamespaced = keys.some((k) => countryCodes.includes(k));
+    if (isNamespaced) return raw;
+    // Old format: flat {0_0: true, ...} — migrate to {US: {...}} for existing US users
+    return { US: raw };
+  };
+
   // Profile data persistence
   const saveProfileData = (profileId: number | null) => {
     if (!profileId) return Promise.resolve();
-    const data = { logs, milestones: checked, vaccines: vDone, teeth, firsts, birthDate: birth };
+    const data = { logs, milestones: checked, vaccines: vDoneAll, teeth, firsts, birthDate: birth };
     return ds(`profileData_${profileId}`, data);
   };
 
@@ -255,7 +286,7 @@ function App() {
       if (data) {
         setLgR(data.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
         setCkR(data.milestones || {});
-        setVDR(data.vaccines || {});
+        setVDAllR(migrateVDone(data.vaccines));
         setThR(data.teeth || {});
         setFiR(data.firsts || []);
         if (data.birthDate) setBR(data.birthDate);
@@ -263,7 +294,7 @@ function App() {
         const prof = profiles.find((p) => p.id === profileId);
         setLgR({ feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
         setCkR({});
-        setVDR({});
+        setVDAllR({});
         setThR({});
         setFiR([]);
         if (prof && prof.birthDate) setBR(prof.birthDate);
@@ -371,7 +402,7 @@ function App() {
         if (pData) {
           setLgR(pData.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           setCkR(pData.milestones || {});
-          setVDR(pData.vaccines || {});
+          setVDAllR(migrateVDone(pData.vaccines));
           setThR(pData.teeth || {});
           setFiR(pData.firsts || []);
           if (pData.birthDate) setBR(pData.birthDate);
@@ -379,7 +410,7 @@ function App() {
         } else {
           if (r[0] != null) setBR(r[0]);
           if (r[1] != null) setCkR(r[1]);
-          if (r[2] != null) setVDR(r[2]);
+          if (r[2] != null) setVDAllR(migrateVDone(r[2]));
           setLgR(r[3] || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           if (r[4] != null) setThR(r[4]);
           if (r[5] != null) setFiR(r[5]);
@@ -703,6 +734,8 @@ function App() {
               sliderVal={sliderVal}
               setSliderVal={setSliderVal}
               countryConfig={countryConfig}
+              country={country}
+              setCountry={setCountry}
             />
           ) : null}
           {tab === 'log' ? (
