@@ -168,15 +168,16 @@ function parseLiveRun() {
 
   const stages = parseStages(run);
 
-  // If still running: mark the first not-yet-resolved stage as 'running'
+  // If still running: mark the stage immediately after the last resolved one as 'running'.
+  // We unconditionally mark it (even if parseStages called it 'skip') because early in a
+  // run there are no log lines yet so everything defaults to 'skip' — but something IS running.
   if (pipelineRunning) {
     let lastDone = -1;
     for (let i = 0; i < stages.length; i++) {
       if (['pass','fail','warn'].includes(stages[i].status)) lastDone = i;
     }
-    for (let i = lastDone + 1; i < stages.length; i++) {
-      if (stages[i].status !== 'skip') { stages[i].status = 'running'; break; }
-    }
+    const nextIdx = lastDone + 1;
+    if (nextIdx < stages.length) stages[nextIdx].status = 'running';
   }
 
   return {
