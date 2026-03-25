@@ -911,14 +911,22 @@ const server = http.createServer((req, res) => {
       PATH: '/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:' + process.env.PATH,
     });
 
-    // Snapshot log size BEFORE spawning — stream will start from here
+    // Snapshot log size BEFORE spawning — live-run parser reads from here
     const LOG_FILE = path.join(BOT_DIR, 'pipeline.log');
     try { pipelineLogOffset = fs.statSync(LOG_FILE).size; } catch { pipelineLogOffset = 0; }
+
+    // Open pipeline.log in APPEND mode so the child writes to it just like
+    // the LaunchAgent does — this makes the run visible in parsePipelineLog()
+    // and in the live stage poller.
+    let logFd;
+    try { logFd = fs.openSync(LOG_FILE, 'a'); } catch { logFd = null; }
+    const stdioOpt = logFd !== null ? ['ignore', logFd, logFd] : 'ignore';
 
     const child = spawn('/bin/bash', [PIPELINE_SH], {
       cwd: REPO_DIR,
       env,
       detached: false,
+      stdio: stdioOpt,
     });
 
     pipelineRunning = true;
@@ -926,6 +934,7 @@ const server = http.createServer((req, res) => {
     pipelinePid     = child.pid;
 
     child.on('close', () => {
+      if (logFd !== null) { try { fs.closeSync(logFd); } catch {} }
       pipelineRunning = false;
       pipelinePid     = null;
     });
