@@ -138,6 +138,32 @@ function parseSentry() {
   return { tracked: keys.length, maxSeq };
 }
 
+// ─── Claude Tasks Parser ─────────────────────────────────────────
+function parseClaudeTasks() {
+  const all = readJSON(path.join(BOT_DIR, 'claude-tasks.json')) || [];
+  const worker = all.find(t => t.taskId === 'babybloom-issue-worker') || null;
+  return { all, worker };
+}
+
+// ─── Issue Worker Log Parser ──────────────────────────────────────
+// Reads recent session logs from Claude's Scheduled directory (if accessible)
+function parseWorkerRuns() {
+  // Try the known Claude Scheduled sessions path on macOS
+  const base = path.join(process.env.HOME || '/Users/akashkg', 'Library', 'Application Support', 'Claude', 'Scheduled', 'babybloom-issue-worker');
+  const runs = [];
+  try {
+    if (!fs.existsSync(base)) return runs;
+    const dirs = fs.readdirSync(base).sort().reverse().slice(0, 10);
+    for (const d of dirs) {
+      const f = path.join(base, d, 'summary.json');
+      if (fs.existsSync(f)) {
+        try { runs.push(JSON.parse(fs.readFileSync(f, 'utf8'))); } catch {}
+      }
+    }
+  } catch {}
+  return runs;
+}
+
 // ─── Live Run Parser (manual trigger in progress) ──────────────
 function parseLiveRun() {
   const LOG_FILE = path.join(BOT_DIR, 'pipeline.log');
@@ -371,11 +397,13 @@ const STAGE_CONNECTOR = `<div class="stage-connector"><div class="stage-connecto
 
 // ─── Render ─────────────────────────────────────────────────────
 function render() {
-  const runs   = parsePipelineLog();
-  const bot    = parseBotLog();
-  const issues = parseIssues();
-  const sentry = parseSentry();
-  const git    = getGitInfo();
+  const runs        = parsePipelineLog();
+  const bot         = parseBotLog();
+  const issues      = parseIssues();
+  const sentry      = parseSentry();
+  const git         = getGitInfo();
+  const claudeTasks = parseClaudeTasks();
+  const workerRuns  = parseWorkerRuns();
   const now    = new Date().toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 
   const lastRun      = runs[0];
@@ -694,6 +722,87 @@ function render() {
     </div>
 
   </div>
+
+  <!-- ── Issue Worker + Claude Workers ─────────────────────────── -->
+  <div class="bottom-two" style="margin-top:16px">
+
+    <!-- BabyBloom Issue Worker -->
+    <div class="section">
+      <div class="sec-title">🔧 Issue Worker
+        ${claudeTasks.worker
+          ? (claudeTasks.worker.enabled
+              ? `<span style="background:#E0FFF8;color:#00C9A7;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">● Enabled</span>`
+              : `<span style="background:#F0EBE3;color:#8E8E9A;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800">○ Paused</span>`)
+          : ''}
+      </div>
+      ${claudeTasks.worker ? (() => {
+        const w = claudeTasks.worker;
+        const lastRan  = w.lastRunAt  ? new Date(w.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        const nextRun  = w.nextRunAt  ? new Date(w.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        const minAgo   = w.lastRunAt  ? Math.round((Date.now() - new Date(w.lastRunAt)) / 60000) : null;
+        const healthy  = w.enabled && minAgo !== null && minAgo < 90;
+        return `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${healthy?'#00C9A7':'#FFB347'};animation:pulse 2s infinite"></span>
+          <span style="font-size:13px;font-weight:700;color:#2D2D3A">${w.description}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:#F8F5F0;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;color:#8E8E9A;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Last Run</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2D3A">${esc(lastRan)}</div>
+            ${minAgo !== null ? `<div style="font-size:10px;color:#8E8E9A;margin-top:2px">${minAgo}m ago</div>` : ''}
+          </div>
+          <div style="background:#F8F5F0;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;color:#8E8E9A;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Next Run</div>
+            <div style="font-size:12px;font-weight:700;color:#6C63FF">${esc(nextRun)}</div>
+            <div style="font-size:10px;color:#8E8E9A;margin-top:2px">${esc(w.schedule)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="meta">📋 Pending: ${issues.pending.length}</span>
+          <span class="meta">✅ Done: ${issues.done.length}</span>
+          <span class="meta">⏭️ Skipped: ${issues.skipped.length}</span>
+          <span class="meta">⏱ Jitter: ${w.jitterSeconds}s</span>
+        </div>`;
+      })() : `<div style="color:${COLORS.textLight};font-size:13px;padding:12px 0">No worker data — claude-tasks.json not found</div>`}
+    </div>
+
+    <!-- Claude Scheduled Workers -->
+    <div class="section">
+      <div class="sec-title">🤖 Claude Scheduled Workers
+        <span class="cnt2">${claudeTasks.all.length} total</span>
+        <span class="cnt3">${claudeTasks.all.filter(t=>t.enabled).length} active</span>
+      </div>
+      ${claudeTasks.all.length ? claudeTasks.all.map(t => {
+        const isWorker = t.taskId === 'babybloom-issue-worker';
+        const lastRan  = t.lastRunAt ? new Date(t.lastRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        const nextRun  = t.nextRunAt ? new Date(t.nextRunAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+        return `
+        <div style="border:1.5px solid ${isWorker?'#00C9A7':'#F0EBE3'};border-radius:12px;padding:11px 14px;margin-bottom:8px;background:${isWorker?'#F0FFFB':'#FAFAFA'}">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div>
+              <span style="font-size:11px;font-weight:700;color:#2D2D3A">${esc(t.taskId)}</span>
+              ${isWorker?'<span style="margin-left:6px;font-size:9px;background:#00C9A722;color:#00A882;padding:1px 6px;border-radius:8px;font-weight:800">THIS APP</span>':''}
+            </div>
+            <span style="flex-shrink:0">${t.enabled
+              ? `<span style="background:#E0FFF8;color:#00C9A7;font-size:9px;padding:1px 7px;border-radius:8px;font-weight:800">● ON</span>`
+              : `<span style="background:#F0EBE3;color:#8E8E9A;font-size:9px;padding:1px 7px;border-radius:8px;font-weight:800">○ OFF</span>`}</span>
+          </div>
+          <div style="font-size:10.5px;color:#8E8E9A;margin-bottom:6px;line-height:1.4">${esc(t.description)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:#A8A098">
+            <span>🕐 ${esc(t.schedule)}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">
+            <span class="meta">Last: ${esc(lastRan)}</span>
+            ${t.enabled ? `<span class="meta" style="color:#6C63FF">Next: ${esc(nextRun)}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('') : `<div style="color:${COLORS.textLight};font-size:13px;padding:12px 0">No tasks found</div>`}
+      <div style="font-size:10px;color:#C0B8B0;margin-top:4px;text-align:right">Data from claude-tasks.json · refresh to update</div>
+    </div>
+
+  </div>
+
 </div><!-- /wrap -->
 
 <script>
@@ -1013,6 +1122,25 @@ const server = http.createServer((req, res) => {
     }, 600);
 
     req.on('close', () => clearInterval(watcher));
+    return;
+  }
+
+  // ── Update claude-tasks.json (POST /api/refresh-tasks) ────────
+  if (req.method === 'POST' && req.url === '/api/refresh-tasks') {
+    let body = '';
+    req.on('data', d => body += d);
+    req.on('end', () => {
+      try {
+        const tasks = JSON.parse(body);
+        if (!Array.isArray(tasks)) throw new Error('Expected array');
+        fs.writeFileSync(path.join(BOT_DIR, 'claude-tasks.json'), JSON.stringify(tasks, null, 2));
+        res.writeHead(200, {'Content-Type':'application/json'});
+        res.end(JSON.stringify({ ok: true, count: tasks.length }));
+      } catch(e) {
+        res.writeHead(400, {'Content-Type':'application/json'});
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
     return;
   }
 

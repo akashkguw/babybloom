@@ -239,6 +239,61 @@ The Mac pipeline.sh handles push + GitHub close + Telegram notify after all issu
 
 ---
 
+## Step 10 — Refresh dashboard worker state
+
+After all issues are processed (or when stopping early), write the current task status to the internal dashboard's `claude-tasks.json` so the dashboard shows live data.
+
+```bash
+python3 -c "
+import json, datetime, os
+
+REPO_DIR = '$REPO_DIR'
+tasks_path = os.path.join(REPO_DIR, 'bot', 'claude-tasks.json')
+
+# Load existing file to preserve all tasks
+try:
+    tasks = json.load(open(tasks_path))
+except Exception:
+    tasks = []
+
+now_iso = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+# Compute next hourly run (top of next hour + 2 min)
+dt = datetime.datetime.utcnow().replace(second=0, microsecond=0)
+next_dt = dt.replace(minute=2) + datetime.timedelta(hours=1)
+next_iso = next_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+# Update babybloom-issue-worker entry
+updated = False
+for t in tasks:
+    if t.get('taskId') == 'babybloom-issue-worker':
+        t['lastRunAt'] = now_iso
+        t['nextRunAt'] = next_iso
+        t['enabled'] = True
+        updated = True
+        break
+
+if not updated:
+    tasks.insert(0, {
+        'taskId': 'babybloom-issue-worker',
+        'description': 'BabyBloom multi-agent pipeline — triage then dispatch to specialist agents',
+        'schedule': 'At 2 minutes past the hour, every hour, every day',
+        'cronExpression': '0 * * * *',
+        'enabled': True,
+        'lastRunAt': now_iso,
+        'nextRunAt': next_iso,
+        'jitterSeconds': 123
+    })
+
+json.dump(tasks, open(tasks_path, 'w'), indent=2)
+print(f'Dashboard refreshed — lastRunAt={now_iso}')
+"
+```
+
+This writes only `bot/claude-tasks.json` — it is explicitly allowed (it is not a prohibited file).
+
+---
+
 ## Hard limits (no exceptions)
 
 - ❌ `git push / pull / rebase / reset / checkout / stash`
