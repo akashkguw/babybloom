@@ -13,6 +13,7 @@ import {
   ACTIVITIES,
   REMEDIES,
   MASSAGE_GUIDE,
+  TUMMY_TIME_GUIDE,
   MOM_NUTRITION,
   VISITS,
 } from '@/lib/constants/guides';
@@ -1138,6 +1139,54 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth 
                     </Card>
                   );
                 })}
+            </>
+          )
+        : null}
+
+      {/* Tummy Time Guide */}
+      {Sec('tummytime', '🧒', 'Tummy Time Guide', 'Benefits, positions & safety tips', C.s, age < 12)}
+      {expanded.tummytime
+        ? SecBody(
+            <>
+              <Card style={{ marginBottom: 12, borderLeft: '4px solid ' + C.s }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontSize: 22 }}>{TUMMY_TIME_GUIDE.benefits.icon}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>
+                    {TUMMY_TIME_GUIDE.benefits.title}
+                  </div>
+                </div>
+                <Dot items={TUMMY_TIME_GUIDE.benefits.items.filter((x): x is string => typeof x === 'string')} color={C.s} />
+              </Card>
+              {(['ageGuide', 'positions', 'tips', 'safety'] as const).map((key) => {
+                const sec = TUMMY_TIME_GUIDE[key];
+                return (
+                  <Card key={key} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <div style={{ fontSize: 24 }}>{sec.icon}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: C.t }}>{sec.title}</div>
+                    </div>
+                    {sec.items.map((item, i) => {
+                      const mi = typeof item === 'string' ? { r: item, d: '' } : item;
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            padding: '8px 0',
+                            borderTop: i ? '1px solid ' + C.b : 'none',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.s }}>{mi.r}</div>
+                          {mi.d ? (
+                            <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5, marginTop: 2 }}>
+                              {mi.d}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </Card>
+                );
+              })}
             </>
           )
         : null}

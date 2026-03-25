@@ -1778,3 +1778,105 @@ export const MOM_NUTRITION: MomNutrition = {
     },
   ],
 };
+
+// ═══ TUMMY TIME GUIDE ═══
+export const TUMMY_TIME_GUIDE: { [key: string]: MassageSection } = {
+  benefits: {
+    title: "Why Tummy Time Matters",
+    icon: "🧒",
+    items: [
+      "Strengthens neck, shoulder, and core muscles needed for rolling and crawling",
+      "Prevents flat spots on the back of the head (positional plagiocephaly)",
+      "Builds the arm and hand strength needed for future milestones",
+      "Improves visual development — a new perspective from the floor",
+      "Supports motor development and coordination",
+      "AAP recommends tummy time from the very first day home",
+    ],
+  },
+  ageGuide: {
+    title: "How Much by Age",
+    icon: "📅",
+    items: [
+      {
+        r: "Newborn (0–1 month)",
+        d: "Start with 2–3 short sessions per day, 1–2 minutes each. Do it when baby is awake, alert, and recently fed.",
+      },
+      {
+        r: "1–3 months",
+        d: "Work up to 10–15 minutes total per day, spread across multiple sessions.",
+      },
+      {
+        r: "3–4 months",
+        d: "Aim for 20–30 minutes total per day. Baby should be lifting head 45–90°.",
+      },
+      {
+        r: "4–6 months",
+        d: "30+ minutes spread throughout the day. Baby may start pushing up on arms.",
+      },
+      {
+        r: "6+ months",
+        d: "Continue until baby is rolling both ways and spending time crawling.",
+      },
+    ],
+  },
+  positions: {
+    title: "Tummy Time Positions",
+    icon: "🤸",
+    items: [
+      {
+        r: "Classic floor tummy time",
+        d: "Place baby on a firm, flat surface (play mat or blanket on the floor). Stay close and make eye contact.",
+      },
+      {
+        r: "On your chest",
+        d: "Lie back at a slight recline and place baby on your chest face-down. Great for newborns who resist the floor.",
+      },
+      {
+        r: "Tummy-to-lap",
+        d: "Lay baby across your lap face-down with head just past your knee. Rub their back gently.",
+      },
+      {
+        r: "Supported with a rolled towel",
+        d: "Place a small rolled towel under baby's chest and shoulders to give a little boost. Helps reluctant tummy-timers.",
+      },
+    ],
+  },
+  tips: {
+    title: "Tips for Success",
+    icon: "💡",
+    items: [
+      {
+        r: "Make it fun",
+        d: "Get down on the floor, make faces, use a mirror — babies are motivated by faces and reflections.",
+      },
+      {
+        r: "Best timing",
+        d: "Do tummy time when baby is awake and alert, 30–60 minutes after a feeding to avoid spit-up.",
+      },
+      {
+        r: "Stay close",
+        d: "Always supervise. Tummy time is for awake time only — never for sleep.",
+      },
+      {
+        r: "Use toys",
+        d: "Place colorful toys or a high-contrast book just out of reach to encourage lifting and reaching.",
+      },
+      {
+        r: "Short and often",
+        d: "Multiple short sessions add up faster than trying one long session. Stop if baby becomes very distressed.",
+      },
+    ],
+  },
+  safety: {
+    title: "Safety Rules",
+    icon: "🛡️",
+    items: [
+      "ALWAYS supervise — never leave baby unattended during tummy time",
+      "Tummy time is for awake, alert babies only — not for sleep",
+      "Stop immediately if baby seems in pain, has breathing difficulty, or turns blue",
+      "If baby has reflux, wait longer after feeds (60+ minutes) and try inclined positions first",
+      "Consult your pediatrician if baby strongly resists tummy time or seems to have neck tightness (torticollis)",
+    ],
+  },
+};
+
