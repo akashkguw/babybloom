@@ -253,6 +253,11 @@ export default function HomeTab({
     }, 400);
   }, [clearLongPress, quickLogWarnings, logs, qlCategoryInfo]);
 
+  // Clear info panel on unmount (tab change)
+  useEffect(() => {
+    return () => setQlInfoPanel(null);
+  }, []);
+
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth, isSleeping);
   const momAlerts = useMomAlerts();
@@ -1334,10 +1339,10 @@ export default function HomeTab({
           const showResume = !!resumeFeed;
           const resumeElapsed = resumeFeed?.mins || 0;
 
-          // ─── Normal 4-column grid ───
+          // ─── Normal 4-column grid OR inline info panel ───
           return (
             <>
-              {showResume && resumeFeed && (
+              {!qlInfoPanel && showResume && resumeFeed && (
                 <div
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1365,40 +1370,131 @@ export default function HomeTab({
                   </div>
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
-                {qlItems.map((q: any) => {
-                  const warnInfo = quickLogWarnings[q.l] || null;
-                  const warn = warnInfo?.level || null;
-                  const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
-                  const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
-                  const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
-                  return (
+
+              {/* ─── Inline info panel (replaces grid on long-press) ─── */}
+              {qlInfoPanel ? (
+                <div style={{ animation: 'fadeIn 0.15s ease' }}>
+                  {/* Header with icon + label + close */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 18 }}>{qlInfoPanel.emoji}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.t }}>{qlInfoPanel.label}</span>
+                    </div>
                     <div
-                      key={q.l}
-                      className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
-                      onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
-                      onTouchStart={() => startLongPress(q.l, q.e)}
-                      onTouchEnd={() => { clearLongPress(); }}
-                      onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
-                      onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); startLongPress(q.l, q.e); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, hasTimer: info.hasTimer }); } }}
+                      onClick={() => setQlInfoPanel(null)}
                       style={{
-                        textAlign: 'center',
-                        padding: '8px 2px',
-                        borderRadius: 12,
-                        background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
-                        border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
-                        cursor: q.dis ? 'default' : 'pointer',
-                        opacity: q.dis ? 0.35 : 1,
+                        width: 24, height: 24, borderRadius: 12,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: C.bg, cursor: 'pointer', fontSize: 12, color: C.tl,
+                        border: '1px solid ' + C.b,
                       }}
                     >
-                      <div style={{ fontSize: 18 }}>{q.e}</div>
-                      <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
-                        {q.l}
+                      ✕
+                    </div>
+                  </div>
+
+                  {/* Warning reason if highlighted */}
+                  {qlInfoPanel.warn && (
+                    <div style={{
+                      padding: '8px 10px', borderRadius: 10, marginBottom: 10,
+                      background: qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)',
+                      border: '1px solid ' + (qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.25)' : 'rgba(245,158,11,0.25)'),
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: qlInfoPanel.warn.level === 'danger' ? '#dc2626' : '#d97706', marginBottom: 2 }}>
+                        {qlInfoPanel.warn.level === 'danger' ? '⚠️ Needs attention' : '🔔 Heads up'}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.t, lineHeight: 1.4 }}>{qlInfoPanel.warn.reason}</div>
+                    </div>
+                  )}
+
+                  {/* Tips */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Good to know</div>
+                    {qlInfoPanel.tips.map((tip, i) => (
+                      <div key={i} style={{ fontSize: 11, color: C.t, lineHeight: 1.45, padding: '2px 0', display: 'flex', gap: 5 }}>
+                        <span style={{ color: C.a, flexShrink: 0 }}>•</span>
+                        <span>{tip}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Timer button (tummy time) */}
+                  {qlInfoPanel.hasTimer && (
+                    <div
+                      onClick={() => { setQlInfoPanel(null); }}
+                      style={{
+                        padding: '8px 10px', borderRadius: 10, marginBottom: 10,
+                        background: C.al, border: '1px solid ' + C.a + '40',
+                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: 14 }}>⏱️</span>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.a }}>Start tummy time timer</div>
+                        <div style={{ fontSize: 9, color: C.tl }}>Track duration with a tap</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+
+                  {/* Recent history */}
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Recent</div>
+                    {qlInfoPanel.history.length === 0 ? (
+                      <div style={{ fontSize: 11, color: C.tl, fontStyle: 'italic', padding: '4px 0' }}>No entries yet</div>
+                    ) : (
+                      qlInfoPanel.history.map((entry, i) => (
+                        <div key={entry.id || i} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '5px 0', borderBottom: i < qlInfoPanel.history.length - 1 ? '1px solid ' + C.b : 'none',
+                        }}>
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: C.t }}>{entry.type}</span>
+                            {entry.amount && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.amount}</span>}
+                            {entry.oz && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.oz}oz</span>}
+                            {entry.mins && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.mins}min</span>}
+                          </div>
+                          <div style={{ fontSize: 9, color: C.tl }}>{entry.date === today() ? entry.time : entry.date + ' ' + entry.time}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
+                  {qlItems.map((q: any) => {
+                    const warnInfo = quickLogWarnings[q.l] || null;
+                    const warn = warnInfo?.level || null;
+                    const warnBg = warn === 'danger' ? 'rgba(220,38,38,0.10)' : warn === 'warn' ? 'rgba(245,158,11,0.10)' : null;
+                    const warnBorder = warn === 'danger' ? 'rgba(220,38,38,0.4)' : warn === 'warn' ? 'rgba(245,158,11,0.4)' : null;
+                    const warnText = warn === 'danger' ? '#dc2626' : warn === 'warn' ? '#d97706' : null;
+                    return (
+                      <div
+                        key={q.l}
+                        className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
+                        onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
+                        onTouchStart={() => startLongPress(q.l, q.e)}
+                        onTouchEnd={() => { clearLongPress(); }}
+                        onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
+                        onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, hasTimer: info.hasTimer }); } }}
+                        style={{
+                          textAlign: 'center',
+                          padding: '8px 2px',
+                          borderRadius: 12,
+                          background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
+                          border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
+                          cursor: q.dis ? 'default' : 'pointer',
+                          opacity: q.dis ? 0.35 : 1,
+                        }}
+                      >
+                        <div style={{ fontSize: 18 }}>{q.e}</div>
+                        <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
+                          {q.l}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </>
           );
         })()}
@@ -1451,108 +1547,6 @@ export default function HomeTab({
       {/* ═══ VOICE LOG BUTTON ═══ */}
       <VoiceButton quickLog={quickLog} babyName={babyName} />
 
-      {/* ═══ RICH INFO PANEL OVERLAY ═══ */}
-      {qlInfoPanel && (
-        <div
-          onClick={() => setQlInfoPanel(null)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.4)', zIndex: 999,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            animation: 'fadeIn 0.15s ease',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: 420,
-              background: C.cd, borderRadius: '20px 20px 0 0',
-              padding: '20px 18px 28px', maxHeight: '70vh', overflowY: 'auto',
-              animation: 'ql-panel-up 0.25s ease',
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>{qlInfoPanel.emoji}</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: C.t }}>{qlInfoPanel.label}</span>
-              </div>
-              <div
-                onClick={() => setQlInfoPanel(null)}
-                style={{ width: 28, height: 28, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, cursor: 'pointer', fontSize: 14, color: C.tl }}
-              >
-                ✕
-              </div>
-            </div>
-
-            {/* Warning banner if present */}
-            {qlInfoPanel.warn && (
-              <div style={{
-                padding: '10px 12px', borderRadius: 12, marginBottom: 12,
-                background: qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)',
-                border: '1px solid ' + (qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.25)' : 'rgba(245,158,11,0.25)'),
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: qlInfoPanel.warn.level === 'danger' ? '#dc2626' : '#d97706', marginBottom: 2 }}>
-                  {qlInfoPanel.warn.level === 'danger' ? '⚠️ Needs attention' : '🔔 Heads up'}
-                </div>
-                <div style={{ fontSize: 12, color: C.t, lineHeight: 1.4 }}>{qlInfoPanel.warn.reason}</div>
-              </div>
-            )}
-
-            {/* Tips section */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Good to know</div>
-              {qlInfoPanel.tips.map((tip, i) => (
-                <div key={i} style={{ fontSize: 12, color: C.t, lineHeight: 1.5, padding: '3px 0', display: 'flex', gap: 6 }}>
-                  <span style={{ color: C.a, flexShrink: 0 }}>•</span>
-                  <span>{tip}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Tummy time timer button */}
-            {qlInfoPanel.hasTimer && (
-              <div
-                onClick={() => { setQlInfoPanel(null); /* Could integrate with existing timer */ }}
-                style={{
-                  padding: '10px 14px', borderRadius: 12, marginBottom: 14,
-                  background: C.al, border: '1px solid ' + C.a + '40',
-                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: 16 }}>⏱️</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.a }}>Start tummy time timer</div>
-                  <div style={{ fontSize: 10, color: C.tl }}>Track duration with a tap</div>
-                </div>
-              </div>
-            )}
-
-            {/* Recent history */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Recent</div>
-              {qlInfoPanel.history.length === 0 ? (
-                <div style={{ fontSize: 12, color: C.tl, fontStyle: 'italic', padding: '6px 0' }}>No entries yet</div>
-              ) : (
-                qlInfoPanel.history.map((entry, i) => (
-                  <div key={entry.id || i} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '7px 0', borderBottom: i < qlInfoPanel.history.length - 1 ? '1px solid ' + C.b : 'none',
-                  }}>
-                    <div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: C.t }}>{entry.type}</span>
-                      {entry.amount && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.amount}</span>}
-                      {entry.oz && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.oz}oz</span>}
-                      {entry.mins && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.mins}min</span>}
-                    </div>
-                    <div style={{ fontSize: 10, color: C.tl }}>{entry.date === today() ? entry.time : entry.date + ' ' + entry.time}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
