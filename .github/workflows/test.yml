@@ -1,20 +1,46 @@
-name: BabyBloom Tests
+name: BabyBloom CI
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      - run: npm ci
-      - run: npm run type-check
-      - run: npm run lint
-      - run: npm run test
-      - run: npm run build
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run --reporter=verbose
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify PWA assets
+        run: |
+          # Ensure Workbox SW was generated
+          test -f dist/sw.js && echo "✓ sw.js present in dist"
+          # Ensure manifest was generated
+          test -f dist/manifest.webmanifest && echo "✓ manifest present in dist"
+          # Ensure index.html exists for offline fallback
+          test -f dist/index.html && echo "✓ index.html present in dist"

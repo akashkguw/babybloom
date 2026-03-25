@@ -1,6 +1,7 @@
 node_modules/
 .env
 bot.log
+ci.log
 pipeline.log
 com.babybloom.telegram-bot.plist
 com.babybloom.pipeline.plist

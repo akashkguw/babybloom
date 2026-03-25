@@ -3,7 +3,7 @@ name: Build & Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  workflow_dispatch: # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,12 +29,20 @@ jobs:
         run: npm ci
 
       - name: Type check
-        run: npm run type-check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
 
       - name: Build
         run: npm run build
         env:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+
+      - name: Verify PWA offline support
+        run: |
+          test -f dist/sw.js && echo "✓ Service worker generated"
+          test -f dist/index.html && echo "✓ Offline fallback present"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -130,12 +130,14 @@ echo "📦 Staged: $CHANGED"
 
 # ─── Local CI checks (unit tests + build + server smoke test) ───
 echo "🧪 Running local CI checks..."
-bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
+bash "$BOT_DIR/ci.sh" "$REPO_DIR" 2>&1 | tee "$BOT_DIR/ci.log"
+CI_EXIT=${PIPESTATUS[0]}
+if [ "$CI_EXIT" -ne 0 ]; then
   CI_SUMMARY=$(tail -20 "$BOT_DIR/ci.log" 2>/dev/null | grep -E '(✅|❌|FAILED|passed|failed)' | head -10 | tr '\n' ' ' || echo "see ci.log")
   create_failure_issue "Local CI failed — deploy blocked" "CI pipeline blocked the deploy.\n\n\`\`\`\n${CI_SUMMARY}\n\`\`\`\n\nCheck \`bot/ci.log\` for full details. Fix the failing tests or build before the next deploy."
   send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed — deploy aborted. Check bot/ci.log for details."
   exit 1
-}
+fi
 
 # ─── Read completed issues from pending-issues.json ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"

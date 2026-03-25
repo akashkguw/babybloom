@@ -9,6 +9,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Include the manual sw.js so Workbox's generated SW takes over
+      srcDir: 'src',
       manifest: {
         name: 'BabyBloom',
         short_name: 'BabyBloom',
@@ -41,7 +43,17 @@ export default defineConfig({
         ]
       },
       workbox: {
-        cacheId: 'babybloom', // Prefixes all Workbox cache names — also satisfies CI smoke-test check
+        cacheId: 'babybloom',
+        // Precache ALL build assets (JS, CSS, HTML, images, fonts)
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        // Serve index.html for any navigation request when offline (SPA)
+        navigateFallback: '/babybloom/index.html',
+        navigateFallbackAllowlist: [/^(?!\/__)/],
+        // Clean up stale caches from the old manual sw.js
+        cleanupOutdatedCaches: true,
+        // Skip waiting so new SW activates immediately
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,
