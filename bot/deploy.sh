@@ -42,6 +42,21 @@ send_telegram() {
     --data-urlencode "text=$1" > /dev/null 2>&1
 }
 
+# Create a GitHub issue so the bot worker can investigate the failure
+# Usage: create_failure_issue "Title" "body details"
+create_failure_issue() {
+  local title="$1"
+  local body="$2"
+  local ts
+  ts=$(date '+%Y-%m-%d %H:%M %Z')
+  curl -s -X POST \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"title\":\"🚨 Deploy failure: ${title}\",\"body\":\"## Deploy Blocker — ${ts}\n\n${body}\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*\",\"labels\":[\"bug\",\"deploy-failure\"]}" \
+    "https://api.github.com/repos/$REPO/issues" > /dev/null 2>&1
+  echo "📋 GitHub issue filed: $title"
+}
+
 echo "🍼 BabyBloom Deploy Starting..."
 cd "$REPO_DIR"
 
@@ -98,6 +113,7 @@ TG_TOKEN_PATTERN="[0-9]{8,}:AA[A-Za-z0-9_-]{30,}"
 if git diff --cached | grep -qE "${GH_PAT_PATTERN}|${GH_TOKEN_PATTERN}|${TG_TOKEN_PATTERN}"; then
   echo "🚨 SECRET DETECTED in staged files! Aborting."
   echo "   Run: git diff --cached | grep -iE '$SECRET_PATTERNS'"
+  create_failure_issue "Secret detected in staged files" "A secret token pattern was found in staged files. Deploy aborted and files unstaged.\n\nAction required: identify and remove the secret, then rotate the token."
   send_telegram "🚨 *BabyBloom BLOCKER:* Secret detected in staged files — deploy aborted. Check manually."
   git reset HEAD .
   exit 1
@@ -115,6 +131,8 @@ echo "📦 Staged: $CHANGED"
 # ─── Local CI checks (unit tests + build + server smoke test) ───
 echo "🧪 Running local CI checks..."
 bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
+  CI_SUMMARY=$(tail -20 "$BOT_DIR/ci.log" 2>/dev/null | grep -E '(✅|❌|FAILED|passed|failed)' | head -10 | tr '\n' ' ' || echo "see ci.log")
+  create_failure_issue "Local CI failed — deploy blocked" "CI pipeline blocked the deploy.\n\n\`\`\`\n${CI_SUMMARY}\n\`\`\`\n\nCheck \`bot/ci.log\` for full details. Fix the failing tests or build before the next deploy."
   send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed — deploy aborted. Check bot/ci.log for details."
   exit 1
 }
@@ -152,6 +170,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>" || {
 echo "📤 Pushing to main..."
 git push origin main || {
   git reset --soft HEAD~1
+  create_failure_issue "git push rejected" "The git push to origin/main was rejected.\n\nPossible causes: conflicting remote commits, expired token, or branch protection rules.\n\nRun \`git status\` and \`git log origin/main..HEAD\` locally to investigate."
   send_telegram "❌ *BabyBloom Deploy FAILED:* git push rejected. Check for secrets or auth issues."
   exit 1
 }

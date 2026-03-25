@@ -571,8 +571,6 @@ function render() {
   </div>
   <div class="hdr-right">
     <span class="countdown" id="cd"></span>
-    <button class="rbtn" onclick="location.reload()">↻ Refresh</button>
-    <button class="rbtn" id="runBtn" onclick="runPipeline()" style="background:rgba(255,255,255,0.92);color:#FF6B8A;font-weight:800;border:none;min-width:120px">▶ Run Pipeline</button>
   </div>
 </div>
 
@@ -641,6 +639,9 @@ function render() {
         <span id="latest-run-badge">${latestRunBadge}</span>
         ${latestRunTs ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${latestRunTs}</span>` : ''}
       </div>
+      <button id="runBtn" onclick="runPipeline()" style="background:linear-gradient(135deg,#FF6B8A,#6C63FF);color:#fff;border:none;padding:7px 18px;border-radius:20px;font-size:12px;font-weight:800;cursor:pointer;transition:opacity .2s;min-width:110px;${pipelineRunning ? 'opacity:.6;cursor:default' : ''}">
+        ${pipelineRunning ? '⏳ Running…' : '▶ Run Pipeline'}
+      </button>
     </div>
     <div id="live-pipeline-flow">${latestPipelineHtml}</div>
     <div id="live-log-strip" style="${pipelineRunning && latestLogStrip ? '' : 'display:none;'}margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${latestLogStrip}</div>
