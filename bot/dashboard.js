@@ -254,9 +254,15 @@ const STAGE_DEFS = [
 // pass | fail | skip | warn | running
 function parseStages(run) {
   const e = run.events.join('\n');
-  const hasChanges   = e.includes('Uncommitted changes') || e.includes('unpushed commits') || e.includes('Found unpushed');
-  const nothingToPush = e.includes('Nothing to push') && !hasChanges;
-  const pushed       = !!run.sha || e.includes('Push successful');
+
+  // Two distinct "work was found" paths:
+  //  uncommitted — deploy.sh ran (secret scan + CI happen here)
+  //  unpushed    — commits already existed, pipeline just pushed them
+  const hasUncommitted = e.includes('Uncommitted changes');
+  const hasUnpushed    = e.includes('Found unpushed') || e.includes('unpushed commits');
+  const hasChanges     = hasUncommitted || hasUnpushed;
+  const nothingToPush  = e.includes('Nothing to push') && !hasChanges;
+  const pushed         = !!run.sha || e.includes('Push successful');
 
   return STAGE_DEFS.map(s => {
     const st = Object.assign({}, s);
@@ -274,26 +280,39 @@ function parseStages(run) {
       case 'changes':
         st.status = nothingToPush ? 'skip' : hasChanges ? 'pass' : 'skip';
         st.label  = nothingToPush ? 'No Changes' : hasChanges ? 'Changes' : 'Changes';
-        st.desc   = nothingToPush ? 'Nothing to push' : run.files.length ? run.files.slice(0,2).join(', ') : '';
+        st.desc   = nothingToPush ? 'Nothing to push'
+                  : hasUnpushed   ? 'Unpushed commits'
+                  : run.files.length ? run.files.slice(0,2).join(', ') : '';
         break;
       case 'scan':
-        st.status = !hasChanges ? 'skip'
-                  : e.includes('Secret scan passed') ? 'pass'
-                  : e.includes('Secret') ? 'fail' : 'skip';
-        st.desc = st.status === 'pass' ? 'No secrets' : st.status === 'fail' ? 'BLOCKED' : '';
+        // Only runs when deploy.sh is called (uncommitted changes path)
+        if (!hasChanges || hasUnpushed) {
+          st.status = 'skip';
+          st.desc   = hasUnpushed ? 'Via git push' : '';
+        } else {
+          st.status = e.includes('Secret scan passed') ? 'pass'
+                    : e.includes('SECRET DETECTED') || e.includes('Secret') && e.includes('BLOCKER') ? 'fail'
+                    : 'skip';
+          st.desc = st.status === 'pass' ? 'No secrets' : st.status === 'fail' ? 'BLOCKED' : '';
+        }
         break;
       case 'ci':
-        st.status = !hasChanges ? 'skip'
-                  : e.includes('All CI stages passed') ? 'pass'
-                  : e.includes('CI failed') || e.includes('CI checks failed') ? 'fail'
-                  : e.includes('node: command not found') ? 'warn'
-                  : e.includes('feature checks passed') ? 'pass'
-                  : e.includes('CI checks') ? 'pass' : 'skip';
-        { const stagesPass = (e.match(/✅.*passed/g)||[]).length;
+        // Only runs when deploy.sh is called (uncommitted changes path)
+        if (!hasChanges || hasUnpushed) {
+          st.status = 'skip';
+          st.desc   = hasUnpushed ? 'Via git push' : '';
+        } else {
+          st.status = e.includes('All CI stages passed') ? 'pass'
+                    : e.includes('CI failed') || e.includes('CI checks failed') ? 'fail'
+                    : e.includes('node: command not found') ? 'warn'
+                    : e.includes('feature checks passed') ? 'pass'
+                    : e.includes('CI checks') ? 'pass' : 'skip';
+          const stagesPass = (e.match(/✅.*passed/g)||[]).length;
           const stagesFail = (e.match(/❌.*FAILED/g)||[]).length;
           st.desc = e.includes('All CI stages passed') ? '3/3 stages'
                   : stagesPass||stagesFail ? `${stagesPass} ok${stagesFail?' · '+stagesFail+' fail':''}`
-                  : e.match(/All (\d+) feature checks passed/)?.[0]?.replace('All ','') || ''; }
+                  : e.match(/All (\d+) feature checks passed/)?.[0]?.replace('All ','') || '';
+        }
         break;
       case 'push':
         st.status = !hasChanges ? 'skip'
