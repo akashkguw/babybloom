@@ -424,27 +424,21 @@ function render() {
   if (pipelineRunning) {
     const live = parseLiveRun();
     latestRunLabel = '⏳ Running Now';
-    latestRunBadge = `<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>`;
     latestRunTs    = pipelineStarted ? new Date(pipelineStarted).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
-    latestPipelineHtml = `<div class="pipeline-flow">${live.stages.map((s,i) => stageCard(s,'full') + (i < live.stages.length-1 ? STAGE_CONNECTOR : '')).join('')}</div>`;
+    latestPipelineHtml = `<div class="pipeline-flow">${live.stages.map(s => stageCard(s,'full')).join('')}</div>`;
     if (live.recentLines.length) {
-      latestLogStrip = `<div style="margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:10px;padding:10px 14px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${
-        live.recentLines.map(l => {
-          const c = l.includes('❌')||l.includes('error')||l.includes('fatal') ? '#CC3355'
-                  : l.includes('✅')||l.includes('complete')||l.includes('🎉') ? '#007A60'
-                  : l.includes('⏳')||l.includes('Waiting') ? '#996600' : '#4A4470';
-          return `<div style="color:${c}">${esc(l)}</div>`;
-        }).join('')
-      }</div>`;
+      latestLogStrip = live.recentLines.map(l => {
+        const c = l.includes('❌')||l.includes('error')||l.includes('fatal') ? '#CC3355'
+                : l.includes('✅')||l.includes('complete')||l.includes('🎉') ? '#007A60'
+                : l.includes('⏳')||l.includes('Waiting') ? '#996600' : '#4A4470';
+        return `<div style="color:${c}">${esc(l)}</div>`;
+      }).join('');
     }
   } else if (lastRun) {
     const stages = parseStages(lastRun);
     latestPipelineHtml = `
-      <div class="pipeline-flow">
-        ${stages.map((s,i) => stageCard(s,'full') + (i < stages.length-1 ? STAGE_CONNECTOR : '')).join('')}
-      </div>
-      ${lastRun.closed.length ? `<div style="margin-top:10px;padding:9px 12px;background:#E0FFF8;border-radius:10px;font-size:11px;color:#00A882">✅ Closed in this run: ${lastRun.closed.map(c=>`<a href="#" style="color:#007A60;font-weight:700">#${c.num}</a> ${esc(c.title.slice(0,45))}`).join(' · ')}</div>` : ''}
-      ${lastRun.errors.length ? `<div style="margin-top:10px;padding:9px 12px;background:#FFE8EC;border-radius:10px;font-size:11px;color:#CC3355;font-family:monospace">${esc(lastRun.errors[0].slice(0,140))}</div>` : ''}
+      <div class="pipeline-flow">${stages.map(s => stageCard(s,'full')).join('')}</div>
+      ${lastRun.closed.length ? `<div style="margin-top:12px;padding:10px 14px;background:#E0FFF8;border-radius:12px;font-size:11.5px;color:#00A882;font-weight:600">✅ Closed in this run: ${lastRun.closed.map(c=>`<strong>#${c.num}</strong> ${esc(c.title.slice(0,50))}`).join(' · ')}</div>` : ''}
     `;
   }
 
@@ -524,6 +518,26 @@ function render() {
   const cwMinAgo    = cw?.lastRunAt  ? Math.round((Date.now()-new Date(cw.lastRunAt))/60000) : null;
   const cwHealthy   = cw?.enabled && cwMinAgo !== null && cwMinAgo < 90;
 
+  // ── Hero banner data ───────────────────────────────────────────
+  const heroClass  = pipelineRunning ? 'run-hero-r'
+                   : pStatus === 'success' ? 'run-hero-s'
+                   : pStatus === 'error'   ? 'run-hero-e'
+                   : 'run-hero-i';
+  const heroIco    = pipelineRunning ? '⏳'
+                   : pStatus === 'success' ? '✅'
+                   : pStatus === 'error'   ? '❌'
+                   : '⚡';
+  const heroTitle  = pipelineRunning     ? 'Running now…'
+                   : lastRun?.sha        ? `Deployed · ${lastRun.sha}`
+                   : pStatus === 'error' ? 'Last run had errors'
+                   : 'Watching for changes';
+  const heroSub    = lastRun?.files.length ? `📦 ${lastRun.files.map(esc).join(', ')}`
+                   : lastRun?.errors.length ? esc(lastRun.errors[0].slice(0,80))
+                   : pStatus === 'success' ? 'All stages passed'
+                   : pStatus === 'error'   ? 'See error below'
+                   : 'Next run in ≤30 min · LaunchAgent';
+  const heroTs     = latestRunTs || '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -598,17 +612,35 @@ function render() {
   /* ── Chip (meta label) ── */
   .chip{display:inline-flex;align-items:center;gap:5px;background:#F4F0EC;border-radius:10px;padding:3px 10px;font-size:11px;color:#8E8E9A;font-weight:600}
 
-  /* ── Pipeline flow ── */
-  .pipeline-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-  .pipeline-flow{display:flex;align-items:stretch;min-width:max-content;gap:0}
-  .stage-card{width:96px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 8px 12px;border-radius:16px;border-width:2px;border-style:solid;transition:transform .15s,box-shadow .15s;cursor:default}
-  .stage-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.09)}
-  .stage-ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:7px;flex-shrink:0}
-  .stage-lbl{font-size:9.5px;font-weight:800;text-align:center;line-height:1.3;margin-bottom:3px}
-  .stage-desc{font-size:8.5px;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;color:#8E8E9A;height:12px}
-  .stage-bge{margin-top:6px;font-size:13px;line-height:1}
-  .stage-conn{flex-shrink:0;width:22px;display:flex;align-items:center;justify-content:center;padding-bottom:16px}
-  .stage-conn-ln{width:100%;height:2px;background:linear-gradient(90deg,#E0D8D0,#C8C0B8)}
+  /* ── Run hero banner ── */
+  .run-hero{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:18px;margin-bottom:16px;flex-wrap:wrap}
+  .run-hero-s{background:linear-gradient(135deg,#00C9A7,#009E84);border:none}
+  .run-hero-e{background:linear-gradient(135deg,#FF6B8A,#CC3355);border:none}
+  .run-hero-r{background:linear-gradient(135deg,#6C63FF,#4A42CC);border:none;animation:runpulse 2s infinite}
+  .run-hero-i{background:linear-gradient(135deg,#F0EBE3,#E4DDD5);border:none}
+  .run-hero-ico{font-size:30px;flex-shrink:0;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
+  .run-hero-body{flex:1;min-width:180px}
+  .run-hero-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .run-hero-i .run-hero-title{color:#6E6860}
+  .run-hero-sub{font-size:11.5px;color:rgba(255,255,255,.85);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .run-hero-i .run-hero-sub{color:#A8A098}
+  .run-hero-ts{font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;font-family:'SF Mono',Menlo,monospace}
+  .run-hero-i .run-hero-ts{color:#C0B8B0}
+  .hero-run-btn{background:rgba(255,255,255,.22);backdrop-filter:blur(8px);color:#fff;border:1.5px solid rgba(255,255,255,.4);padding:10px 22px;border-radius:24px;font-size:13px;cursor:pointer;font-weight:700;transition:background .15s,transform .1s;white-space:nowrap;flex-shrink:0}
+  .hero-run-btn:hover{background:rgba(255,255,255,.32);transform:translateY(-1px)}
+  .hero-run-btn:disabled{opacity:.6;cursor:default;transform:none}
+  .run-hero-i .hero-run-btn{background:#2D2D3A;border-color:#2D2D3A22;color:#fff}
+  .run-hero-i .hero-run-btn:hover{background:#1A1A2E}
+
+  /* ── Pipeline stage grid ── */
+  .pipeline-flow{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}
+  @media(max-width:780px){.pipeline-flow{grid-template-columns:repeat(4,1fr)}}
+  .stage-card{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:18px 6px 14px;border-radius:16px;border-width:2px;border-style:solid;transition:transform .15s,box-shadow .15s;cursor:default;min-width:0}
+  .stage-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+  .stage-ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:9px;flex-shrink:0}
+  .stage-lbl{font-size:10px;font-weight:800;text-align:center;line-height:1.3;margin-bottom:3px;word-break:break-word}
+  .stage-desc{font-size:8.5px;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;color:#8E8E9A;min-height:11px}
+  .stage-bge{margin-top:8px;font-size:15px;line-height:1}
 
   /* ── History ── */
   .hist-row{display:grid;grid-template-columns:148px 96px 1fr;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;transition:background .12s}
@@ -839,18 +871,26 @@ function render() {
 
   </div>
 
-  <!-- ═══ LATEST RUN ═══ -->
-  <div class="card mb16" id="latest-run-wrap">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap">
-      <div class="sec-hd" style="margin-bottom:0;flex:1">
-        <span id="latest-run-label">${latestRunLabel}</span>
-        <span id="latest-run-badge">${latestRunBadge}</span>
-        ${latestRunTs ? `<span style="font-size:11px;color:#A8A098;font-family:monospace;font-weight:400">${latestRunTs}</span>` : ''}
+  <!-- ═══ LATEST RUN — HERO WIDGET ═══ -->
+  <div class="card mb16" id="latest-run-wrap" style="padding:20px">
+
+    <!-- Hero status banner (like BabyBloom timer strip) -->
+    <div class="run-hero ${heroClass}" id="run-hero-banner">
+      <div class="run-hero-ico" id="run-hero-ico">${heroIco}</div>
+      <div class="run-hero-body">
+        <div class="run-hero-title" id="run-hero-title">${heroTitle}</div>
+        <div class="run-hero-sub" id="run-hero-sub">${heroSub}</div>
+        ${heroTs ? `<div class="run-hero-ts" id="run-hero-ts">${heroTs}</div>` : '<div class="run-hero-ts" id="run-hero-ts"></div>'}
       </div>
+      <button id="runBtn" class="hero-run-btn" onclick="runPipeline()" ${pipelineRunning?'disabled':''}>
+        ${pipelineRunning ? '⏳ Running…' : '▶ Run Pipeline'}
+      </button>
     </div>
-    <div class="pipeline-scroll">
-      <div id="live-pipeline-flow">${latestPipelineHtml}</div>
-    </div>
+
+    <!-- Stage grid (full-width, 8 tiles) -->
+    <div id="live-pipeline-flow">${latestPipelineHtml}</div>
+
+    <!-- Live log strip (visible while running) -->
     <div id="live-log-strip" style="${pipelineRunning && latestLogStrip ? '' : 'display:none;'}margin-top:14px;background:#F4F0FF;border:1px solid #D8D4FF;border-radius:12px;padding:12px 16px;font-family:'SF Mono',Menlo,monospace;font-size:10.5px;line-height:1.7;color:#4A4470">${latestLogStrip}</div>
   </div>
 
@@ -975,8 +1015,6 @@ function render() {
     warn:    {border:'#FFB347', bg:'#FFF3E0', badge:'⚠️'},
     running: {border:'#6C63FF', bg:'#E8E6FF', badge:'⏳'},
   };
-  const CONNECTOR_HTML = '<div class="stage-conn"><div class="stage-conn-ln"></div></div>';
-
   function escHtml(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -994,24 +1032,51 @@ function render() {
   }
 
   function renderFlow(stages) {
-    return '<div class="pipeline-flow">'
-      + stages.map((s,i) => renderStageCard(s) + (i < stages.length-1 ? CONNECTOR_HTML : '')).join('')
-      + '</div>';
+    return '<div class="pipeline-flow">' + stages.map(s => renderStageCard(s)).join('') + '</div>';
+  }
+
+  // ── Update hero banner ───────────────────────────────────────
+  function applyHero(running, stages) {
+    const banner = document.getElementById('run-hero-banner');
+    const ico    = document.getElementById('run-hero-ico');
+    const title  = document.getElementById('run-hero-title');
+    const sub    = document.getElementById('run-hero-sub');
+    if (!banner) return;
+    if (running) {
+      banner.className = 'run-hero run-hero-r';
+      if (ico)   ico.textContent   = '⏳';
+      if (title) title.textContent = 'Running now…';
+      if (sub)   sub.textContent   = 'Pipeline is in progress';
+    } else if (stages) {
+      const hasFail = stages.some(s => s.status === 'fail');
+      const hasPass = stages.some(s => s.status === 'pass');
+      if (hasFail) {
+        banner.className = 'run-hero run-hero-e';
+        if (ico)   ico.textContent   = '❌';
+        if (title) title.textContent = 'Run had errors';
+        if (sub)   sub.textContent   = 'Check the stage tiles below';
+      } else if (hasPass) {
+        banner.className = 'run-hero run-hero-s';
+        if (ico)   ico.textContent   = '✅';
+        if (title) title.textContent = 'Deployed successfully';
+        if (sub)   sub.textContent   = 'All stages passed';
+      }
+    }
   }
 
   // ── Update Latest Run section live ───────────────────────────
   function applyLiveRun(data) {
-    const flowEl  = document.getElementById('live-pipeline-flow');
-    const logEl   = document.getElementById('live-log-strip');
-    const labelEl = document.getElementById('latest-run-label');
-    const badgeEl = document.getElementById('latest-run-badge');
-
+    const flowEl = document.getElementById('live-pipeline-flow');
+    const logEl  = document.getElementById('live-log-strip');
     if (!flowEl) return;
 
-    // Stage flow
+    // Stage grid
     if (data.stages && data.stages.length) {
       flowEl.innerHTML = renderFlow(data.stages);
     }
+
+    // Hero banner
+    applyHero(data.running, data.stages);
 
     // Recent log lines
     if (data.recentLines && data.recentLines.length) {
@@ -1023,23 +1088,6 @@ function render() {
                 : '#4A4470';
         return '<div style="color:'+c+'">' + escHtml(l) + '</div>';
       }).join('');
-    }
-
-    // Title + badge
-    if (data.running) {
-      labelEl.textContent = '⏳ Running Now';
-      badgeEl.innerHTML   = '<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>';
-    } else {
-      // Determine final status from stages
-      const hasFail = data.stages && data.stages.some(s => s.status === 'fail');
-      const hasPass = data.stages && data.stages.some(s => s.status === 'pass');
-      if (hasFail) {
-        labelEl.textContent = '🔄 Latest Run';
-        badgeEl.innerHTML   = '<span style="background:#FFE8EC;color:#FF6B8A;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">❌ Error</span>';
-      } else if (hasPass) {
-        labelEl.textContent = '🔄 Latest Run';
-        badgeEl.innerHTML   = '<span style="background:#E0FFF8;color:#00C9A7;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Success</span>';
-      }
     }
   }
 
@@ -1089,12 +1137,9 @@ function render() {
     const pendingStages = STAGE_DEFS_JS.map((s,i) => ({...s, status: i===0?'running':'skip', desc:''}));
     const flowEl = document.getElementById('live-pipeline-flow');
     const logEl  = document.getElementById('live-log-strip');
-    const label  = document.getElementById('latest-run-label');
-    const badge  = document.getElementById('latest-run-badge');
     if (flowEl) flowEl.innerHTML = renderFlow(pendingStages);
     if (logEl)  { logEl.style.display='block'; logEl.innerHTML='<div style="color:#6C63FF">🍼 Triggering pipeline…</div>'; }
-    if (label)  label.textContent = '⏳ Running Now';
-    if (badge)  badge.innerHTML = '<span style="background:#E8E6FF;color:#6C63FF;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Running</span>';
+    applyHero(true, null);
 
     try {
       const r    = await fetch('/api/run-pipeline', { method: 'POST' });
