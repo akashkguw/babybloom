@@ -18,7 +18,7 @@ import { dg, ds } from '@/lib/db';
 interface MomDay {
   date: string;
   meals: { breakfast: boolean; lunch: boolean; dinner: boolean; snack: boolean };
-  water: number; // glasses (target: 8+)
+  water: boolean;
   vitamin: boolean;
   sleep: 0 | 1 | 2 | 3; // 0=not set, 1=poor, 2=ok, 3=good
   mood: 0 | 1 | 2 | 3 | 4 | 5; // 0=not set, 1-5 scale
@@ -35,7 +35,7 @@ const STORAGE_KEY = 'momcare_today';
 const emptyDay = (d: string): MomDay => ({
   date: d,
   meals: { breakfast: false, lunch: false, dinner: false, snack: false },
-  water: 0,
+  water: false,
   vitamin: false,
   sleep: 0,
   mood: 0,
@@ -85,9 +85,6 @@ export default function MomCare({ storageKey }: MomCareProps) {
     save({ ...data, meals: { ...data.meals, [meal]: !data.meals[meal] } });
   };
 
-  const addWater = () => save({ ...data, water: Math.min(data.water + 1, 20) });
-  const removeWater = () => save({ ...data, water: Math.max(data.water - 1, 0) });
-
   const cycleSleep = () => {
     const next = ((data.sleep + 1) % 4) as 0 | 1 | 2 | 3;
     save({ ...data, sleep: next });
@@ -99,7 +96,7 @@ export default function MomCare({ storageKey }: MomCareProps) {
   const mealsCount = Object.values(data.meals).filter(Boolean).length;
   const totalChecks =
     mealsCount +
-    (data.water >= 8 ? 1 : 0) +
+    (data.water ? 1 : 0) +
     (data.vitamin ? 1 : 0) +
     (data.sleep > 0 ? 1 : 0) +
     (data.mood > 0 ? 1 : 0) +
@@ -161,7 +158,7 @@ export default function MomCare({ storageKey }: MomCareProps) {
           <span style={{ fontSize: 13, fontWeight: 700, color: C.t }}>My Wellness</span>
           {!expanded && (
             <span style={{ fontSize: 11, color: C.tl, fontWeight: 500 }}>
-              {mealsCount}/4 meals · {data.water} glasses
+              {mealsCount}/4 meals
               {data.mood > 0 ? ` · ${MOOD_FACES[data.mood]}` : ''}
             </span>
           )}
@@ -233,82 +230,14 @@ export default function MomCare({ storageKey }: MomCareProps) {
             </div>
           </div>
 
-          {/* ── Hydration ── */}
-          <div>
-            <div style={sectionLabel}>
-              Water{' '}
-              <span style={{ fontWeight: 400, textTransform: 'none', color: data.water >= 8 ? '#4CAF50' : C.tl }}>
-                {data.water}/8 glasses {data.water >= 8 ? '✓' : ''}
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div
-                onClick={removeWater}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: C.bg,
-                  border: `1px solid ${C.b}`,
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  color: C.tl,
-                }}
-              >
-                −
-              </div>
-              {/* Water bar */}
-              <div
-                style={{
-                  flex: 1,
-                  height: 8,
-                  borderRadius: 4,
-                  background: C.bg,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${Math.min((data.water / 8) * 100, 100)}%`,
-                    height: '100%',
-                    borderRadius: 4,
-                    background: data.water >= 8
-                      ? 'linear-gradient(90deg, #4FC3F7, #4CAF50)'
-                      : 'linear-gradient(90deg, #4FC3F7, #29B6F6)',
-                    transition: 'width 0.2s ease',
-                  }}
-                />
-              </div>
-              <div
-                onClick={addWater}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#4FC3F7' + '20',
-                  border: `1px solid #4FC3F7` + '40',
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  color: '#29B6F6',
-                  fontWeight: 700,
-                }}
-              >
-                +
-              </div>
-              <span style={{ fontSize: 14, minWidth: 18, textAlign: 'center' }}>🚰</span>
-            </div>
-          </div>
-
-          {/* ── Quick toggles row: Vitamin · Moved ── */}
+          {/* ── Quick toggles row: Water · Vitamin · Movement ── */}
           <div style={{ display: 'flex', gap: 6 }}>
+            <div
+              onClick={() => save({ ...data, water: !data.water })}
+              style={{ ...pillStyle(data.water, '#4FC3F7'), flex: 1, justifyContent: 'center', padding: '8px 0' }}
+            >
+              💧 Water{data.water ? ' ✓' : ''}
+            </div>
             <div
               onClick={() => save({ ...data, vitamin: !data.vitamin })}
               style={{ ...pillStyle(data.vitamin, '#AB47BC'), flex: 1, justifyContent: 'center', padding: '8px 0' }}

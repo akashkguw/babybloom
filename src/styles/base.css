@@ -44,6 +44,16 @@ body {
   to { transform: translateY(0); }
 }
 
+@keyframes ql-undo-slide {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes ql-panel-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 @keyframes fadeOverlay {
   from { opacity: 0; }
   to { opacity: 1; }

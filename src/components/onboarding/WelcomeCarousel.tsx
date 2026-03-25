@@ -187,8 +187,8 @@ function MiniDemo() {
     showToast(`${emoji} ${label} logged!`);
   }, [flash, showToast]);
 
-  // Timer items: Breast L, Breast R, Tummy
-  const timerEmojis: Record<string, string> = { 'Breast L': '🤱', 'Breast R': '🤱', 'Tummy': '🧒' };
+  // Timer items: Nurse L, Nurse R, Tummy
+  const timerEmojis: Record<string, string> = { 'Nurse L': '🤱', 'Nurse R': '🤱', 'Tummy': '🧒' };
   const isTimerItem = (label: string) => label in timerEmojis;
 
   const startTimer = useCallback((label: string) => {
@@ -241,8 +241,8 @@ function MiniDemo() {
 
   const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-  // Is a breast timer active (for side-switch button)
-  const isBreastTimer = activeTimer === 'Breast L' || activeTimer === 'Breast R';
+  // Is a nursing timer active (for side-switch button)
+  const isBreastTimer = activeTimer === 'Nurse L' || activeTimer === 'Nurse R';
 
   return (
     <div style={{ maxWidth: 300, margin: '16px auto 0' }}>
@@ -284,13 +284,13 @@ function MiniDemo() {
           <div style={{ position: 'relative' }}>
             <TapHint visible={Object.keys(tapped).length === 0 && !activeTimer && !sleeping} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {/* Breast L — timer + side-switch */}
-              <MockBtn emoji="🤱" label="Breast L"
-                border={activeTimer === 'Breast L' ? C.a : undefined}
-                bg={activeTimer === 'Breast L' ? C.al : undefined}
-                color={activeTimer === 'Breast L' ? C.a : undefined}
-                onClick={() => startTimer('Breast L')}
-                flash={isFlashed('Breast L')}
+              {/* Nurse L — timer + side-switch */}
+              <MockBtn emoji="🤱" label="Nurse L"
+                border={activeTimer === 'Nurse L' ? C.a : undefined}
+                bg={activeTimer === 'Nurse L' ? C.al : undefined}
+                color={activeTimer === 'Nurse L' ? C.a : undefined}
+                onClick={() => startTimer('Nurse L')}
+                flash={isFlashed('Nurse L')}
               />
               {/* Formula — quantity selector */}
               <MockBtn emoji="🍼" label="Formula" onClick={handleFormula} flash={isFlashed('Formula')} />
@@ -336,7 +336,7 @@ function MiniDemo() {
         )}
       </div>
 
-      {/* Live timer bar — shows for Breast L/R and Tummy */}
+      {/* Live timer bar — shows for Nurse L/R and Tummy */}
       {activeTimer && (
         <div style={{
           marginTop: 8, display: 'flex', alignItems: 'center', gap: 8,
@@ -352,11 +352,11 @@ function MiniDemo() {
           <div style={{ fontSize: 17, fontWeight: 800, color: C.a, fontVariantNumeric: 'tabular-nums' }}>
             {fmtTime(elapsed)}
           </div>
-          {/* Side-switch only for breast timers */}
+          {/* Side-switch only for nursing timers */}
           {isBreastTimer && (
             <div
               onClick={() => {
-                const other = activeTimer === 'Breast L' ? 'Breast R' : 'Breast L';
+                const other = activeTimer === 'Nurse L' ? 'Nurse R' : 'Nurse L';
                 if (timerRef.current) clearInterval(timerRef.current);
                 setActiveTimer(other);
                 setElapsed(0);

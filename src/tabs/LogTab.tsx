@@ -815,14 +815,20 @@ const LogTab: React.FC<LogTabProps> = ({
                     Type
                   </label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {['Breast L', 'Breast R', 'Formula', 'Pumped Milk', 'Solids'].map(
+                    {([
+                      { type: 'Breast L', label: 'Nurse L' },
+                      { type: 'Breast R', label: 'Nurse R' },
+                      { type: 'Formula', label: 'Formula' },
+                      { type: 'Pumped Milk', label: 'Pumped' },
+                      { type: 'Solids', label: 'Solids' },
+                    ] as const).map(
                       (t) => (
                         <Pill
-                          key={t}
-                          label={t}
-                          active={form.type === t}
+                          key={t.type}
+                          label={t.label}
+                          active={form.type === t.type}
                           onClick={() =>
-                            setForm({ ...form, type: t })
+                            setForm({ ...form, type: t.type })
                           }
                           color={C.a}
                         />

@@ -108,6 +108,8 @@ export default function HomeTab({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [revealStage, setRevealStage] = useState<number | null>(null);
+  const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; msg: string } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerFlash = useCallback((label: string) => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -115,23 +117,55 @@ export default function HomeTab({
     flashTimerRef.current = setTimeout(() => setFlashBtn(null), 500);
   }, []);
 
+  // ═══ Sleep detection (move before quickLogWarnings so it can suppress sleep-time warnings) ═══
+  const lastSleepEntry = (logs.sleep || []).find(
+    (e) => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up'
+  );
+  let isSleeping =
+    lastSleepEntry && (lastSleepEntry.type === 'Nap' || lastSleepEntry.type === 'Night Sleep') || false;
+
+  // Auto-expire: if sleep entry is from over 14 hours ago, assume baby woke up
+  if (isSleeping && lastSleepEntry && lastSleepEntry.time && lastSleepEntry.date) {
+    const spD = lastSleepEntry.date.split('-');
+    const spT = lastSleepEntry.time.split(':');
+    const sleepDate = new Date(
+      parseInt(spD[0]),
+      parseInt(spD[1]) - 1,
+      parseInt(spD[2]),
+      parseInt(spT[0]),
+      parseInt(spT[1])
+    );
+    if (Date.now() - sleepDate.getTime() > 14 * 3600000) isSleeping = false;
+  }
+
   // ═══ Quick-log warning colors — highlight important buttons not used recently ═══
   const quickLogWarnings = useMemo(() => {
     // Thresholds in hours: [warningStart, dangerStart]
     // After warningStart hours → amber tint; after dangerStart hours → red tint
     const babyAgeMonths = Math.floor(age);
     const thresholds: Record<string, { cat: string; types: string[]; warnH: number; dangerH: number; warnMsg: string; dangerMsg: string; neverMsg: string }> = {
-      'Breast L': { cat: 'feed', types: ['Breast L'], warnH: 4, dangerH: 6, warnMsg: 'Left breast not fed in over {h}h', dangerMsg: 'Left breast not fed in over {h}h — feed soon', neverMsg: 'No left breast feeds logged yet' },
-      'Breast R': { cat: 'feed', types: ['Breast R'], warnH: 4, dangerH: 6, warnMsg: 'Right breast not fed in over {h}h', dangerMsg: 'Right breast not fed in over {h}h — feed soon', neverMsg: 'No right breast feeds logged yet' },
+      'Nurse L': { cat: 'feed', types: ['Breast L'], warnH: 5, dangerH: 8, warnMsg: 'Left side not nursed in over {h}h', dangerMsg: 'Left side not nursed in over {h}h — might be time for a feed', neverMsg: 'No left side nursing logged yet' },
+      'Nurse R': { cat: 'feed', types: ['Breast R'], warnH: 5, dangerH: 8, warnMsg: 'Right side not nursed in over {h}h', dangerMsg: 'Right side not nursed in over {h}h — might be time for a feed', neverMsg: 'No right side nursing logged yet' },
       // Tummy time warnings: skip for newborns < 1 month (warning fires immediately when never logged, causing alarm for brand-new parents)
-      ...(babyAgeMonths >= 1 && babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — important for development', neverMsg: 'No tummy time logged yet' } } : {}),
-      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 10, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — check hydration', neverMsg: 'No wet diapers logged yet' },
-      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 24, dangerH: 48, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — monitor closely', neverMsg: 'No dirty diapers logged yet' },
-      ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 8, dangerH: 12, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — try a meal or snack', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
+      ...(babyAgeMonths >= 1 && babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — good time for some tummy play', neverMsg: 'No tummy time logged yet' } } : {}),
+      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 12, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — keep an eye on hydration', neverMsg: 'No wet diapers logged yet' },
+      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 36, dangerH: 72, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — this can be normal — mention at next checkup if it continues', neverMsg: 'No dirty diapers logged yet' },
+      ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 12, dangerH: 24, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — might be time for a meal', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
     };
     const warnings: Record<string, { level: 'warn' | 'danger'; reason: string } | null> = {};
     const nowMs = Date.now();
     for (const [label, cfg] of Object.entries(thresholds)) {
+      // Suppress feed warnings when baby is sleeping
+      if (isSleeping && (label === 'Nurse L' || label === 'Nurse R' || label === 'Solids')) {
+        warnings[label] = null;
+        continue;
+      }
+      // Suppress tummy time warnings when baby is sleeping
+      if (isSleeping && label === 'Tummy') {
+        warnings[label] = null;
+        continue;
+      }
+
       const entries = logs[cfg.cat] || [];
       // Find most recent entry matching any of the types
       let lastMs = 0;
@@ -159,27 +193,68 @@ export default function HomeTab({
       }
     }
     return warnings;
-  }, [logs, birth]);
+  }, [logs, birth, isSleeping]);
 
-  // Long-press tooltip state for quick log buttons
-  const [qlTooltip, setQlTooltip] = useState<string | null>(null);
+  // Rich long-press info panel state
+  interface QlInfoPanel {
+    label: string;
+    emoji: string;
+    warn: { level: 'warn' | 'danger'; reason: string } | null;
+    cat: string;
+    types: string[];
+    history: LogEntry[];
+    tips: string[];
+    hasTimer: boolean;
+  }
+  const [qlInfoPanel, setQlInfoPanel] = useState<QlInfoPanel | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []);
-  const startLongPress = useCallback((reason: string) => {
+
+  // Category info for long-press panels
+  const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; hasTimer: boolean }> = {
+    'Nurse L': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
+    'Nurse R': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'], hasTimer: false },
+    'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], hasTimer: false },
+    'Wet': { cat: 'diaper', types: ['Wet'], tips: ['6+ wet diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 wet diapers may signal dehydration'], hasTimer: false },
+    'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'], hasTimer: false },
+    'Sleep': { cat: 'sleep', types: ['Nap', 'Night Sleep'], tips: ['Newborns sleep 14-17 hours total per day', 'Always place on back for safe sleep', 'Consistent routine helps establish patterns'], hasTimer: false },
+    'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'], hasTimer: false },
+    'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'], hasTimer: true },
+    'Solids': { cat: 'feed', types: ['Solids'], tips: ['Introduce one new food every 3-5 days', 'Watch for allergic reactions after new foods', 'Let baby set the pace — never force feed'], hasTimer: false },
+    'Pumped': { cat: 'feed', types: ['Pumped'], tips: ['Store pumped milk in refrigerator up to 5 days', 'Label each container with date and time', 'Room temperature: use within 4 hours'], hasTimer: false },
+  };
+
+  const startLongPress = useCallback((label: string, emoji: string) => {
     clearLongPress();
     longPressTriggered.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
-      setQlTooltip(reason);
-      setTimeout(() => setQlTooltip(null), 2500);
+      const info = qlCategoryInfo[label];
+      if (!info) return;
+      const warnInfo = quickLogWarnings[label] || null;
+      // Get recent history entries
+      const entries = logs[info.cat] || [];
+      const history = entries
+        .filter((e: any) => info.types.includes(e.type) || (e.sides && info.types.some((t: string) => e.sides.includes(t))))
+        .slice(0, 5);
+      setQlInfoPanel({
+        label,
+        emoji,
+        warn: warnInfo,
+        cat: info.cat,
+        types: info.types,
+        history,
+        tips: info.tips,
+        hasTimer: info.hasTimer,
+      });
     }, 400);
-  }, [clearLongPress]);
+  }, [clearLongPress, quickLogWarnings, logs, qlCategoryInfo]);
 
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
-  const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
+  const dynamicRedFlags = useDynamicRedFlags(logs, age, birth, isSleeping);
   const momAlerts = useMomAlerts();
 
   // ═══ Feed timer effect (must be before early return to keep hook count stable) ═══
@@ -427,8 +502,32 @@ export default function HomeTab({
         : e.type + ' logged';
     const encouragement = getEncouragement(cat, e.type);
     toast(msg + '\n' + encouragement);
+
+    // Set undo state with emoji and auto-dismiss after 5 seconds
+    const emojis: Record<string, string> = {
+      feed: '🍼',
+      diaper: '👶',
+      sleep: '😴',
+      tummy: '🤸',
+    };
+    const emoji = emojis[cat] || '✓';
+    setUndoEntry({ cat, entry: e, msg: emoji });
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoEntry(null), 5000);
   }
 
+  // ═══ Undo log helper ═══
+  function undoLog() {
+    if (!undoEntry) return;
+    const { cat, entry } = undoEntry;
+    const updated = Object.assign({}, logs);
+    const entries = (updated[cat] || []) as LogEntry[];
+    // Remove the entry that matches the id
+    updated[cat] = entries.filter((e) => e.id !== entry.id);
+    setLogs(updated);
+    setUndoEntry(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }
 
   function startFeedTimer(type: string) {
     if (feedTimer) return;
@@ -589,27 +688,6 @@ export default function HomeTab({
       _feedMinToday += x.mins || 0;
     });
 
-  // ═══ Last sleep status ═══
-  const lastSleepEntry = (logs.sleep || []).find(
-    (e) => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up'
-  );
-  let isSleeping =
-    lastSleepEntry && (lastSleepEntry.type === 'Nap' || lastSleepEntry.type === 'Night Sleep');
-
-  // Auto-expire: if sleep entry is from over 14 hours ago, assume baby woke up
-  if (isSleeping && lastSleepEntry && lastSleepEntry.time && lastSleepEntry.date) {
-    const spD = lastSleepEntry.date.split('-');
-    const spT = lastSleepEntry.time.split(':');
-    const sleepDate = new Date(
-      parseInt(spD[0]),
-      parseInt(spD[1]) - 1,
-      parseInt(spD[2]),
-      parseInt(spT[0]),
-      parseInt(spT[1])
-    );
-    if (Date.now() - sleepDate.getTime() > 14 * 3600000) isSleeping = false;
-  }
-
   // ═══ Weekly stats ═══
   let weekFeeds = 0,
     weekDiapers = 0;
@@ -673,6 +751,46 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
+      {/* Undo banner */}
+      {undoEntry && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            background: C.a,
+            color: 'white',
+            padding: '12px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            zIndex: 1000,
+            animation: 'ql-undo-slide 0.3s ease-out',
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          <span>{undoEntry.msg} Logged — Undo</span>
+          <button
+            onClick={undoLog}
+            style={{
+              background: 'white',
+              color: C.a,
+              border: 'none',
+              borderRadius: 20,
+              padding: '6px 16px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              minWidth: 60,
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
+
       {/* Hero — premium baby dashboard */}
       <div
         style={{
@@ -1036,10 +1154,10 @@ export default function HomeTab({
 
           // Age-adaptive quick log items
           // Shared item definitions
-          const qlBreastL = { e: '🤱', l: 'Breast L', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
-          const qlBreastR = { e: '🤱', l: 'Breast R', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
+          const qlBreastL = { e: '🤱', l: 'Nurse L', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
+          const qlBreastR = { e: '🤱', l: 'Nurse R', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { setQuickFeedType('Formula'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Formula' };
-          const qlPumped  = { e: '🍼', l: 'Breast Milk', fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk' };
+          const qlPumped  = { e: '🍼', l: 'Pumped', fn: () => { if (!feedTimer) { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } }, dis: !!feedTimer, needsQty: true, qType: 'Pumped Milk' };
           const qlTummy   = { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
           const qlWet     = { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false };
           const qlDirty   = { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false };
@@ -1057,7 +1175,7 @@ export default function HomeTab({
                 ? [qlBreastL, qlBreastR, qlSolids, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem]
                 : [qlBreastL, qlBreastR, qlFormula, qlPumped, qlTummy, qlWet, qlDirty, qlSleepItem];
 
-          // ─── Expanded inline quantity selector (Formula / Breast Milk) ───
+          // ─── Expanded inline quantity selector (Formula / Pumped) ───
           if (quickFeedType) {
             const activeItem = qlItems.find((q) => (q as any).qType === quickFeedType);
             const displayVal = isMl ? Math.round(sliderVal) : sliderVal.toFixed(1);
@@ -1259,10 +1377,10 @@ export default function HomeTab({
                       key={q.l}
                       className={'ql-btn' + (q.dis ? ' ql-dis' : '') + (flashBtn === q.l ? ' ql-flash' : '') + (warn === 'danger' ? ' ql-danger' : '')}
                       onClick={q.dis ? undefined : () => { if (longPressTriggered.current) { longPressTriggered.current = false; return; } q.fn(); }}
-                      onTouchStart={warnInfo ? () => startLongPress(warnInfo.reason) : undefined}
-                      onTouchEnd={warnInfo ? () => { clearLongPress(); } : undefined}
-                      onTouchCancel={warnInfo ? () => { clearLongPress(); longPressTriggered.current = false; } : undefined}
-                      onContextMenu={warnInfo ? (e: React.MouseEvent) => { e.preventDefault(); setQlTooltip(warnInfo.reason); setTimeout(() => setQlTooltip(null), 2500); } : undefined}
+                      onTouchStart={() => startLongPress(q.l, q.e)}
+                      onTouchEnd={() => { clearLongPress(); }}
+                      onTouchCancel={() => { clearLongPress(); longPressTriggered.current = false; }}
+                      onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); startLongPress(q.l, q.e); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, hasTimer: info.hasTimer }); } }}
                       style={{
                         textAlign: 'center',
                         padding: '8px 2px',
@@ -1281,17 +1399,6 @@ export default function HomeTab({
                   );
                 })}
               </div>
-              {/* Long-press tooltip */}
-              {qlTooltip && (
-                <div style={{
-                  marginTop: 8, padding: '8px 12px', borderRadius: 10,
-                  background: C.pl, border: '1px solid ' + C.p + '33',
-                  fontSize: 11, color: C.t, lineHeight: 1.4, textAlign: 'center',
-                  animation: 'fadeIn 0.15s ease',
-                }}>
-                  {qlTooltip}
-                </div>
-              )}
             </>
           );
         })()}
@@ -1343,6 +1450,109 @@ export default function HomeTab({
 
       {/* ═══ VOICE LOG BUTTON ═══ */}
       <VoiceButton quickLog={quickLog} babyName={babyName} />
+
+      {/* ═══ RICH INFO PANEL OVERLAY ═══ */}
+      {qlInfoPanel && (
+        <div
+          onClick={() => setQlInfoPanel(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)', zIndex: 999,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            animation: 'fadeIn 0.15s ease',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420,
+              background: C.cd, borderRadius: '20px 20px 0 0',
+              padding: '20px 18px 28px', maxHeight: '70vh', overflowY: 'auto',
+              animation: 'ql-panel-up 0.25s ease',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 22 }}>{qlInfoPanel.emoji}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.t }}>{qlInfoPanel.label}</span>
+              </div>
+              <div
+                onClick={() => setQlInfoPanel(null)}
+                style={{ width: 28, height: 28, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, cursor: 'pointer', fontSize: 14, color: C.tl }}
+              >
+                ✕
+              </div>
+            </div>
+
+            {/* Warning banner if present */}
+            {qlInfoPanel.warn && (
+              <div style={{
+                padding: '10px 12px', borderRadius: 12, marginBottom: 12,
+                background: qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)',
+                border: '1px solid ' + (qlInfoPanel.warn.level === 'danger' ? 'rgba(220,38,38,0.25)' : 'rgba(245,158,11,0.25)'),
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: qlInfoPanel.warn.level === 'danger' ? '#dc2626' : '#d97706', marginBottom: 2 }}>
+                  {qlInfoPanel.warn.level === 'danger' ? '⚠️ Needs attention' : '🔔 Heads up'}
+                </div>
+                <div style={{ fontSize: 12, color: C.t, lineHeight: 1.4 }}>{qlInfoPanel.warn.reason}</div>
+              </div>
+            )}
+
+            {/* Tips section */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Good to know</div>
+              {qlInfoPanel.tips.map((tip, i) => (
+                <div key={i} style={{ fontSize: 12, color: C.t, lineHeight: 1.5, padding: '3px 0', display: 'flex', gap: 6 }}>
+                  <span style={{ color: C.a, flexShrink: 0 }}>•</span>
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Tummy time timer button */}
+            {qlInfoPanel.hasTimer && (
+              <div
+                onClick={() => { setQlInfoPanel(null); /* Could integrate with existing timer */ }}
+                style={{
+                  padding: '10px 14px', borderRadius: 12, marginBottom: 14,
+                  background: C.al, border: '1px solid ' + C.a + '40',
+                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>⏱️</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.a }}>Start tummy time timer</div>
+                  <div style={{ fontSize: 10, color: C.tl }}>Track duration with a tap</div>
+                </div>
+              </div>
+            )}
+
+            {/* Recent history */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Recent</div>
+              {qlInfoPanel.history.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.tl, fontStyle: 'italic', padding: '6px 0' }}>No entries yet</div>
+              ) : (
+                qlInfoPanel.history.map((entry, i) => (
+                  <div key={entry.id || i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '7px 0', borderBottom: i < qlInfoPanel.history.length - 1 ? '1px solid ' + C.b : 'none',
+                  }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.t }}>{entry.type}</span>
+                      {entry.amount && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.amount}</span>}
+                      {entry.oz && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.oz}oz</span>}
+                      {entry.mins && <span style={{ fontSize: 11, color: C.tl, marginLeft: 6 }}>{entry.mins}min</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.tl }}>{entry.date === today() ? entry.time : entry.date + ' ' + entry.time}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

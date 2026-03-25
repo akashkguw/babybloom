@@ -10,6 +10,8 @@ export interface ShortcutAction {
 export const QUICK_MAP: Record<string, ShortcutAction | (() => ShortcutAction)> = {
   breast_l: { cat: 'feed', entry: { type: 'Breast L' } },
   breast_r: { cat: 'feed', entry: { type: 'Breast R' } },
+  nurse_l: { cat: 'feed', entry: { type: 'Breast L' } },
+  nurse_r: { cat: 'feed', entry: { type: 'Breast R' } },
   bottle: { cat: 'feed', entry: { type: 'Formula' } },
   formula: { cat: 'feed', entry: { type: 'Formula' } },
   pumped: { cat: 'feed', entry: { type: 'Pumped Milk' } },

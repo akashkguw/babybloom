@@ -110,18 +110,25 @@ export default function TimerView({
     });
 
   const ttGoal = age < 3 ? 15 : age < 6 ? 30 : 45;
-  const types = ['Breast L', 'Breast R', 'Formula', 'Pumped Milk', 'Sleep', 'Tummy Time'];
+  const types = [
+    { type: 'Breast L', label: 'Nurse L' },
+    { type: 'Breast R', label: 'Nurse R' },
+    { type: 'Formula', label: 'Formula' },
+    { type: 'Pumped Milk', label: 'Pumped' },
+    { type: 'Sleep', label: 'Sleep' },
+    { type: 'Tummy Time', label: 'Tummy Time' },
+  ];
 
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
         {types.map((t) => (
           <Pill
-            key={t}
-            label={t}
-            active={timerType === t}
+            key={t.type}
+            label={t.label}
+            active={timerType === t.type}
             onClick={() => {
-              if (!running) setTimerType(t);
+              if (!running) setTimerType(t.type);
             }}
             color={C.s}
           />

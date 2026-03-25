@@ -124,5 +124,17 @@
     "created_at": "2026-03-25T08:47:57.058Z",
     "status": "skipped",
     "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" \u2014 no feature, bug, or change to implement."
+  },
+  {
+    "number": 88,
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 15:42 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/88",
+    "created_at": "2026-03-25T22:42:47Z",
+    "status": "pending"
   }
 ]

@@ -49,7 +49,8 @@ function parseEntryMs(e: LogEntry): number {
 export default function useDynamicRedFlags(
   logs: Logs,
   age: number,
-  birth: string | null
+  birth: string | null,
+  isSleeping?: boolean
 ): DynamicRedFlag[] {
   return useMemo(() => {
     if (!birth) return [];
@@ -59,38 +60,41 @@ export default function useDynamicRedFlags(
 
     // ── 1. Extended feeding gap ──
     const feeds = logs.feed || [];
-    if (feeds.length > 0) {
-      const lastFeedMs = parseEntryMs(feeds[0]);
-      if (lastFeedMs > 0) {
-        const feedHrs = (nowMs - lastFeedMs) / 3600000;
-        // Age-based critical thresholds (hours)
-        const criticalH = age < 1 ? 4 : age < 3 ? 5 : age < 6 ? 6 : 8;
-        const warnH = age < 1 ? 3 : age < 3 ? 4 : age < 6 ? 5 : 6;
-        if (feedHrs >= criticalH) {
-          flags.push({
-            id: 'feed-gap',
-            emoji: '🍼',
-            text: 'No feeding in ' + Math.round(feedHrs) + 'h — babies ' +
-              (age < 3 ? 'under 3 months' : 'this age') + ' need feeds every ' + warnH + 'h',
-            severity: 'critical',
-          });
-        } else if (feedHrs >= warnH) {
-          flags.push({
-            id: 'feed-gap',
-            emoji: '🍼',
-            text: 'Last feed was ' + Math.round(feedHrs * 10) / 10 + 'h ago — consider feeding soon',
-            severity: 'warning',
-          });
+    // Suppress feed-gap flag when baby is sleeping
+    if (!isSleeping) {
+      if (feeds.length > 0) {
+        const lastFeedMs = parseEntryMs(feeds[0]);
+        if (lastFeedMs > 0) {
+          const feedHrs = (nowMs - lastFeedMs) / 3600000;
+          // Age-based critical thresholds (hours)
+          const criticalH = age < 1 ? 4 : age < 3 ? 5 : age < 6 ? 6 : 8;
+          const warnH = age < 1 ? 3 : age < 3 ? 4 : age < 6 ? 5 : 6;
+          if (feedHrs >= criticalH) {
+            flags.push({
+              id: 'feed-gap',
+              emoji: '🍼',
+              text: 'No feeding in ' + Math.round(feedHrs) + 'h — babies ' +
+                (age < 3 ? 'under 3 months' : 'this age') + ' need feeds every ' + warnH + 'h',
+              severity: 'critical',
+            });
+          } else if (feedHrs >= warnH) {
+            flags.push({
+              id: 'feed-gap',
+              emoji: '🍼',
+              text: 'Last feed was ' + Math.round(feedHrs * 10) / 10 + 'h ago — consider feeding soon',
+              severity: 'warning',
+            });
+          }
         }
+      } else if (birth) {
+        // No feeds logged at all
+        flags.push({
+          id: 'feed-gap',
+          emoji: '🍼',
+          text: 'No feeds logged yet — track feeds to monitor intake',
+          severity: 'critical',
+        });
       }
-    } else if (birth) {
-      // No feeds logged at all
-      flags.push({
-        id: 'feed-gap',
-        emoji: '🍼',
-        text: 'No feeds logged yet — track feeds to monitor intake',
-        severity: 'critical',
-      });
     }
 
     // ── 2. Low wet diaper count (dehydration risk) ──
@@ -206,5 +210,5 @@ export default function useDynamicRedFlags(
     flags.sort((a, b) => (a.severity === 'critical' ? 0 : 1) - (b.severity === 'critical' ? 0 : 1));
 
     return flags;
-  }, [logs, age, birth]);
+  }, [logs, age, birth, isSleeping]);
 }
