@@ -10,6 +10,7 @@ import type { CountryConfig, CountryCode } from '@/lib/constants/countries';
 import { getAvailableCountries } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
+import WelcomeCarousel from '@/components/onboarding/WelcomeCarousel';
 import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
@@ -105,6 +106,9 @@ export default function HomeTab({
   const feedIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [flashBtn, setFlashBtn] = useState<string | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  // Track if this birth-set was the very first time (triggers welcome carousel)
+  const justOnboarded = useRef(false);
 
   const triggerFlash = useCallback((label: string) => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -174,6 +178,14 @@ export default function HomeTab({
       setTimeout(() => setQlTooltip(null), 2500);
     }, 400);
   }, [clearLongPress]);
+
+  // Show welcome carousel after fresh onboarding
+  useEffect(() => {
+    if (birth && justOnboarded.current) {
+      justOnboarded.current = false;
+      setShowWelcome(true);
+    }
+  }, [birth]);
 
   // ═══ Dynamic red flags — data-driven P0 alerts from recent logs ═══
   const dynamicRedFlags = useDynamicRedFlags(logs, age, birth);
@@ -345,6 +357,7 @@ export default function HomeTab({
               label={td2 ? `Get Started ${selCountry?.flag || ''}` : 'Select a date to continue'}
               onClick={() => {
                 if (!td2 || !isValidBirthDate(td2)) { toast('Please enter a valid birth date (not in the future)'); return; }
+                justOnboarded.current = true;
                 setBirth(td2);
               }}
               color={C.p}
@@ -354,7 +367,7 @@ export default function HomeTab({
           <div style={{ marginTop: 8 }}>
             <Btn
               label="Baby just born today"
-              onClick={() => { setBirth(today()); }}
+              onClick={() => { justOnboarded.current = true; setBirth(today()); }}
               outline={true}
               full={true}
             />
@@ -640,6 +653,13 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
+      {showWelcome && (
+        <WelcomeCarousel
+          countryConfig={countryConfig}
+          babyName={babyName}
+          onDismiss={() => setShowWelcome(false)}
+        />
+      )}
       {/* Hero — premium baby dashboard */}
       <div
         style={{
