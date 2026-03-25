@@ -163,7 +163,13 @@ const LogTab: React.FC<LogTabProps> = ({
     { id: 'stats', l: 'Stats', e: '📊' },
   ];
 
-  const items = (logs[sub] || []).filter((x) => x.date === selectedDate);
+  const items = (logs[sub] || [])
+    .filter((x) => x.date === selectedDate)
+    .sort((a, b) => {
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return b.time.localeCompare(a.time); // newest first
+    });
   const allItems = logs[sub] || [];
 
   const logColors: Record<string, string> = {

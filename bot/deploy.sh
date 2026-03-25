@@ -109,38 +109,10 @@ if [ -z "$CHANGED" ]; then
 fi
 echo "📦 Staged: $CHANGED"
 
-# ─── Local CI checks (validate modular Vite + React + TS codebase) ───
+# ─── Local CI checks (unit tests + build + server smoke test) ───
 echo "🧪 Running local CI checks..."
-node -e "
-const fs = require('fs');
-const path = require('path');
-
-// Recursively read all files in src/ as one blob for feature checks
-function readDir(dir) {
-  let content = '';
-  for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, f.name);
-    if (f.isDirectory()) content += readDir(p);
-    else if (f.name.match(/\.(tsx?|ts|jsx?)$/)) content += fs.readFileSync(p, 'utf8');
-  }
-  return content;
-}
-const src = readDir('src');
-
-const checks = [
-  ['React components','useState'],['IndexedDB','indexedDB'],
-  ['Voice logging','SpeechRecognition'],['Feed merge','mergeIntoLastFeed'],
-  ['Siri Shortcuts','SiriShortcutsSetup'],['Massage guide','MASSAGE_GUIDE'],
-  ['Profile system','switchProfile'],['Dark mode','applyTheme'],
-  ['Volume unit','volumeUnit'],['Timer view','TimerView'],
-  ['Guide tab','GuideTab'],['Safety tab','SafetyTab'],
-];
-let fail=0;
-checks.forEach(([n,p])=>{if(!src.includes(p)){console.log('FAIL:',n);fail++;}});
-if(fail>0)process.exit(1);
-console.log('All '+checks.length+' feature checks passed');
-" || {
-  send_telegram "🚨 *BabyBloom BLOCKER:* Local CI checks failed — deploy aborted."
+bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
+  send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed — deploy aborted. Check bot/ci.log for details."
   exit 1
 }
 
