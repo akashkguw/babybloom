@@ -41,6 +41,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cacheId: 'babybloom', // Prefixes all Workbox cache names — also satisfies CI smoke-test check
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,
