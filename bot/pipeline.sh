@@ -417,6 +417,21 @@ if [ -n "$UNPUSHED" ]; then
   COMMIT_SHA=$(git rev-parse --short HEAD)
   COMMIT_COUNT=$(echo "$UNPUSHED" | wc -l | tr -d ' ')
 
+  # ─── CI gate for push-only path ───────────────────────────────
+  # These commits bypassed deploy.sh (already committed externally).
+  # If any src/ changes are present, run CI before pushing so we
+  # never ship broken code directly to GitHub Actions.
+  SRC_CHANGED=$(git diff origin/main..HEAD --name-only 2>/dev/null | grep -c '^src/' || true)
+  if [ "$SRC_CHANGED" -gt 0 ]; then
+    echo "🧪 src/ changes detected in unpushed commits ($SRC_CHANGED file(s)) — running CI..."
+    bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
+      send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed before push (push-only path) — deploy aborted."
+      exit 1
+    }
+  else
+    echo "ℹ️  No src/ changes — skipping CI for push-only commits"
+  fi
+
   # ─── Push ───
   echo "📤 Pushing $COMMIT_COUNT commit(s) to main..."
   if ! git push origin main 2>&1; then

@@ -256,9 +256,12 @@ function parseStages(run) {
   const e = run.events.join('\n');
 
   // Two distinct "work was found" paths:
-  //  uncommitted — deploy.sh ran (secret scan + CI happen here)
-  //  unpushed    — commits already existed, pipeline just pushed them
-  const hasUncommitted = e.includes('Uncommitted changes');
+  //  deployRan   — deploy.sh was actually called (secret scan + CI happen inside it)
+  //  hasUnpushed — commits already existed, pipeline pushed them directly
+  // Use 'BabyBloom Deploy Starting' as the authoritative signal deploy.sh ran,
+  // rather than guessing from 'Uncommitted changes' which may not always appear.
+  const deployRan      = e.includes('BabyBloom Deploy Starting');
+  const hasUncommitted = e.includes('Uncommitted changes') || deployRan;
   const hasUnpushed    = e.includes('Found unpushed') || e.includes('unpushed commits');
   const hasChanges     = hasUncommitted || hasUnpushed;
   const nothingToPush  = e.includes('Nothing to push') && !hasChanges;
@@ -285,8 +288,8 @@ function parseStages(run) {
                   : run.files.length ? run.files.slice(0,2).join(', ') : '';
         break;
       case 'scan':
-        // Only runs when deploy.sh is called (uncommitted changes path)
-        if (!hasChanges || hasUnpushed) {
+        // Only runs when deploy.sh is called — use deployRan as authoritative signal
+        if (!deployRan) {
           st.status = 'skip';
           st.desc   = hasUnpushed ? 'Via git push' : '';
         } else {
@@ -297,8 +300,8 @@ function parseStages(run) {
         }
         break;
       case 'ci':
-        // Only runs when deploy.sh is called (uncommitted changes path)
-        if (!hasChanges || hasUnpushed) {
+        // Only runs when deploy.sh is called — use deployRan as authoritative signal
+        if (!deployRan) {
           st.status = 'skip';
           st.desc   = hasUnpushed ? 'Via git push' : '';
         } else {
