@@ -175,7 +175,7 @@ Then repeat Steps 1–7 for the next implementation issue until all are done. St
 - ❌ `git push / pull / rebase / reset / checkout / stash`
 - ❌ Any HTTP request (`curl`, `wget`, `fetch`)
 - ❌ Edit anything except `src/` and `tests/` directories
-- ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist`
+- ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist` — **infrastructure/security files are owner-only, never touched by automated pipeline**
 - ❌ `rm`, `mv`, `cp` any file
 - ❌ `npm install` or package manager changes
 - ❌ Add `fetch()` or network calls to external domains in app code
