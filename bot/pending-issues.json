@@ -187,6 +187,146 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/93",
     "created_at": "2026-03-26T02:02:33Z",
-    "status": "pending"
+    "status": "triaged",
+    "route": "infrastructure",
+    "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
+  },
+  {
+    "number": 95,
+    "title": "reverse nursing side after starting one doesn\u2019t work",
+    "body": "## \ud83d\udc1b Bug Report\n\nreverse nursing side after starting one doesn\u2019t work. It just closes the view.\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/95",
+    "created_at": "2026-03-26T03:40:27.213Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The \"reverse nursing side\" button in the active nursing/feeding timer view closes the view instead of swapping the side.\n- Affected component: Feeding/nursing timer UI in src/ (likely a feeding or nursing component)\n- Expected: Tapping \"reverse side\" while a nursing session is active should swap from L\u2192R or R\u2192L and continue the timer\n- Current: Tapping the button closes/dismisses the entire nursing view\n- Edge cases: Should work mid-session without losing elapsed time; should update the side indicator correctly\n- Acceptance criteria: Reversing nursing side mid-session swaps the displayed side without closing the view or resetting the timer",
+    "implementation_notes": "Files changed:\n- src/features/feeding/useFeedingTimer.ts: Added switchFeedSide() function to interface and implementation\n- src/tabs/HomeTab.tsx: Added switchFeedSide() function that atomically saves current side and starts new timer; updated companion items to use it instead of stopFeedTimer()+startFeedTimer() pattern\n\nApproach: The root cause was that stopFeedTimer() sets feedTimerApp to null via async React state, so the immediately-following startFeedTimer() check (if feedTimer return) still saw the old non-null value. switchFeedSide() saves the current session and atomically sets the new timer type without any null intermediate state."
+  },
+  {
+    "number": 96,
+    "title": "it has been quite some time I created the account but the red indicators on q...",
+    "body": "## \ud83d\udc1b Bug Report\n\nit has been quite some time I created the account but the red indicators on quick log is not coming\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/96",
+    "created_at": "2026-03-26T03:41:09.467Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "Quick log buttons on the home screen are missing their red indicator dots (which show recent activity or pending items).\n- Affected component: Quick log section on the home page (likely a QuickLog or HomeScreen component in src/)\n- Expected: Red indicator dots should appear on quick log items after some time of account creation to show activity status\n- Current: No red indicators appear even after extended account usage\n- Edge cases: May be related to data freshness checks, timestamp comparisons, or IndexedDB query issues\n- Acceptance criteria: Red indicators appear on quick log buttons when there is relevant recent activity to highlight",
+    "implementation_notes": "Files changed:\n- src/tabs/HomeTab.tsx: Updated quickLogWarnings logic to use birth date as reference when no logs exist for a category\n\nApproach: When lastMs === 0 (no entries ever logged), instead of setting warnings to null, the code now calculates hours since birth and applies the same warn/danger thresholds using the neverMsg text. This ensures red indicators appear for long-inactive accounts."
+  },
+  {
+    "number": 97,
+    "title": "welcome caurasel doesn\u2019t reflect the latest changes",
+    "body": "## \ud83d\udc1b Bug Report\n\nwelcome caurasel doesn\u2019t reflect the latest changes. I should also have demo for long press reveal additional info of quick log\n\n---\n\n**Category:** `bug` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/97",
+    "created_at": "2026-03-26T03:41:52.516Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The welcome carousel/onboarding screens do not show the latest app features and are missing a demo for the long-press quick log feature.\n- Affected component: Welcome/onboarding carousel component in src/\n- Expected: Carousel should reflect current app features and include a slide demonstrating long-press to reveal additional quick log info\n- Current: Carousel content is outdated and missing the long-press demo\n- Edge cases: Should work on both first install and if user revisits; carousel content should be maintainable\n- Acceptance criteria: Welcome carousel includes updated feature descriptions and a slide showing the long-press quick log interaction",
+    "implementation_notes": "Files changed:\n- src/components/onboarding/WelcomeCarousel.tsx: Added long-press info panel to MiniDemo with history and tips; updated MockBtn to support onTouchStart/onTouchEnd; updated slide description to mention long-press feature; hid legend when info panel is open\n\nApproach: Added long-press detection (500ms timeout) to MockBtn in the demo. When triggered, shows an info panel with mock history entries and tips for the pressed button, matching the actual app behavior."
+  },
+  {
+    "number": 98,
+    "title": "welcome screen should be converted as guide can be revisited from settings",
+    "body": "## \ud83d\udc1b Bug Report\n\nwelcome screen should be converted as guide can be revisited from settings. It can be more elaborate than welcome screen as well and can have more slides.\n\n---\n\n**Category:** `bug` `ui` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "ui",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/98",
+    "created_at": "2026-03-26T03:44:52.649Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "The welcome/onboarding screen should be converted into a \"Guide\" that users can revisit from the Settings page, with more elaborate content and additional slides.\n- Affected component: Welcome screen component and Settings page in src/\n- Expected: A \"Guide\" option in Settings that opens a more detailed version of the welcome carousel with additional slides\n- Current: Welcome screen is only shown on first launch and cannot be revisited\n- Edge cases: Guide should work for both new and existing users; should not reset onboarding state; can have more slides than the initial welcome\n- Acceptance criteria: Settings page has a \"Guide\" option that opens an elaborate, multi-slide guide based on the welcome screen content"
+  },
+  {
+    "number": 99,
+    "title": "my wellness graphs are not there",
+    "body": "## \u2728 Feature Request\n\nmy wellness graphs are not there. My stats should be available in all stats . One graph with multiple option for mother.\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/99",
+    "created_at": "2026-03-26T03:46:49.342Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Mother/parent wellness graphs are missing from the stats section. User wants wellness tracking stats available in the \"All Stats\" view with a graph showing multiple wellness metrics.\n- Affected component: Stats/analytics section in src/ \u2014 likely an AllStats or WellnessStats component\n- Expected: A wellness graph for mother/parent data should appear in the All Stats section, with options to toggle between different wellness metrics\n- Current: No wellness graphs are shown for the mother/parent\n- Edge cases: Handle case where no wellness data exists yet; support multiple metric types on one graph; responsive chart sizing\n- Acceptance criteria: All Stats section includes a mother wellness graph with selectable metrics (e.g., mood, sleep, hydration)"
+  },
+  {
+    "number": 100,
+    "title": "all stats icon in the home page have 1F 2D kind of nomenclature",
+    "body": "## \ud83d\udc1b Bug Report\n\nall stats icon in the home page have 1F 2D kind of nomenclature. I don\u2019t need that.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/100",
+    "created_at": "2026-03-26T03:48:59.799Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Stats icons on the home page are displaying raw unicode escape sequences (like \"1F\", \"2D\") instead of rendering the actual emoji icons.\n- Affected component: Home page stats section in src/ \u2014 likely icon rendering in a StatsCard or similar component\n- Expected: Actual emoji icons should render visually on the stats buttons/cards\n- Current: Raw hex-like unicode fragments (\"1F\", \"2D\") are displayed as text instead of emojis\n- Edge cases: Should work across different browsers/devices; ensure emoji rendering fallback exists\n- Acceptance criteria: All stats icons on the home page render as proper emoji characters, not unicode escape text"
+  },
+  {
+    "number": 101,
+    "title": "add a note is there, but where can I see them",
+    "body": "## \u2728 Feature Request\n\nadd a note is there, but where can I see them?\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/101",
+    "created_at": "2026-03-26T03:49:39.084Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "Users can add notes but there is no visible way to view previously added notes. A notes viewing/listing feature is needed.\n- Affected component: Notes feature in src/ \u2014 needs a notes list/history view\n- Expected: Users should be able to view all previously added notes, likely from a dedicated notes section or accessible from the relevant log entry\n- Current: \"Add a note\" functionality exists but there is no UI to browse or read saved notes\n- Edge cases: Handle empty state (no notes yet); support notes across different log types; chronological ordering; search/filter\n- Acceptance criteria: A notes viewing area is accessible where users can see all their previously added notes"
+  },
+  {
+    "number": 102,
+    "title": "I like the hero widget background",
+    "body": "## \u2728 Feature Request\n\nI like the hero widget background. can the background have subtle animation?\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/102",
+    "created_at": "2026-03-26T03:50:34.538Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User requests a subtle background animation on the hero widget at the top of the home screen.\n- Affected component: Hero widget/banner component on the home page in src/\n- Expected: The hero widget background should have a gentle, subtle CSS or JS animation (e.g., gradient shift, particle effect, or slow movement)\n- Current: Hero widget has a static background\n- Edge cases: Animation should be performant and not drain battery; should respect reduced-motion preferences; should not distract from content\n- Acceptance criteria: Hero widget background has a subtle, smooth animation that enhances visual appeal without impacting performance"
+  },
+  {
+    "number": 103,
+    "title": "long press reveal quick log animation for in and close is not professional",
+    "body": "## \u2728 Feature Request\n\nlong press reveal quick log animation for in and close is not professional\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/103",
+    "created_at": "2026-03-26T03:51:18.952Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "The long-press animation that reveals the quick log overlay has unprofessional-looking open and close transitions.\n- Affected component: Quick log long-press reveal animation in src/ (likely a QuickLog or LongPressOverlay component)\n- Expected: Smooth, polished enter and exit animations for the quick log overlay (e.g., proper easing, consistent timing, no jank)\n- Current: The open and close animations look rough or unprofessional\n- Edge cases: Should work smoothly on low-end devices; respect reduced-motion preferences; maintain touch responsiveness\n- Acceptance criteria: Quick log long-press reveal has professional, smooth open and close animations with proper easing curves"
   }
 ]
