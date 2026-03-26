@@ -135,7 +135,8 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/89",
     "created_at": "2026-03-25T23:44:30Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale \u2014 no action needed."
   },
   {
     "number": 90,
@@ -147,7 +148,8 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/90",
     "created_at": "2026-03-25T23:50:36Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale \u2014 the failing tests have been fixed."
   },
   {
     "number": 91,
@@ -159,7 +161,8 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/91",
     "created_at": "2026-03-25T23:56:30Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Duplicate of #90. Deploy failure due to unit test failures. Current CI log shows all tests passing. Issue is stale."
   },
   {
     "number": 92,
@@ -171,6 +174,7 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/92",
     "created_at": "2026-03-25T23:58:37Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Duplicate of #90/#91. Deploy failure due to unit test failures. Current CI log shows all tests passing. Issue is stale."
   }
 ]
