@@ -35,7 +35,18 @@ export default function parseVoice(text: string): VoiceParseResult | null {
   if (!tempM) tempM = t.match(/(\d{2,3}\.\d+)\s*(?:°?\s*f|fahrenheit|degrees|temp)/i);
 
   // ═══ FEEDING ═══
-  if (/breast\s*(?:feed|fed)?\s*(?:left|l\b)/i.test(t) || /left\s*breast/i.test(t)) {
+  // Pumped/expressed milk must be checked before generic breast patterns
+  // to prevent "pumped breast milk" matching as "Breast L"
+  if (/pumped\s*(?:milk|breast)|expressed/i.test(t)) {
+    result = { cat: 'feed', entry: { type: 'Pumped Milk' } };
+    if (ozM) {
+      result.entry.oz = parseFloat(ozM[1]);
+      result.entry.amount = ozM[1] + ' oz';
+    } else if (mlM) {
+      result.entry.oz = Math.round((parseFloat(mlM[1]) / 29.5735) * 10) / 10;
+      result.entry.amount = mlM[1] + ' ml';
+    }
+  } else if (/breast\s*(?:feed|fed)?\s*(?:left|l\b)/i.test(t) || /left\s*breast/i.test(t)) {
     result = { cat: 'feed', entry: { type: 'Breast L' } };
     if (minM) result.entry.mins = parseFloat(minM[1]);
     if (minM) result.entry.amount = minM[1] + ' min';
@@ -66,15 +77,6 @@ export default function parseVoice(text: string): VoiceParseResult | null {
     } else if (minM) {
       result.entry.mins = parseFloat(minM[1]);
       result.entry.amount = minM[1] + ' min';
-    }
-  } else if (/pumped\s*(?:milk|breast)|expressed/i.test(t)) {
-    result = { cat: 'feed', entry: { type: 'Pumped Milk' } };
-    if (ozM) {
-      result.entry.oz = parseFloat(ozM[1]);
-      result.entry.amount = ozM[1] + ' oz';
-    } else if (mlM) {
-      result.entry.oz = Math.round((parseFloat(mlM[1]) / 29.5735) * 10) / 10;
-      result.entry.amount = mlM[1] + ' ml';
     }
   } else if (/bottle/i.test(t)) {
     result = { cat: 'feed', entry: { type: 'Bottle' } };
