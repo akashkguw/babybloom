@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B8A"/>
+      <stop offset="50%" style="stop-color:#8B83FF"/>
+      <stop offset="100%" style="stop-color:#FF6B8A"/>
+    </linearGradient>
+    <linearGradient id="bottle" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F0E8FF"/>
+    </linearGradient>
+    <linearGradient id="milk" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE4B5"/>
+      <stop offset="100%" style="stop-color:#FFDAB0"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFB6C8"/>
+      <stop offset="100%" style="stop-color:#FF8FAA"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#00000033"/>
+    </filter>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="180" cy="180" r="120" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="850" cy="820" r="150" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="800" cy="250" r="60" fill="rgba(255,255,255,0.05)"/>
+
+  <!-- Baby bottle group -->
+  <g filter="shadow" transform="translate(512, 512) scale(1.0) translate(-512, -512)">
+
+    <!-- Nipple/teat -->
+    <path d="M462 230 C462 180, 480 140, 512 120 C544 140, 562 180, 562 230 L562 270 L462 270 Z"
+          fill="url(#cap)" stroke="rgba(255,150,180,0.3)" stroke-width="2"/>
+
+    <!-- Cap ring -->
+    <rect x="440" y="265" width="144" height="40" rx="8" fill="#FFD0DD" stroke="rgba(255,150,180,0.4)" stroke-width="2"/>
+
+    <!-- Bottle neck -->
+    <rect x="450" y="305" width="124" height="30" rx="4" fill="url(#bottle)" opacity="0.95"/>
+
+    <!-- Bottle body -->
+    <path d="M440 335 L430 380 L430 720 C430 755, 455 780, 490 780 L534 780 C569 780, 594 755, 594 720 L594 380 L584 335 Z"
+          fill="url(#bottle)" stroke="rgba(200,200,220,0.3)" stroke-width="2"/>
+
+    <!-- Milk fill (lower 60% of bottle) -->
+    <path d="M432 520 L432 720 C432 753, 457 778, 490 778 L534 778 C567 778, 592 753, 592 720 L592 520 Z"
+          fill="url(#milk)" opacity="0.8"/>
+
+    <!-- Measurement lines -->
+    <line x1="445" y1="420" x2="475" y2="420" stroke="rgba(180,170,200,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="445" y1="480" x2="465" y2="480" stroke="rgba(180,170,200,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="445" y1="540" x2="475" y2="540" stroke="rgba(180,170,200,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="445" y1="600" x2="465" y2="600" stroke="rgba(180,170,200,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="445" y1="660" x2="475" y2="660" stroke="rgba(180,170,200,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Bottle highlight/shine -->
+    <path d="M460 345 L458 380 L458 710 C458 730, 465 745, 480 750"
+          fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Small sparkle near nipple -->
+    <circle cx="480" cy="200" r="6" fill="white" opacity="0.7"/>
+    <circle cx="490" cy="190" r="3" fill="white" opacity="0.5"/>
+
+  </g>
+
+  <!-- Small hearts scattered -->
+  <g opacity="0.3" fill="white">
+    <path d="M250 450 C250 440, 260 430, 270 440 C280 430, 290 440, 290 450 C290 465, 270 480, 270 480 C270 480, 250 465, 250 450 Z" transform="scale(0.8) translate(50, 50)"/>
+    <path d="M250 450 C250 440, 260 430, 270 440 C280 430, 290 440, 290 450 C290 465, 270 480, 270 480 C270 480, 250 465, 250 450 Z" transform="scale(0.6) translate(1200, 300)"/>
+    <path d="M250 450 C250 440, 260 430, 270 440 C280 430, 290 440, 290 450 C290 465, 270 480, 270 480 C270 480, 250 465, 250 450 Z" transform="scale(0.5) translate(400, 1300)"/>
+  </g>
+</svg>

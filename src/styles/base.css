@@ -252,19 +252,7 @@ button {
 
 /* Tab bar — extends into bottom safe area */
 .tab-bar {
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 14px)) !important;
-}
-
-/* Solid fill below the tab bar to cover the entire home indicator area */
-.tab-bar::after {
-  content: '';
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-bottom, 14px);
-  background: inherit;
-  z-index: 99;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 34px)) !important;
 }
 
 /* Content area — leaves room for tab bar + safe area */

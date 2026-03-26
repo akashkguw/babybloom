@@ -81,6 +81,15 @@ desktop.ini
 # ─── Vite cache ─────────────────────────────────────────────────
 .vite/
 
+# ─── Capacitor native projects ─────────────────────────────────
+# These are generated and should be managed per-developer
+ios/App/Pods/
+ios/App/build/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
 # ─── Misc ───────────────────────────────────────────────────────
 *.bak
 *.tmp
