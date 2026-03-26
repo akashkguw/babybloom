@@ -24,6 +24,7 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
 
   return (
     <div
+      className="tab-bar"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -38,7 +39,6 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
         borderTop: `1px solid ${C.b}`,
         display: 'flex',
         justifyContent: 'space-around',
-        paddingBottom: 20,
         paddingTop: 8,
         zIndex: 100,
       }}

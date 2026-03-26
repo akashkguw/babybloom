@@ -77,9 +77,11 @@ export const C: Colors = Object.assign({}, C_DARK);
 export function applyTheme(dark: boolean): void {
   Object.assign(C, dark ? C_DARK : C_LIGHT);
 
-  // Update document background and text color
+  // Update document background and text color (both html + body for full safe-area coverage)
+  document.documentElement.style.background = C.bg;
   document.body.style.background = C.bg;
   document.body.style.color = C.t;
+  document.documentElement.style.setProperty('--app-bg', C.bg);
 
   // Update theme color meta tag to match nav gradient start
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');

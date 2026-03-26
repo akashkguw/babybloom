@@ -547,7 +547,7 @@ function App() {
           maxWidth: 430,
           margin: '0 auto',
           background: C.bg,
-          minHeight: '100vh',
+          minHeight: '100dvh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -561,8 +561,10 @@ function App() {
   }
 
   return (
-    <div style={{ maxWidth: 430, margin: '0 auto', background: C.bg, minHeight: '100vh', position: 'relative' }}>
-      <div style={{ height: showAnyBanner ? 88 : 44, paddingTop: 'env(safe-area-inset-top, 0px)' }} />
+    <div style={{ maxWidth: 430, margin: '0 auto', background: C.bg, minHeight: '100dvh', position: 'relative' }}>
+      {/* Spacer to push content below the fixed header */}
+      <div className="header-spacer" />
+      {showAnyBanner && <div className="banner-spacer" />}
 
       {/* ═══ PERSISTENT RESUME BANNER — visible when a timer is active on a different tab ═══ */}
       {showAnyBanner && (
@@ -611,21 +613,11 @@ function App() {
 
       {birth && !showSet ? (
         <div
+          className="app-header"
           style={{
-            position: 'fixed',
-            top: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            maxWidth: 430,
-            width: '100%',
-            zIndex: 50,
-            padding: 'calc(8px + env(safe-area-inset-top, 0px)) 12px 8px',
             background: darkMode ? `linear-gradient(135deg, ${C.sl}, ${C.pl})` : `linear-gradient(135deg, ${C.a}, ${C.p})`,
             borderBottom: `1px solid ${darkMode ? C.b : 'transparent'}`,
             boxShadow: darkMode ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

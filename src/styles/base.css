@@ -10,13 +10,19 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   overflow-x: hidden;
 }
 
+html {
+  /* Extend background color into safe areas (notch, home indicator) */
+  background: var(--app-bg, #1A1A2E);
+}
+
 body {
-  background: #FFF8F0;
+  background: var(--app-bg, #1A1A2E);
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   color: #2D2D3A;
@@ -212,13 +218,58 @@ button {
   font-family: inherit;
 }
 
-@supports (padding: env(safe-area-inset-bottom)) {
-  .tab-bar {
-    padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
-  }
-  .ca {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
-  }
+/* ═══ Safe area support for native mobile (Capacitor) ═══ */
+
+/* Header spacer — pushes content below the fixed header */
+.header-spacer {
+  height: 54px; /* fallback: 8px top pad + 34px content + 8px bottom pad + 4px buffer */
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: content-box !important; /* padding ADDS to height, not inside */
+  flex-shrink: 0;
+}
+
+/* Extra spacer when a timer banner is active */
+.banner-spacer {
+  height: 44px;
+  flex-shrink: 0;
+}
+
+/* Fixed header — accounts for notch/dynamic island */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 430px;
+  width: 100%;
+  z-index: 50;
+  padding: 8px 12px 8px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Tab bar — extends into bottom safe area */
+.tab-bar {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 14px)) !important;
+}
+
+/* Solid fill below the tab bar to cover the entire home indicator area */
+.tab-bar::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom, 14px);
+  background: inherit;
+  z-index: 99;
+}
+
+/* Content area — leaves room for tab bar + safe area */
+.ca {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 12px)) !important;
 }
 
 .toast {
