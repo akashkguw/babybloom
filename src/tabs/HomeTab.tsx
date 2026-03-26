@@ -1647,7 +1647,7 @@ export default function HomeTab({
                             <span style={{ fontSize: 11, fontWeight: 600, color: C.t }}>{entry.type}</span>
                             {entry.amount && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.amount}</span>}
                             {entry.oz && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.oz}oz</span>}
-                            {entry.mins && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.mins}min</span>}
+                            {entry.mins && !entry.amount && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.mins}min</span>}
                           </div>
                           <div style={{ fontSize: 9, color: C.tl }}>{entry.date === today() ? entry.time : entry.date + ' ' + entry.time}</div>
                         </div>
