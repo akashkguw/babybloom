@@ -140,13 +140,17 @@ function TapHint({ visible }: { visible: boolean }) {
 }
 
 /* ── Mini mock button ── */
-function MockBtn({ emoji, label, border, bg, color, anim, onClick, flash }: {
+function MockBtn({ emoji, label, border, bg, color, anim, onClick, flash, onTouchStart, onTouchEnd }: {
   emoji: string; label: string; border?: string; bg?: string; color?: string;
   anim?: string; onClick?: () => void; flash?: boolean;
+  onTouchStart?: () => void; onTouchEnd?: () => void;
 }) {
   return (
     <div
       onClick={onClick}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onContextMenu={onTouchStart ? (e: React.MouseEvent) => { e.preventDefault(); onTouchStart(); } : undefined}
       style={{
         textAlign: 'center', padding: '6px 2px', borderRadius: 10,
         background: bg || C.bg,
@@ -244,6 +248,31 @@ function MiniDemo() {
   // Is a nursing timer active (for side-switch button)
   const isBreastTimer = activeTimer === 'Nurse Left' || activeTimer === 'Nurse Right';
 
+  // Long-press info panel state
+  const [infoPanel, setInfoPanel] = useState<string | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startLongPress = useCallback((label: string) => {
+    longPressRef.current = setTimeout(() => {
+      setInfoPanel(label);
+      longPressRef.current = null;
+    }, 500);
+  }, []);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }, []);
+
+  const infoPanelData: Record<string, { emoji: string; tips: string[]; history: string[] }> = {
+    'Nurse Left': { emoji: '🤱', tips: ['Alternate sides each feed', 'Aim for 8-12 feeds/day in first month'], history: ['2m ago — 12 min', '3h ago — 8 min'] },
+    'Formula': { emoji: '🍼', tips: ['Follow package mixing ratio', 'Good for 1h at room temp'], history: ['1h ago — 120 ml', '4h ago — 90 ml'] },
+    'Wet': { emoji: '💧', tips: ['Expect 6+ wet diapers per day', 'Pale/clear urine is healthy'], history: ['45m ago', '3h ago'] },
+    'Sleep': { emoji: '😴', tips: ['Short wake windows for newborns', 'Note patterns for schedule planning'], history: ['2h ago — 1.5h nap', '5h ago — 45m nap'] },
+  };
+
   return (
     <div style={{ maxWidth: 300, margin: '16px auto 0' }}>
       <div style={{
@@ -253,10 +282,32 @@ function MiniDemo() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, padding: '0 2px' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.t }}>Quick Log</span>
+          {!infoPanel && <span style={{ fontSize: 8, color: C.tl }}>Long-press for details</span>}
         </div>
 
-        {/* Quantity selector — slides in over the grid */}
-        {showQty ? (
+        {/* Info panel — shown on long-press */}
+        {infoPanel && infoPanelData[infoPanel] ? (
+          <div style={{ animation: 'obFadeUp 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 16 }}>{infoPanelData[infoPanel].emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.t }}>{infoPanel}</span>
+              </div>
+              <div onClick={() => setInfoPanel(null)} style={{
+                width: 24, height: 24, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: C.bg, border: `1px solid ${C.b}`, fontSize: 11, color: C.tl, cursor: 'pointer',
+              }}>✕</div>
+            </div>
+            <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>Recent</div>
+            {infoPanelData[infoPanel].history.map((h, i) => (
+              <div key={i} style={{ fontSize: 9, color: C.t, padding: '2px 0' }}>• {h}</div>
+            ))}
+            <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6, marginBottom: 3 }}>Tips</div>
+            {infoPanelData[infoPanel].tips.map((t, i) => (
+              <div key={i} style={{ fontSize: 9, color: C.s, padding: '2px 0' }}>💡 {t}</div>
+            ))}
+          </div>
+        ) : showQty ? (
           <div style={{ animation: 'obFadeUp 0.2s ease-out' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -289,18 +340,28 @@ function MiniDemo() {
                 border={activeTimer === 'Nurse Left' ? C.a : undefined}
                 bg={activeTimer === 'Nurse Left' ? C.al : undefined}
                 color={activeTimer === 'Nurse Left' ? C.a : undefined}
-                onClick={() => startTimer('Nurse Left')}
+                onClick={() => { clearLongPress(); startTimer('Nurse Left'); }}
+                onTouchStart={() => startLongPress('Nurse Left')}
+                onTouchEnd={clearLongPress}
                 flash={isFlashed('Nurse Left')}
               />
               {/* Formula — quantity selector */}
-              <MockBtn emoji="🍼" label="Formula" onClick={handleFormula} flash={isFlashed('Formula')} />
+              <MockBtn emoji="🍼" label="Formula"
+                onClick={() => { clearLongPress(); handleFormula(); }}
+                onTouchStart={() => startLongPress('Formula')}
+                onTouchEnd={clearLongPress}
+                flash={isFlashed('Formula')}
+              />
               {/* Wet — starts with danger pulse, goes neutral after tap */}
               <MockBtn emoji="💧" label="Wet"
                 border={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.5)'}
                 bg={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.10)'}
                 color={tapped['Wet'] ? undefined : '#dc2626'}
                 anim={tapped['Wet'] ? undefined : 'obDemoPulse 2s ease-in-out infinite'}
-                onClick={() => tap('Wet', '💧')} flash={isFlashed('Wet')}
+                onClick={() => { clearLongPress(); tap('Wet', '💧'); }}
+                onTouchStart={() => startLongPress('Wet')}
+                onTouchEnd={clearLongPress}
+                flash={isFlashed('Wet')}
               />
               {/* Sleep — starts with amber "due soon" pulse, goes neutral after first tap */}
               <MockBtn
@@ -310,7 +371,9 @@ function MiniDemo() {
                 bg={sleeping ? C.pul : !tapped['Sleep'] ? 'rgba(245,158,11,0.10)' : undefined}
                 color={sleeping ? C.pu : !tapped['Sleep'] ? '#d97706' : undefined}
                 anim={!tapped['Sleep'] && !sleeping ? 'obDemoAmber 2.5s ease-in-out infinite' : undefined}
-                onClick={toggleSleep}
+                onClick={() => { clearLongPress(); toggleSleep(); }}
+                onTouchStart={() => startLongPress('Sleep')}
+                onTouchEnd={clearLongPress}
                 flash={isFlashed('Sleep')}
               />
             </div>
@@ -318,7 +381,7 @@ function MiniDemo() {
         )}
 
         {/* Legend */}
-        {!showQty && (
+        {!showQty && !infoPanel && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, padding: '0 2px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               <div style={{ width: 6, height: 6, borderRadius: 3, background: '#dc2626', animation: 'obDemoPulse 2s ease-in-out infinite' }} />
@@ -738,7 +801,7 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
       icon: '⚡',
       bg: `linear-gradient(135deg, ${C.a}, #00B4D8)`,
       title: 'Welcome to BabyBloom',
-      desc: `${countryConfig.medical.authority} guidelines, one-tap logging, and built-in timers. Buttons glow red when ${name} needs attention — you'll never miss a thing.`,
+      desc: `${countryConfig.medical.authority} guidelines, one-tap logging, and built-in timers. Buttons glow red when ${name} needs attention. Long-press any button for history and tips.`,
       visual: demoVisual,
       p0: true,
     },
