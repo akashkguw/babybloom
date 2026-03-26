@@ -85,13 +85,14 @@ export default function Settings({
     >
       {/* Header */}
       <div
+        className="app-header"
         style={{
+          position: 'sticky',
+          top: 0,
           background: C.bg,
           borderBottom: '1px solid ' + C.b,
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
           gap: 12,
+          zIndex: 50,
         }}
       >
         <button
