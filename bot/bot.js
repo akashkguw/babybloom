@@ -64,12 +64,9 @@ const { Octokit } = require("octokit");
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || "akashkguw/babybloom";
-const _rawAllowed = process.env.ALLOWED_USERS
-  ? process.env.ALLOWED_USERS.split(",").map((u) => u.trim().replace(/^@/, "").toLowerCase())
+const ALLOWED_USERS = process.env.ALLOWED_USERS
+  ? process.env.ALLOWED_USERS.split(",").map((u) => u.trim().toLowerCase())
   : [];
-// Separate numeric IDs (Telegram user IDs) from username strings
-const ALLOWED_USER_IDS = _rawAllowed.filter((u) => /^\d+$/.test(u)).map(Number);
-const ALLOWED_USERNAMES = _rawAllowed.filter((u) => !/^\d+$/.test(u));
 
 if (!TELEGRAM_TOKEN || !GITHUB_TOKEN) {
   console.error(
@@ -145,20 +142,9 @@ async function ensureLabels(labels) {
 }
 
 // ─── Auth check ───
-// Matches by username OR numeric Telegram user ID for robustness.
-// Telegram usernames are optional and mutable; user IDs are permanent.
-function isAllowed(msg) {
-  if (ALLOWED_USERNAMES.length === 0 && ALLOWED_USER_IDS.length === 0) return true;
-  const username = (msg.from && msg.from.username || "").toLowerCase();
-  const userId = msg.from && msg.from.id;
-  if (username && ALLOWED_USERNAMES.includes(username)) return true;
-  if (userId && ALLOWED_USER_IDS.includes(userId)) return true;
-  // Log failed auth attempts for diagnostics (no secrets, just identifiers)
-  console.log(
-    `🚫 Auth denied — username: "${username || "(none)"}",` +
-    ` user_id: ${userId || "unknown"}, chat_id: ${msg.chat && msg.chat.id || "unknown"}`
-  );
-  return false;
+function isAllowed(username) {
+  if (ALLOWED_USERS.length === 0) return true;
+  return ALLOWED_USERS.includes((username || "").toLowerCase());
 }
 
 // ─── Local issue queue (sandbox reads this — no network needed) ───
@@ -194,7 +180,7 @@ const pendingIssues = {};
 //  /start — Welcome
 // ═══════════════════════════════
 bot.onText(/\/start/, (msg) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   bot.sendMessage(
     msg.chat.id,
     `👋 *Welcome to BabyBloom Bot!*
@@ -224,7 +210,7 @@ bot.onText(/\/chatid/, (msg) => {
 //  /help
 // ═══════════════════════════════
 bot.onText(/\/help/, (msg) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   bot.sendMessage(
     msg.chat.id,
     `📖 *BabyBloom Bot Help*
@@ -253,7 +239,7 @@ Just send me a message describing what you want, and I'll create a GitHub Issue.
 //  /edit <number> <new description>
 // ═══════════════════════════════
 bot.onText(/\/edit\s+(\d+)\s+(.+)/s, async (msg, match) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   const issueNumber = parseInt(match[1]);
   const newText = match[2].trim();
 
@@ -307,7 +293,7 @@ bot.onText(/\/edit\s+(\d+)\s+(.+)/s, async (msg, match) => {
 //  /bug <description>
 // ═══════════════════════════════
 bot.onText(/\/bug\s+(.+)/s, async (msg, match) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   await createIssue(msg.chat.id, match[1], ["bug", "telegram"]);
 });
 
@@ -315,7 +301,7 @@ bot.onText(/\/bug\s+(.+)/s, async (msg, match) => {
 //  /feature <description>
 // ═══════════════════════════════
 bot.onText(/\/feature\s+(.+)/s, async (msg, match) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   await createIssue(msg.chat.id, match[1], ["enhancement", "telegram"]);
 });
 
@@ -323,7 +309,7 @@ bot.onText(/\/feature\s+(.+)/s, async (msg, match) => {
 //  /status — Open issue count
 // ═══════════════════════════════
 bot.onText(/\/status/, async (msg) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   try {
     const { data } = await octokit.rest.issues.listForRepo({
       owner, repo,
@@ -354,7 +340,7 @@ bot.onText(/\/status/, async (msg) => {
 //  /recent — Last 5 issues
 // ═══════════════════════════════
 bot.onText(/\/recent/, async (msg) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   try {
     const { data } = await octokit.rest.issues.listForRepo({
       owner, repo,
@@ -388,7 +374,7 @@ bot.onText(/\/recent/, async (msg) => {
 bot.on("message", async (msg) => {
   // Skip commands
   if (!msg.text || msg.text.startsWith("/")) return;
-  if (!isAllowed(msg)) {
+  if (!isAllowed(msg.from.username)) {
     bot.sendMessage(msg.chat.id, "⛔ You're not authorized to use this bot.");
     return;
   }
@@ -399,7 +385,7 @@ bot.on("message", async (msg) => {
 //  Photo support — screenshots
 // ═══════════════════════════════
 bot.on("photo", async (msg) => {
-  if (!isAllowed(msg)) return;
+  if (!isAllowed(msg.from.username)) return;
   const caption = msg.caption || "Screenshot attached";
   const photo = msg.photo[msg.photo.length - 1]; // highest res
   const file = await bot.getFile(photo.file_id);
@@ -516,11 +502,5 @@ async function createIssue(chatId, text, forceLabels, customBody) {
 console.log("🍼 BabyBloom Telegram Bot started!");
 console.log(`📡 Repo: ${GITHUB_REPO}`);
 console.log(
-  `🔒 Allowed usernames: ${ALLOWED_USERNAMES.length > 0 ? ALLOWED_USERNAMES.join(", ") : "(none)"}`
+  `🔒 Allowed users: ${ALLOWED_USERS.length > 0 ? ALLOWED_USERS.join(", ") : "everyone (set ALLOWED_USERS to restrict)"}`
 );
-console.log(
-  `🔒 Allowed user IDs: ${ALLOWED_USER_IDS.length > 0 ? ALLOWED_USER_IDS.join(", ") : "(none)"}`
-);
-if (ALLOWED_USERNAMES.length === 0 && ALLOWED_USER_IDS.length === 0) {
-  console.log("⚠️  No ALLOWED_USERS set — bot is open to everyone!");
-}

@@ -187,10 +187,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/93",
     "created_at": "2026-03-26T02:02:33Z",
-    "status": "infra_implemented",
+    "status": "skipped",
     "route": "infrastructure",
-    "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot",
-    "implementation_notes": "Files changed:\n- bot/bot.js: Refactored isAllowed() to accept full msg object and match by both username AND numeric Telegram user ID. Added @-prefix stripping for ALLOWED_USERS parsing. Added diagnostic logging on auth failures (username, user_id, chat_id). Updated all 9 callers from isAllowed(msg.from.username) to isAllowed(msg). Updated startup logs to show both usernames and user IDs.\n\nRoot cause: isAllowed() only matched by msg.from.username, which is optional (users without a Telegram username) and mutable (users can change it). If anshimitt's actual Telegram username didn't exactly match the .env entry, auth would silently fail with no logging.\n\nFix: isAllowed() now checks both username and user_id. Operators can add numeric Telegram user IDs to ALLOWED_USERS for reliable matching. Auth failures now log the attempted username and user_id for easy diagnosis.\n\nManual step needed: Restart the bot process (kill existing, launchd will restart). Optionally add anshimitt's numeric Telegram user ID to ALLOWED_USERS in .env for bulletproof matching."
+    "skip_reason": "MANUAL ONLY — Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
+    "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
     "number": 98,
