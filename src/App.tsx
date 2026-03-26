@@ -20,6 +20,11 @@ import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, hapticTap, hapticConfirm, sendNotification } from '@/lib/native';
 
+const displayName = (type: string): string => {
+  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
+  return map[type] || type;
+};
+
 interface Profile {
   id: number;
   name: string;
@@ -134,11 +139,15 @@ function App() {
   };
 
   const setDarkMode = (v: boolean) => {
+    // Add transition class for smooth theme switch
+    document.documentElement.classList.add('theme-transition');
     setDarkModeR(v);
     applyTheme(v);
     ds('darkMode', v);
     // Update native status bar to match theme
     if (isNative) setStatusBarStyle(v);
+    // Remove transition class after animation completes
+    setTimeout(() => document.documentElement.classList.remove('theme-transition'), 500);
   };
 
   const setTimerState = (v: TimerState) => {
@@ -579,7 +588,7 @@ function App() {
             width: '100%',
             zIndex: 60,
             padding: 'calc(6px + env(safe-area-inset-top, 0px)) 14px 6px',
-            background: `linear-gradient(135deg, ${C.a}, ${C.p})`,
+            background: `linear-gradient(135deg, #FF6B8A, #FF8FA0, #FFA5B4)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -591,7 +600,7 @@ function App() {
             <div style={{ fontSize: 16 }}>{showFeedBanner ? (feedTimerApp!.type === 'Tummy Time' ? '🧒' : '🤱') : '⏱️'}</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>
-                {showFeedBanner ? feedTimerApp!.type : timerState.type} in progress
+                {showFeedBanner ? displayName(feedTimerApp!.type) : displayName(timerState.type || '')} in progress
               </div>
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>
                 Tap to resume
@@ -615,7 +624,7 @@ function App() {
         <div
           className="app-header"
           style={{
-            background: darkMode ? `linear-gradient(135deg, ${C.sl}, ${C.pl})` : `linear-gradient(135deg, ${C.a}, ${C.p})`,
+            background: darkMode ? `linear-gradient(135deg, ${C.sl}, ${C.pl})` : `linear-gradient(135deg, #FF6B8A, #FF8FA0, #FFA5B4)`,
             borderBottom: `1px solid ${darkMode ? C.b : 'transparent'}`,
             boxShadow: darkMode ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.1)',
           }}

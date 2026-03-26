@@ -15,6 +15,11 @@ import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
 import TimerView from '@/features/feeding/TimerView';
 import StatsView from '@/features/stats/StatsView';
 
+const displayName = (type: string): string => {
+  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
+  return map[type] || type;
+};
+
 interface LogEntry {
   id: number | string;
   date: string;
@@ -542,7 +547,7 @@ const LogTab: React.FC<LogTabProps> = ({
                       }}
                     >
                       {fmtTime(entry.time)}
-                      {entry.type ? ' — ' + entry.type : ''}
+                      {entry.type ? ' — ' + displayName(entry.type) : ''}
                       {entry.oz
                         ? ' — ' + fmtVol(entry.oz, volumeUnit)
                         : entry.amount

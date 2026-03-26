@@ -16,6 +16,12 @@ import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
 
+// Map internal DB type names to user-friendly display names
+const displayName = (type: string): string => {
+  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
+  return map[type] || type;
+};
+
 interface LogEntry {
   id: number;
   date: string;
@@ -120,7 +126,7 @@ export default function HomeTab({
       if (onGuideShown) onGuideShown();
     }
   }, [showGuideFromSettings]);
-  const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; msg: string } | null>(null);
+  const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; emoji: string; msg: string; encouragement: string } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerFlash = useCallback((label: string) => {
@@ -578,12 +584,11 @@ export default function HomeTab({
 
     const msg =
       cat === 'sleep' && e.type === 'Wake Up' && e.mins
-        ? e.type + ' logged (' + e.amount + ' sleep)'
-        : e.type + ' logged';
+        ? displayName(e.type) + ' logged (' + e.amount + ' sleep)'
+        : displayName(e.type) + ' logged';
     const encouragement = getEncouragement(cat, e.type);
-    toast(msg + '\n' + encouragement);
 
-    // Set undo state with emoji and auto-dismiss after 5 seconds
+    // Combined undo banner with message + encouragement (no separate toast)
     const emojis: Record<string, string> = {
       feed: '🍼',
       diaper: '👶',
@@ -591,9 +596,9 @@ export default function HomeTab({
       tummy: '🤸',
     };
     const emoji = emojis[cat] || '✓';
-    setUndoEntry({ cat, entry: e, msg: emoji });
+    setUndoEntry({ cat, entry: e, emoji, msg, encouragement });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    undoTimerRef.current = setTimeout(() => setUndoEntry(null), 5000);
+    undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
   }
 
   // ═══ Undo log helper ═══
@@ -680,7 +685,6 @@ export default function HomeTab({
     const next = Object.assign({}, logs);
     next.feed = ([updated] as LogEntry[]).concat(feeds.slice(1));
     setLogs(next);
-    toast('Added ' + extraMins + ' min → total ' + totalMins + ' min');
   }
 
   function stopFeedTimer() {
@@ -694,8 +698,12 @@ export default function HomeTab({
     if (!isTummy) {
       const recent = getRecentFeed(feedTimer.type);
       if (recent) {
-        // Auto-merge into previous feed silently (only merges same-type or breast L↔R)
+        // Auto-merge into previous feed (only merges same-type or breast L↔R)
         mergeIntoLastFeed(minsInt, feedTimer.type);
+        const enc = getEncouragement('feed', feedTimer.type);
+        setUndoEntry({ cat: 'feed', entry: { id: Date.now(), date: today(), time: feedTimer.startTimeStr, type: feedTimer.type, mins: minsInt } as LogEntry, emoji: '🍼', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min added', encouragement: enc });
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
         setFeedTimerApp(null);
         return;
       }
@@ -716,7 +724,10 @@ export default function HomeTab({
     setLogs(next);
     const timerCat = isTummy ? 'tummy' : 'feed';
     const enc = getEncouragement(timerCat, feedTimer.type);
-    toast(feedTimer.type + ' — ' + minsInt + ' min logged\n' + enc);
+    const timerEmojis: Record<string, string> = { feed: '🍼', tummy: '🤸' };
+    setUndoEntry({ cat: timerCat, entry, emoji: timerEmojis[timerCat] || '✓', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min logged', encouragement: enc });
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
     setFeedTimerApp(null);
   }
 
@@ -804,8 +815,8 @@ export default function HomeTab({
   // Last feed info for hero widget
   const lastFeedToday = (logs.feed || []).find((x) => x.date === td);
   const lastFeedLabel = lastFeedToday
-    ? lastFeedToday.type === 'Breast L' ? '🤱 L'
-      : lastFeedToday.type === 'Breast R' ? '🤱 R'
+    ? lastFeedToday.type === 'Breast L' ? '🤱 Left'
+      : lastFeedToday.type === 'Breast R' ? '🤱 Right'
       : lastFeedToday.type === 'Formula' ? '🍼 Formula'
       : lastFeedToday.type === 'Pumped Milk' ? '🍼 Pumped'
       : lastFeedToday.type === 'Solids' ? '🥄 Solids'
@@ -882,43 +893,59 @@ export default function HomeTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      {/* Undo banner */}
+      {/* Combined undo + message banner */}
       {undoEntry && (
         <div
+          className="undo-banner"
           style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
-            background: C.a,
-            color: 'white',
-            padding: '12px 16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            background: C.bg === '#1A1A2E' ? '#2A2654' : '#5C4D8A',
             zIndex: 1000,
             animation: 'ql-undo-slide 0.3s ease-out',
-            fontSize: 14,
-            fontWeight: 500,
           }}
         >
-          <span>{undoEntry.msg} Logged — Undo</span>
-          <button
-            onClick={undoLog}
+          <div
             style={{
-              background: 'white',
-              color: C.a,
-              border: 'none',
-              borderRadius: 20,
-              padding: '6px 16px',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              minWidth: 60,
+              padding: '10px 16px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              maxWidth: 430,
+              margin: '0 auto',
             }}
           >
-            Undo
-          </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>
+                {undoEntry.emoji} {undoEntry.msg}
+              </div>
+              {undoEntry.encouragement && (
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>
+                  {undoEntry.encouragement}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={undoLog}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: 20,
+                padding: '6px 16px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                minWidth: 56,
+                marginLeft: 12,
+                flexShrink: 0,
+              }}
+            >
+              Undo
+            </button>
+          </div>
         </div>
       )}
 
@@ -927,7 +954,7 @@ export default function HomeTab({
         style={{
           position: 'relative',
           overflow: 'hidden',
-          borderRadius: 24,
+          borderRadius: 16,
           marginBottom: 12,
           ...reveal(0),
           background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
@@ -1257,7 +1284,7 @@ export default function HomeTab({
             ? (feedTimer.type === 'Tummy Time' ? '🧒' : '🤱')
             : '😴';
           const timerLabel = feedTimer
-            ? feedTimer.type
+            ? displayName(feedTimer.type)
             : (lastSleepEntry ? lastSleepEntry.type : 'Sleep');
           const timerSince = feedTimer
             ? fmtTime(feedTimer.startTimeStr)
@@ -1562,7 +1589,7 @@ export default function HomeTab({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 13 }}>🍼</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: C.a }}>
-                      {resumeFeed.type} • {resumeElapsed > 0 ? resumeElapsed + 'm' : fmtTime(resumeFeed.time)}
+                      {displayName(resumeFeed.type)} • {resumeElapsed > 0 ? resumeElapsed + 'm' : fmtTime(resumeFeed.time)}
                     </span>
                     <span style={{ fontSize: 9, color: C.tl }}>— continue?</span>
                   </div>
