@@ -67,6 +67,8 @@ interface HomeTabProps {
   countryConfig: CountryConfig;
   country: CountryCode;
   setCountry: (code: CountryCode) => void;
+  showGuideFromSettings?: boolean;
+  onGuideShown?: () => void;
 }
 
 export default function HomeTab({
@@ -91,6 +93,8 @@ export default function HomeTab({
   countryConfig,
   country,
   setCountry,
+  showGuideFromSettings,
+  onGuideShown,
 }: HomeTabProps) {
   const VACCINES = countryConfig.vaccines;
   const countries = getAvailableCountries();
@@ -108,6 +112,14 @@ export default function HomeTab({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [revealStage, setRevealStage] = useState<number | null>(null);
+
+  // Show guide when triggered from Settings
+  useEffect(() => {
+    if (showGuideFromSettings) {
+      setShowWelcome(true);
+      if (onGuideShown) onGuideShown();
+    }
+  }, [showGuideFromSettings]);
   const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; msg: string } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

@@ -78,6 +78,7 @@ function App() {
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [showSync, setShowSync] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
+  const [showGuideFromSettings, setShowGuideFromSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [darkMode, setDarkModeR] = useState<boolean>(true);
   const [timerState, setTSR] = useState<TimerState>({ running: false, type: null, startTime: null });
@@ -707,6 +708,7 @@ function App() {
           setVolumeUnit={setVolumeUnit}
           onShowReport={() => { setShowReport(true); }}
           onSync={() => { setShowSet(false); setShowSync(true); }}
+          onShowGuide={() => { setShowSet(false); setShowGuideFromSettings(true); setTab('home'); }}
           country={country}
           setCountry={setCountry}
           countryConfig={countryConfig}
@@ -736,6 +738,8 @@ function App() {
               countryConfig={countryConfig}
               country={country}
               setCountry={setCountry}
+              showGuideFromSettings={showGuideFromSettings}
+              onGuideShown={() => setShowGuideFromSettings(false)}
             />
           ) : null}
           {tab === 'log' ? (

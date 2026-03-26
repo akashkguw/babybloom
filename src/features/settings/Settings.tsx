@@ -31,6 +31,7 @@ interface SettingsProps {
   setVolumeUnit: (unit: 'ml' | 'oz') => void;
   onShowReport?: () => void;
   onSync?: () => void;
+  onShowGuide?: () => void;
   country: CountryCode;
   setCountry: (code: CountryCode) => void;
   countryConfig: CountryConfig;
@@ -67,6 +68,7 @@ export default function Settings({
   setVolumeUnit,
   onShowReport,
   onSync,
+  onShowGuide,
   country,
   setCountry,
   countryConfig,
@@ -284,6 +286,19 @@ export default function Settings({
         {/* Siri Shortcuts */}
         <Section title="Shortcuts" icon="🎙️">
           <SiriShortcutsSetup volumeUnit={volumeUnit} />
+        </Section>
+
+        {/* App Guide */}
+        <Section title="Guide" icon="📖">
+          <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
+            Revisit the app walkthrough — learn about quick logging, smart alerts, wellness tracking, and more.
+          </div>
+          <Button
+            label="View Guide"
+            onClick={() => { if (onShowGuide) onShowGuide(); }}
+            color={C.s}
+            full
+          />
         </Section>
 
         {/* Data Management */}
