@@ -705,6 +705,42 @@ export default function HomeTab({
     setFeedTimerApp(null);
   }
 
+  function switchFeedSide(newType: string) {
+    if (!feedTimer) return;
+    // Save current side to log, then start new side with fresh timer
+    const secs = Math.floor((Date.now() - feedTimer.startTime) / 1000);
+    let minsInt = Math.round(secs / 60);
+    if (minsInt < 1) minsInt = 1;
+
+    const recent = getRecentFeed(feedTimer.type);
+    if (recent) {
+      mergeIntoLastFeed(minsInt, feedTimer.type);
+    } else {
+      const entry: LogEntry = {
+        date: today(),
+        time: feedTimer.startTimeStr,
+        id: Date.now(),
+        type: feedTimer.type,
+        amount: minsInt + ' min',
+        mins: minsInt,
+        notes: 'Timed',
+      };
+      const next = Object.assign({}, logs);
+      next.feed = [entry].concat((logs.feed || []) as LogEntry[]);
+      setLogs(next);
+    }
+
+    const label = timerToLabel[newType];
+    if (label) bumpQlUsage(label);
+    // Atomically switch — no gap where feedTimer is null
+    setFeedTimerApp({
+      type: newType,
+      startTime: Date.now(),
+      startTimeStr: now(),
+    });
+    toast('Switched to ' + (newType === 'Breast L' ? 'Left' : 'Right') + ' side');
+  }
+
   function cancelFeedTimer() {
     setFeedTimerApp(null);
     toast('Timer cancelled');
@@ -1221,12 +1257,12 @@ export default function HomeTab({
             if (feedTimer.type === 'Breast L') {
               companionItems.push({
                 e: '🔄', l: 'Switch R',
-                fn: () => { stopFeedTimer(); startFeedTimer('Breast R'); },
+                fn: () => { switchFeedSide('Breast R'); },
               });
             } else if (feedTimer.type === 'Breast R') {
               companionItems.push({
                 e: '🔄', l: 'Switch L',
-                fn: () => { stopFeedTimer(); startFeedTimer('Breast L'); },
+                fn: () => { switchFeedSide('Breast L'); },
               });
             }
           } else if (isSleeping) {

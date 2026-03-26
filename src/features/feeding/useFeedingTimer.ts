@@ -20,6 +20,7 @@ interface UseFeedingTimerReturn {
   startFeedTimer: (type: string) => void;
   stopFeedTimer: () => void;
   cancelFeedTimer: () => void;
+  switchFeedSide: (newType: string) => void;
   setFeedTimerApp: (timer: FeedTimer | null) => void;
 }
 
@@ -107,12 +108,35 @@ export default function useFeedingTimer(logs: Logs, setLogs: (logs: Logs) => voi
     // toast("Timer cancelled");
   }
 
+  function switchFeedSide(newType: string) {
+    if (!feedTimer) return;
+    // Save current side to log, then start new side with fresh timer
+    const secs = Math.floor((Date.now() - feedTimer.startTime) / 1000);
+    let minsInt = Math.round(secs / 60);
+    if (minsInt < 1) minsInt = 1;
+    const entry = {
+      date: today(),
+      time: feedTimer.startTimeStr,
+      id: Date.now(),
+      type: feedTimer.type,
+      amount: minsInt + ' min',
+      mins: minsInt,
+      notes: 'Timed',
+    };
+    const next = Object.assign({}, logs);
+    next.feed = [entry].concat(logs.feed || []);
+    setLogs(next);
+    // Atomically switch to new side — no gap where feedTimer is null
+    setFeedTimerApp({ type: newType, startTime: Date.now(), startTimeStr: now() });
+  }
+
   return {
     feedTimer,
     feedElapsed,
     startFeedTimer,
     stopFeedTimer,
     cancelFeedTimer,
+    switchFeedSide,
     setFeedTimerApp,
   };
 }
