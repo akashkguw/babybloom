@@ -194,21 +194,11 @@ export default function HomeTab({
         }
       }
       if (lastMs === 0) {
-        // No log ever — use birth date as reference to prompt user to start logging
-        if (birth) {
-          const bp = birth.split('-');
-          const birthMs = new Date(+bp[0], +bp[1] - 1, +bp[2]).getTime();
-          const hoursSinceBirth = (nowMs - birthMs) / 3600000;
-          if (hoursSinceBirth >= cfg.dangerH) {
-            warnings[label] = { level: 'danger', reason: cfg.neverMsg };
-          } else if (hoursSinceBirth >= cfg.warnH) {
-            warnings[label] = { level: 'warn', reason: cfg.neverMsg };
-          } else {
-            warnings[label] = null;
-          }
-        } else {
-          warnings[label] = null;
-        }
+        // No log ever — stay quiet until user starts tracking this category.
+        // Previously used birth date as reference, but that could be set to the
+        // account-creation date (today()) by default, causing false amber/red
+        // badges. Badges now only activate after the first log entry (fixes #105).
+        warnings[label] = null;
       } else {
         const hoursAgo = (nowMs - lastMs) / 3600000;
         const hStr = hoursAgo < 1 ? Math.round(hoursAgo * 60) + 'm' : Math.round(hoursAgo) + '';
@@ -218,7 +208,7 @@ export default function HomeTab({
       }
     }
     return warnings;
-  }, [logs, birth, isSleeping]);
+  }, [logs, age, isSleeping]);
 
   // Rich long-press info panel state
   interface QlInfoPanel {
