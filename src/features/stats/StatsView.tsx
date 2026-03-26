@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { C } from '@/lib/constants/colors';
 import Pill from '@/components/shared/Pill';
 import Card from '@/components/shared/Card';
 import StatsSummary from './StatsSummary';
 import { today, daysAgo, weekLabel, monthLabel, getWeekStart } from '@/lib/utils/date';
 import { fmtVol, volLabel } from '@/lib/utils/volume';
+import { dg } from '@/lib/db';
 
 interface StatsViewProps {
   logs: any;
@@ -257,6 +258,14 @@ export default function StatsView({
   const [feedMetric, setFeedMetric] = useState('count');
   const [sleepMetric, setSleepMetric] = useState('count');
   const [diaperMetric, setDiaperMetric] = useState('count');
+  const [wellnessMetric, setWellnessMetric] = useState('mood');
+  const [wellnessHistory, setWellnessHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    dg('momcare_history').then((history: any[] | null) => {
+      if (history) setWellnessHistory(history);
+    });
+  }, []);
 
   const buckets = getPeriodBuckets(period);
   const labels = buckets.map((b) => b.label);
@@ -406,7 +415,76 @@ export default function StatsView({
         <StatsSummary entries={diaperEntries} label="Diapers" />
       </Card>
 
-      {!hasAnyData && (
+      {/* Wellness Chart */}
+      {wellnessHistory.length > 0 && (
+        <Card style={{ marginBottom: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 6,
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>
+              🌿 My Wellness
+            </div>
+            <div style={{ fontSize: 12, color: C.tl }}>
+              {periodLabel}
+            </div>
+          </div>
+          <MetricPills
+            options={[
+              { id: 'mood', label: 'Mood' },
+              { id: 'sleep', label: 'Sleep' },
+              { id: 'meals', label: 'Meals' },
+              { id: 'progress', label: 'Progress' },
+            ]}
+            active={wellnessMetric}
+            onSelect={setWellnessMetric}
+            color="#9C7CF4"
+          />
+          <BarChart
+            data={(() => {
+              // Map wellness history to buckets
+              const data = buckets.map(() => 0);
+              const counts = buckets.map(() => 0);
+              wellnessHistory.forEach((day: any) => {
+                if (!day.date) return;
+                let bucketKey: string;
+                if (period === 'daily') bucketKey = day.date;
+                else if (period === 'weekly') bucketKey = getWeekStart(day.date);
+                else bucketKey = day.date.slice(0, 7);
+                const idx = buckets.findIndex((b) => b.key === bucketKey);
+                if (idx < 0) return;
+                counts[idx]++;
+                if (wellnessMetric === 'mood') data[idx] += day.mood || 0;
+                else if (wellnessMetric === 'sleep') data[idx] += day.sleep || 0;
+                else if (wellnessMetric === 'meals') {
+                  const meals = day.meals || {};
+                  data[idx] += Object.values(meals).filter(Boolean).length;
+                }
+                else if (wellnessMetric === 'progress') {
+                  const mc = Object.values(day.meals || {}).filter(Boolean).length;
+                  const total = mc + (day.water ? 1 : 0) + (day.vitamin ? 1 : 0) + (day.sleep > 0 ? 1 : 0) + (day.mood > 0 ? 1 : 0) + (day.moved ? 1 : 0);
+                  data[idx] += Math.round((total / 9) * 100);
+                }
+              });
+              // Average for weekly/monthly
+              if (period !== 'daily') {
+                return data.map((d, i) => counts[i] > 0 ? Math.round((d / counts[i]) * 10) / 10 : 0);
+              }
+              return data;
+            })()}
+            labels={labels}
+            color="#9C7CF4"
+            metric={wellnessMetric === 'progress' ? undefined : undefined}
+            volumeUnit={volumeUnit}
+          />
+        </Card>
+      )}
+
+      {!hasAnyData && wellnessHistory.length === 0 && (
         <Card style={{ textAlign: 'center', padding: 30, color: C.tl }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
           <div>Start logging to see your stats!</div>

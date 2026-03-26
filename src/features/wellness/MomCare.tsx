@@ -31,6 +31,7 @@ interface MomCareProps {
 }
 
 const STORAGE_KEY = 'momcare_today';
+const HISTORY_KEY = 'momcare_history';
 
 const emptyDay = (d: string): MomDay => ({
   date: d,
@@ -72,13 +73,27 @@ export default function MomCare({ storageKey }: MomCareProps) {
     });
   }, [key, td]);
 
-  // Persist on every change
+  // Persist on every change + save to history
+  const historyKey = storageKey ? `${storageKey}_${HISTORY_KEY}` : HISTORY_KEY;
   const save = useCallback(
     (updated: MomDay) => {
       setData(updated);
       ds(key, updated);
+      // Save to history array for stats graphs
+      dg(historyKey).then((history: MomDay[] | null) => {
+        const arr = history || [];
+        const idx = arr.findIndex((h) => h.date === updated.date);
+        if (idx >= 0) {
+          arr[idx] = updated;
+        } else {
+          arr.push(updated);
+        }
+        // Keep last 90 days
+        const trimmed = arr.slice(-90);
+        ds(historyKey, trimmed);
+      });
     },
-    [key],
+    [key, historyKey],
   );
 
   const toggleMeal = (meal: keyof MomDay['meals']) => {
