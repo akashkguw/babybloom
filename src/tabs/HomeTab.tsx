@@ -929,13 +929,15 @@ export default function HomeTab({
           borderRadius: 24,
           marginBottom: 12,
           ...reveal(0),
-          background: `linear-gradient(145deg, ${C.p}, ${C.s} 55%, ${C.pu} 100%)`,
+          background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
+          backgroundSize: '200% 200%',
+          animation: 'heroGradientShift 12s ease-in-out infinite',
           boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
         }}
       >
-        {/* Decorative background elements */}
-        <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        {/* Decorative background elements with subtle floating animation */}
+        <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', animation: 'heroOrbFloat 8s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'heroOrbFloat 10s ease-in-out infinite 2s' }} />
         <div style={{ position: 'absolute', top: 20, right: 60, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
 
         {/* Main content */}
