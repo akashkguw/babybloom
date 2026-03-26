@@ -182,8 +182,21 @@ export default function HomeTab({
         }
       }
       if (lastMs === 0) {
-        // No log ever — start clean; warnings kick in once tracking begins
-        warnings[label] = null;
+        // No log ever — use birth date as reference to prompt user to start logging
+        if (birth) {
+          const bp = birth.split('-');
+          const birthMs = new Date(+bp[0], +bp[1] - 1, +bp[2]).getTime();
+          const hoursSinceBirth = (nowMs - birthMs) / 3600000;
+          if (hoursSinceBirth >= cfg.dangerH) {
+            warnings[label] = { level: 'danger', reason: cfg.neverMsg };
+          } else if (hoursSinceBirth >= cfg.warnH) {
+            warnings[label] = { level: 'warn', reason: cfg.neverMsg };
+          } else {
+            warnings[label] = null;
+          }
+        } else {
+          warnings[label] = null;
+        }
       } else {
         const hoursAgo = (nowMs - lastMs) / 3600000;
         const hStr = hoursAgo < 1 ? Math.round(hoursAgo * 60) + 'm' : Math.round(hoursAgo) + '';
