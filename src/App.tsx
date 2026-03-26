@@ -18,6 +18,7 @@ import PartnerSync from '@/features/sync/PartnerSync';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
+import { isNative, setStatusBarStyle, hapticTap, hapticConfirm, sendNotification } from '@/lib/native';
 
 interface Profile {
   id: number;
@@ -136,6 +137,8 @@ function App() {
     setDarkModeR(v);
     applyTheme(v);
     ds('darkMode', v);
+    // Update native status bar to match theme
+    if (isNative) setStatusBarStyle(v);
   };
 
   const setTimerState = (v: TimerState) => {
@@ -467,12 +470,13 @@ function App() {
   const lastNotifRef = useRef<string | null>(null);
   useEffect(() => {
     if (!reminders.enabled || !reminders.feedInterval) return;
-    if ('Notification' in window && (Notification as any).permission === 'default')
+    if (!isNative && 'Notification' in window && (Notification as any).permission === 'default')
       (Notification as any).requestPermission();
     lastNotifRef.current = null;
 
     function checkAndNotify() {
-      if (!('Notification' in window) || (Notification as any).permission !== 'granted') return;
+      // On native, sendNotification handles permissions internally
+      if (!isNative && (!('Notification' in window) || (Notification as any).permission !== 'granted')) return;
       const feeds = logs.feed || [];
       const lastFeed = feeds.length > 0 ? feeds[0] : null;
       if (lastFeed && lastFeed.date && lastFeed.time) {
@@ -483,10 +487,8 @@ function App() {
         const diff = (Date.now() - lastTime.getTime()) / 3600000;
         if (diff >= reminders.feedInterval && lastNotifRef.current !== feedKey) {
           lastNotifRef.current = feedKey;
-          new (Notification as any)('BabyBloom Reminder', {
-            body: `Time for a feeding! Last feed was ${Math.round(diff * 10) / 10} hours ago.`,
-            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">🍼</text></svg>',
-          });
+          const body = `Time for a feeding! Last feed was ${Math.round(diff * 10) / 10} hours ago.`;
+          sendNotification('BabyBloom Reminder', body);
         }
       }
     }

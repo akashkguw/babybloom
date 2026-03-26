@@ -2,15 +2,25 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/base.css';
+import { isNative, initNativeApp, hideSplash, setStatusBarStyle } from '@/lib/native';
 
 // Initialize Sentry — wrapped so a failure never blocks the app
 import('@/lib/sentry')
   .then(({ initSentry }) => initSentry())
   .catch(() => { /* Sentry unavailable — app runs fine without it */ });
 
+// Initialize native platform features (Capacitor)
+if (isNative) {
+  initNativeApp();
+  // Hide splash screen after a short delay to let React render
+  setTimeout(() => hideSplash(), 500);
+  // Set initial status bar style (dark mode is default)
+  setStatusBarStyle(true);
+}
+
 // Service worker registration is handled by vite-plugin-pwa (registerType: 'autoUpdate')
-// Clean up any old service workers from v1 that might cache stale pages
-if ('serviceWorker' in navigator) {
+// Only register service workers on web — native apps don't need them
+if (!isNative && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((reg) => {
       // If a SW is active but not from vite-plugin-pwa, unregister it
