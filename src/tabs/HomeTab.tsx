@@ -1792,7 +1792,7 @@ export default function HomeTab({
           { e: '🎨', l: 'Activities', t: 'guide', s: 'activities', stat: '' },
           { e: '🛡️', l: 'Safety', t: 'safety', s: 'tips', stat: '' },
           { e: '📋', l: 'Report', t: '_report', s: '', stat: '' },
-          { e: '📊', l: 'All Stats', t: 'log', s: 'stats', stat: `wk ${weekFeeds}F · ${weekDiapers}D` },
+          { e: '📊', l: 'All Stats', t: 'log', s: 'stats', stat: weekFeeds > 0 || weekDiapers > 0 ? `${weekFeeds} feeds · ${weekDiapers} diapers` : '' },
         ].map((q: any) => (
           <div
             key={q.l}
