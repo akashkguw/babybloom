@@ -1575,7 +1575,7 @@ export default function HomeTab({
 
               {/* ─── Inline info panel (replaces grid on long-press) ─── */}
               {qlInfoPanel ? (
-                <div style={{ animation: 'fadeIn 0.15s ease', userSelect: 'none', WebkitUserSelect: 'none' as any }}>
+                <div className="ql-info-panel" style={{ animation: 'qlInfoOpen 0.35s cubic-bezier(0.22,1,0.36,1)', userSelect: 'none', WebkitUserSelect: 'none' as any }}>
                   {/* Header with icon + label + close */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1583,12 +1583,22 @@ export default function HomeTab({
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.t }}>{qlInfoPanel.label}</span>
                     </div>
                     <div
-                      onClick={() => setQlInfoPanel(null)}
+                      onClick={() => {
+                        // Animate close before removing
+                        const el = document.querySelector('.ql-info-panel') as HTMLElement;
+                        if (el) {
+                          el.style.animation = 'qlInfoClose 0.2s cubic-bezier(0.22,1,0.36,1) forwards';
+                          setTimeout(() => setQlInfoPanel(null), 180);
+                        } else {
+                          setQlInfoPanel(null);
+                        }
+                      }}
                       style={{
                         width: 32, height: 32, borderRadius: 16,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: C.bg, cursor: 'pointer', fontSize: 15, color: C.tl,
                         border: '1px solid ' + C.b,
+                        transition: 'background 0.15s',
                       }}
                     >
                       ✕
