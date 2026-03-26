@@ -186,27 +186,7 @@
       "telegram"
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/93",
-    "created_at": "2026-03-26T02:02:33.978Z",
-    "status": "failed",
-    "route": "infrastructure",
-    "enhanced_description": "User reports that GitHub issues are not being created when submitted from the anshimitt Telegram account.\n- The Telegram bot receives the message but the pipeline fails to create the corresponding GitHub issue.\n- Affected component: bot.js and/or pipeline.sh \u2014 the issue creation flow from Telegram to GitHub.\n- Expected: submitting a bug/feature via Telegram should create a GitHub issue automatically.\n- Check bot.js for user allowlist or authorization logic, and pipeline.sh for any errors in the gh CLI calls.\n- Acceptance criteria: issues submitted from the anshimitt Telegram account are successfully created on GitHub.",
-    "failure_reason": "This is a configuration issue, not a code bug. The bot.js isAllowed() function checks msg.from.username against the ALLOWED_USERS env var (loaded from bot/.env). The username \"anshimitt\" is likely not in that comma-separated list.\n\nFIX REQUIRED (manual): Edit bot/.env and add \"anshimitt\" to the ALLOWED_USERS variable, then restart the bot. Example: ALLOWED_USERS=existinguser1,existinguser2,anshimitt\n\nThe Infrastructure Agent cannot edit .env files per safety rules.",
-    "implementation_notes": "Analysis: The Telegram bot uses an allowlist (ALLOWED_USERS env var) to restrict who can create issues. The username \"anshimitt\" needs to be added to this list in bot/.env. This is a 1-line config change that must be done manually on the Mac where the bot runs. After editing .env, restart the bot (launchctl kickstart the plist or kill/restart the node process)."
-  },
-  {
-    "number": 94,
-    "title": "on long press in nurse on home page, time shows twice in the recent section",
-    "body": "## \ud83d\udc1b Bug Report\n\non long press in nurse on home page, time shows twice in the recent section\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/94",
-    "created_at": "2026-03-26T02:02:36.974Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports that when long-pressing the Nurse button on the home page, the time is displayed twice in the Recent section.\n- The nursing/home page component shows a duplicate time entry after a long-press interaction.\n- Affected component: likely the NursingPage or HomePage component in src/, specifically the recent-logs rendering logic.\n- Expected: a single time entry should appear in the Recent section after logging via long press.\n- Edge cases: check both left/right breast long-press, and ensure normal tap does not also exhibit the issue.\n- Acceptance criteria: long-pressing Nurse on the home page results in exactly one time entry in the Recent section.",
-    "implementation_notes": "Fix: duplicate time display in long-press info panel Recent section.\n- Files changed: src/tabs/HomeTab.tsx \u2014 line ~1650 in the qlInfoPanel history rendering\n- Root cause: both entry.amount (e.g. \"10 min\") and entry.mins (e.g. 10) were rendered simultaneously for timed nursing entries, showing the duration twice\n- Fix: added !entry.amount guard to the entry.mins render, so mins only shows when amount is absent\n- Trade-off: none \u2014 amount is the formatted display string and always takes precedence when present"
+    "created_at": "2026-03-26T02:02:33Z",
+    "status": "pending"
   }
 ]
