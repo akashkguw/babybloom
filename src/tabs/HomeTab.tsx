@@ -811,6 +811,17 @@ export default function HomeTab({
       feedOzToday += x.oz || 0;
     });
 
+  // Last feed info for hero widget
+  const lastFeedToday = (logs.feed || []).find((x) => x.date === td);
+  const lastFeedLabel = lastFeedToday
+    ? lastFeedToday.type === 'Breast L' ? '🤱 L'
+      : lastFeedToday.type === 'Breast R' ? '🤱 R'
+      : lastFeedToday.type === 'Formula' ? '🍼 Formula'
+      : lastFeedToday.type === 'Pumped Milk' ? '🍼 Pumped'
+      : lastFeedToday.type === 'Solids' ? '🥄 Solids'
+      : '🍼 ' + (lastFeedToday.type || '')
+    : null;
+
   let _feedMinToday = 0;
   (logs.feed || [])
     .filter((x) => x.date === td && x.mins && !x.oz)
@@ -1015,6 +1026,11 @@ export default function HomeTab({
                 <>
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{feedCt}</div>
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>feeds</div>
+                  {lastFeedLabel && lastFeedToday?.time && (
+                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {lastFeedLabel} · {fmtTime(lastFeedToday.time)}
+                    </div>
+                  )}
                   {feedOzToday > 0 && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>{fmtVol(feedOzToday, volumeUnit)}</div>}
                 </>
               )}

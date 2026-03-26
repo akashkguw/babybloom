@@ -300,6 +300,9 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/104",
     "created_at": "2026-03-26T04:06:01.680Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "Hero widget feed stat card should show last feed details (type and time) below the feed count, without adding clutter. Feed types include Breast L/R, Formula, Pumped Milk.\n- Affected component: Hero section in src/tabs/HomeTab.tsx — the feed stat card (around line 1000-1020)\n- Expected: Below the feed count number, show a compact line like '🤱 L · 2:30pm' or '🍼 Formula · 1:15pm' for the most recent feed\n- Current: Only shows feed count number and optional oz/ml total\n- Edge cases: No feeds today (show nothing extra), timer active (already shows timer), breast vs formula vs pumped rendering\n- Acceptance criteria: Last feed type and time shown compactly below count in hero, only when not in timer mode and feeds exist",
+    "implementation_notes": "Files changed:\n- src/tabs/HomeTab.tsx: Added lastFeedToday and lastFeedLabel computed from today's feeds. Shows compact 'type · time' line (e.g. '🤱 L · 2:30 PM' or '🍼 Formula · 1:15 PM') below feed count in hero widget. Only visible when feeds exist today and timer is not active. Handles all feed types: Breast L/R, Formula, Pumped Milk, Solids."
   }
 ]
