@@ -61,6 +61,8 @@ export default function MomCare({ storageKey }: MomCareProps) {
   const [data, setData] = useState<MomDay>(emptyDay(td));
   const [expanded, setExpanded] = useState(false);
   const [showNote, setShowNote] = useState(false);
+  const [showPastNotes, setShowPastNotes] = useState(false);
+  const [pastNotes, setPastNotes] = useState<{ date: string; note: string }[]>([]);
 
   // Load today's data (reset if it's a new day)
   useEffect(() => {
@@ -72,6 +74,21 @@ export default function MomCare({ storageKey }: MomCareProps) {
       }
     });
   }, [key, td]);
+
+  // Load past notes from history
+  const historyKeyForNotes = storageKey ? `${storageKey}_${HISTORY_KEY}` : HISTORY_KEY;
+  useEffect(() => {
+    dg(historyKeyForNotes).then((history: MomDay[] | null) => {
+      if (history) {
+        const notes = history
+          .filter((h) => h.note && h.note.trim())
+          .map((h) => ({ date: h.date, note: h.note }))
+          .reverse()
+          .slice(0, 20);
+        setPastNotes(notes);
+      }
+    });
+  }, [historyKeyForNotes, data]);
 
   // Persist on every change + save to history
   const historyKey = storageKey ? `${storageKey}_${HISTORY_KEY}` : HISTORY_KEY;
@@ -356,6 +373,39 @@ export default function MomCare({ storageKey }: MomCareProps) {
               />
             )}
           </div>
+
+          {/* ── Past notes ── */}
+          {pastNotes.length > 0 && (
+            <div>
+              <div
+                onClick={() => setShowPastNotes(!showPastNotes)}
+                style={{ fontSize: 11, color: C.s, cursor: 'pointer', textAlign: 'center', fontWeight: 600 }}
+              >
+                {showPastNotes ? 'Hide past notes ▴' : `View past notes (${pastNotes.length}) ▾`}
+              </div>
+              {showPastNotes && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {pastNotes.map((n, i) => {
+                    const dp = n.date.split('-');
+                    const dateObj = new Date(+dp[0], +dp[1] - 1, +dp[2]);
+                    const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          padding: '8px 10px', borderRadius: 10,
+                          background: C.bg, border: `1px solid ${C.b}`,
+                        }}
+                      >
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.tl, marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>{n.note}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Encouragement ── */}
           {progress >= 100 && (
