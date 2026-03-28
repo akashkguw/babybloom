@@ -191,36 +191,5 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
-  },
-  {
-    "number": 115,
-    "title": "smart reminder should be true by default",
-    "body": "## \u2728 Feature Request\n\nsmart reminder should be true by default\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/115",
-    "created_at": "2026-03-28T04:08:41.026Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User wants the smart reminder feature to be enabled (true) by default for new users or on first app load. Currently, smart reminders default to false/off, requiring the user to manually enable them. Affected component: the settings/defaults initialization logic in src/, likely where reminder preferences are set. Acceptance criteria: when a user first opens the app or creates a new profile, smart reminders are already toggled on; existing users who have explicitly set a value should not be affected.",
-    "implementation_notes": "Changed default value for smart reminders from false to true.\n- Files changed: src/App.tsx\n- Changed useState default for reminders from { feedInterval: 0, enabled: false } to { feedInterval: 0, enabled: true }\n- Existing users who have saved a preference are unaffected since stored value overwrites default\n- Only new users or users who never toggled the setting will see smart reminders enabled by default\n- Type-check passes cleanly"
-  },
-  {
-    "number": 116,
-    "title": "welcome caurasel items I don\u2019t want to be interactive, I want it to be animat...",
-    "body": "## \u2728 Feature Request\n\nwelcome caurasel items I don\u2019t want to be interactive, I want it to be animation on the behavior for both click and long press. Have the best experience\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/116",
-    "created_at": "2026-03-28T04:10:12.436Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User wants the welcome carousel items to be non-interactive (no click or long-press handlers) and instead display smooth animations. Currently, carousel items may respond to tap/long-press with interactive behavior. The user wants the carousel to auto-animate or show animated transitions instead. Affected component: the welcome/onboarding carousel component in src/. Acceptance criteria: welcome carousel items no longer respond to click or long-press events; items display animations (e.g. auto-advance, fade, slide transitions) for the best onboarding experience.",
-    "implementation_notes": "Converted welcome carousel from interactive to auto-animated.\n- Files changed: src/components/onboarding/WelcomeCarousel.tsx\n- MiniDemo (Quick Log): Replaced interactive tap/long-press handlers with auto-play animation sequence that cycles through highlighting each button with toast notifications\n- MomWellnessDemo: Replaced interactive meal/water/mood/vitamin/movement logging with auto-play sequence that progressively fills in wellness items with animated transitions\n- MockBtn: Removed onClick, onTouchStart, onTouchEnd props \u2014 now purely display with animation support\n- TapHint: Disabled (returns null) since carousel items are no longer interactive\n- Removed swipe (onTouchStart/onTouchEnd) from main carousel area\n- Made progress dots display-only (removed onClick navigation)\n- Removed unused goTo, goPrev, touchX refs\n- Continue button and Skip button still work for carousel navigation\n- Type-check passes cleanly"
   }
 ]
