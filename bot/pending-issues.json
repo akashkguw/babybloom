@@ -193,22 +193,6 @@
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
-    "number": 118,
-    "title": "- getting invalid sync code",
-    "body": "## \ud83d\udc1b Bug Report\n\n- getting invalid sync code\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/118",
-    "created_at": "2026-03-28T17:55:41.661Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports receiving an \"invalid sync code\" error when attempting to sync data between devices.\n- Affected component: Sync/pairing feature (likely in src/ sync-related modules)\n- Expected: Entering a valid sync code should successfully pair two devices and sync baby data\n- Current: The sync code is being rejected as invalid even when it should be correct\n- Edge cases: code expiry, case sensitivity, whitespace, code generation vs validation mismatch\n- Acceptance criteria: Valid sync codes are accepted and pairing completes successfully; clear error messaging for genuinely invalid or expired codes",
-    "implementation_notes": "Fixed invalid sync code decoding in both PartnerSync.tsx and HomeTab.tsx.\n- Files changed: src/features/sync/PartnerSync.tsx, src/tabs/HomeTab.tsx\n- Approach: Replaced the whitespace-only regex strip ([\\s\r\n]+) with a base64-allowlist regex ([^A-Za-z0-9+/=]) that removes ALL non-base64 characters. This handles invisible Unicode characters injected by messaging apps (zero-width spaces U+200B, RTL marks, soft hyphens, BOM, etc.) that were causing atob() to fail.\n- Both decode locations were fixed (PartnerSync decode function and HomeTab inline decode)."
-  },
-  {
     "number": 119,
     "title": "when baby is nursing the feed overdue doesn\u2019t go away in hero widget",
     "body": "## \ud83d\udc1b Bug Report\n\nwhen baby is nursing the feed overdue doesn\u2019t go away in hero widget\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
