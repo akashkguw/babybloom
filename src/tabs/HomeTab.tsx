@@ -424,6 +424,8 @@ export default function HomeTab({
 
   const feedReminderText = useMemo(() => {
     if (!reminders || !reminders.enabled) return null;
+    // If a feed timer is actively running (baby is nursing/feeding), suppress overdue
+    if (feedTimer) return { text: 'Feeding in progress...', overdue: false };
     // Use smart age-based interval (fallback to saved interval for backward compat)
     const interval = smartFeedInterval;
     const feeds = logs.feed || [];
@@ -438,7 +440,7 @@ export default function HomeTab({
     const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
     const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
     return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
-  }, [reminders, logs.feed, smartFeedInterval]);
+  }, [reminders, logs.feed, smartFeedInterval, feedTimer]);
 
   // 2-year milestone celebration carousel
   if (showMilestoneCarousel && birth) {
