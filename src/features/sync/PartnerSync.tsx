@@ -1,14 +1,16 @@
 /**
  * Partner Sync
- * Privacy-first sync between two devices using QR codes.
+ * Privacy-first sync between two devices using share codes.
  *
  * Flow:
- * 1. Device A: "Share" → generates a compressed JSON blob → encodes as QR code
- * 2. Device B: "Receive" → scans QR / pastes share code → merges data
+ * 1. Device A: "Share" → generates a BB1: share code (base64 JSON) → copy/paste to partner
+ * 2. Device B: "Receive" → pastes share code OR scans QR → merges data
  *
- * No server, no accounts, no network. Just data encoded directly in the QR.
- * For large datasets, we chunk into today's data only (last 24h) to keep
- * the QR scannable. Full sync uses copy/paste of the compressed string.
+ * The QR code only contains the share code string. For small payloads
+ * (typically "today only" with few entries), the QR is scannable.
+ * For larger payloads, copy/paste is the primary method.
+ *
+ * No server, no accounts, no network. Just data encoded in the share code.
  */
 import { useState, useRef, useCallback } from 'react';
 import { C } from '@/lib/constants/colors';
@@ -60,14 +62,11 @@ interface SyncPayload {
 }
 
 /**
- * Simple compression: base64 encode the JSON.
- * For a real app you'd use lz-string or similar,
- * but this keeps it dependency-free.
+ * Encode payload as BB1: share code (base64 JSON).
  */
 function encode(payload: SyncPayload): string {
   const json = JSON.stringify(payload);
   try {
-    // Use TextEncoder for proper UTF-8 handling
     const bytes = new TextEncoder().encode(json);
     let binary = '';
     bytes.forEach((b) => { binary += String.fromCharCode(b); });
@@ -79,24 +78,15 @@ function encode(payload: SyncPayload): string {
 
 function decode(str: string): SyncPayload | null {
   try {
-    // Clean up pasted input: strip whitespace, quotes, invisible chars
     let cleaned = str.trim().replace(/^["'""''`]+|["'""''`]+$/g, '');
-    // Normalize unicode that messaging apps inject:
-    // full-width colon ： → :, smart quotes, zero-width chars, etc.
-    cleaned = cleaned.replace(/\u{FF1A}/gu, ':');  // full-width colon
-    cleaned = cleaned.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, ''); // zero-width chars
-
-    // If the pasted text contains BB1: somewhere (e.g. "Sync code: BB1:abc..."), extract it
-    // Case-insensitive match handles "bb1:", "Bb1:", etc.
+    cleaned = cleaned.replace(/\u{FF1A}/gu, ':');
+    cleaned = cleaned.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
     const bb1Match = cleaned.match(/bb1\s*[:：]\s*/i);
     if (bb1Match) {
       cleaned = cleaned.slice(bb1Match.index! + bb1Match[0].length).trim();
     }
-    // Strip ALL non-base64 characters (handles remaining invisible unicode,
-    // newlines from word-wrap, RTL marks, soft hyphens, BOM, etc.)
     cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
-    const raw = cleaned;
-    const binary = atob(raw);
+    const binary = atob(cleaned);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     const json = new TextDecoder().decode(bytes);
@@ -125,7 +115,6 @@ function mergeLogs(existing: Logs, incoming: Logs): Logs {
     if (!Array.isArray(entries)) continue;
     const current = (merged[cat] || []) as LogEntry[];
     const currentIds = new Set(current.map((e) => e.id));
-    // Deduplicate by ID, then by date+time+type
     const currentKeys = new Set(current.map((e) => e.date + '|' + e.time + '|' + e.type));
     const newEntries = entries.filter(
       (e) => !currentIds.has(e.id) && !currentKeys.has(e.date + '|' + e.time + '|' + e.type)
@@ -140,6 +129,9 @@ function mergeLogs(existing: Logs, incoming: Logs): Logs {
   return merged;
 }
 
+/** Max bytes that fit in QR version 20, byte mode, EC level L */
+const QR_MAX_BYTES = 858;
+
 export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }: PartnerSyncProps) {
   const [mode, setMode] = useState<'menu' | 'share' | 'receive'>('menu');
   const [shareCode, setShareCode] = useState<string>('');
@@ -147,7 +139,6 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
   const [shareMode, setShareMode] = useState<'today' | 'full'>('today');
   const [mergePreview, setMergePreview] = useState<{ incoming: SyncPayload; newCount: number } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
-  const [showTextCode, setShowTextCode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const generateCode = useCallback(() => {
@@ -163,27 +154,39 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
     setShareCode(code);
   }, [logs, babyName, birth, shareMode]);
 
+  // Regenerate code when share mode changes
+  const handleModeChange = useCallback((newMode: 'today' | 'full') => {
+    setShareMode(newMode);
+    const payload: SyncPayload = {
+      v: 1,
+      ts: Date.now(),
+      name: babyName,
+      birth,
+      mode: newMode,
+      logs: newMode === 'today' ? filterToday(logs) : logs,
+    };
+    setShareCode(encode(payload));
+  }, [logs, babyName, birth]);
+
   const copyToClipboard = useCallback(() => {
     if (!shareCode) return;
     navigator.clipboard.writeText(shareCode).then(() => {
-      toast('Sync code copied!');
+      toast('Share code copied!');
     }).catch(() => {
-      // Fallback: select the textarea
       if (textareaRef.current) {
         textareaRef.current.select();
         document.execCommand('copy');
-        toast('Sync code copied!');
+        toast('Share code copied!');
       }
     });
   }, [shareCode]);
 
-  const handleReceive = useCallback(() => {
-    const payload = decode(receiveCode.trim());
+  const previewPayload = useCallback((data: string) => {
+    const payload = decode(data.trim());
     if (!payload) {
-      toast('Invalid sync code');
+      toast('Invalid share code');
       return;
     }
-    // Count new entries that would be added
     let newCount = 0;
     for (const [cat, entries] of Object.entries(payload.logs)) {
       if (!Array.isArray(entries)) continue;
@@ -195,7 +198,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
       ).length;
     }
     setMergePreview({ incoming: payload, newCount });
-  }, [receiveCode, logs]);
+  }, [logs]);
 
   const confirmMerge = useCallback(() => {
     if (!mergePreview) return;
@@ -213,6 +216,10 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
   const totalEntryCount = Object.values(logs).reduce(
     (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0
   );
+
+  // Check if the share code fits in a QR code
+  const codeBytes = new TextEncoder().encode(shareCode).length;
+  const qrFits = shareCode.length > 0 && codeBytes <= QR_MAX_BYTES;
 
   return (
     <div
@@ -264,7 +271,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Share data</div>
                   <div style={{ fontSize: 12, color: C.tl }}>
-                    Show a QR code for your partner to scan
+                    Generate a share code for your partner
                   </div>
                 </div>
               </div>
@@ -279,14 +286,14 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Receive data</div>
                   <div style={{ fontSize: 12, color: C.tl }}>
-                    Scan a QR code or paste a code from your partner
+                    Scan QR code or paste a share code
                   </div>
                 </div>
               </div>
             </Cd>
 
             <div style={{ padding: '12px 0', fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.5 }}>
-              How it works: One device shows a QR code, the other scans it.
+              How it works: One device generates a share code, the other enters it.
               Entries are merged without duplicates. No internet required.
             </div>
           </div>
@@ -302,7 +309,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
               ]).map((opt) => (
                 <div
                   key={opt.key}
-                  onClick={() => { setShareMode(opt.key); }}
+                  onClick={() => handleModeChange(opt.key)}
                   style={{
                     flex: 1,
                     padding: '10px 12px',
@@ -321,94 +328,78 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
               ))}
             </div>
 
-            <Btn label="Generate QR code" onClick={generateCode} color={C.s} full />
-
             {shareCode && (
-              <div style={{ marginTop: 12 }}>
-                {/* QR Code display */}
-                <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  background: '#fff', borderRadius: 16, padding: 20, marginBottom: 10,
-                }}>
-                  <QRCode data={shareCode} size={220} />
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
-                    Your partner scans this QR code to sync
-                  </div>
-                </div>
-
-                {/* Text fallback (collapsed by default) */}
-                {!showTextCode ? (
-                  <div
-                    onClick={() => setShowTextCode(true)}
-                    style={{ textAlign: 'center', cursor: 'pointer', padding: '6px 0' }}
-                  >
-                    <span style={{ fontSize: 12, color: C.tl }}>
-                      Can't scan? Tap to show text code
-                    </span>
-                  </div>
-                ) : (
-                  <div>
-                    <textarea
-                      ref={textareaRef}
-                      readOnly
-                      value={shareCode}
-                      style={{
-                        width: '100%',
-                        height: 80,
-                        background: C.cd,
-                        border: '1px solid ' + C.b,
-                        borderRadius: 12,
-                        padding: 12,
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                        color: C.t,
-                        resize: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                      <Btn label="Copy code" onClick={copyToClipboard} color={C.a} full />
-                    </div>
-                    <div style={{ fontSize: 11, color: C.tl, marginTop: 6, textAlign: 'center' }}>
-                      Send this code to your partner via any messaging app.
+              <div>
+                {/* QR Code — only shown when code is small enough */}
+                {qrFits && (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    background: '#fff', borderRadius: 16, padding: 20, marginBottom: 10,
+                  }}>
+                    <QRCode data={shareCode} size={220} />
+                    <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
+                      Your partner scans this to sync
                     </div>
                   </div>
                 )}
+
+                {/* Share code — always visible, primary sharing method */}
+                <div>
+                  {!qrFits && (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 10, marginBottom: 10,
+                      background: 'rgba(245,158,11,0.08)',
+                      border: '1px solid rgba(245,158,11,0.25)',
+                      fontSize: 11, color: '#d97706', lineHeight: 1.4,
+                    }}>
+                      Too much data for QR code. Copy the share code below and send it to your partner.
+                      {shareMode === 'full' && ' Try "Today only" for a scannable QR.'}
+                    </div>
+                  )}
+                  <textarea
+                    ref={textareaRef}
+                    readOnly
+                    value={shareCode}
+                    style={{
+                      width: '100%',
+                      height: 80,
+                      background: C.cd,
+                      border: '1px solid ' + C.b,
+                      borderRadius: 12,
+                      padding: 12,
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      color: C.t,
+                      resize: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <Btn label="Copy share code" onClick={copyToClipboard} color={C.a} full />
+                  </div>
+                  <div style={{ fontSize: 11, color: C.tl, marginTop: 6, textAlign: 'center' }}>
+                    Send this code to your partner via any messaging app.
+                  </div>
+                </div>
               </div>
             )}
 
             <div style={{ marginTop: 16 }}>
-              <Btn label="← Back" onClick={() => { setMode('menu'); setShareCode(''); setShowTextCode(false); }} outline />
+              <Btn label="← Back" onClick={() => { setMode('menu'); setShareCode(''); }} outline />
             </div>
           </div>
         )}
 
         {mode === 'receive' && (
           <div>
-            {/* QR Scanner (primary) */}
+            {/* QR Scanner */}
             {showScanner ? (
               <div style={{ marginBottom: 12 }}>
                 <QRScanner
                   onScan={(data) => {
                     setShowScanner(false);
                     setReceiveCode(data);
-                    // Auto-trigger preview
-                    const payload = decode(data.trim());
-                    if (!payload) {
-                      toast('Invalid QR code — try scanning again or paste the code');
-                      return;
-                    }
-                    let newCount = 0;
-                    for (const [cat, entries] of Object.entries(payload.logs)) {
-                      if (!Array.isArray(entries)) continue;
-                      const current = (logs[cat] || []) as LogEntry[];
-                      const currentIds = new Set(current.map((e) => e.id));
-                      const currentKeys = new Set(current.map((e) => e.date + '|' + e.time + '|' + e.type));
-                      newCount += entries.filter(
-                        (e) => !currentIds.has(e.id) && !currentKeys.has(e.date + '|' + e.time + '|' + e.type)
-                      ).length;
-                    }
-                    setMergePreview({ incoming: payload, newCount });
+                    previewPayload(data);
                   }}
                   onClose={() => setShowScanner(false)}
                 />
@@ -423,10 +414,10 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                 />
                 <div style={{ textAlign: 'center', fontSize: 12, color: C.tl }}>or</div>
 
-                {/* Text paste fallback */}
+                {/* Text paste */}
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
-                    Paste code from your partner
+                    Paste share code from your partner
                   </div>
                   <textarea
                     value={receiveCode}
@@ -449,7 +440,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                   <div style={{ marginTop: 8 }}>
                     <Btn
                       label="Preview sync"
-                      onClick={handleReceive}
+                      onClick={() => previewPayload(receiveCode)}
                       color={C.a}
                       full
                     />
