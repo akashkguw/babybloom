@@ -425,7 +425,70 @@ if [ -n "$UNPUSHED" ]; then
   if [ "$SRC_CHANGED" -gt 0 ]; then
     echo "🧪 src/ changes detected in unpushed commits ($SRC_CHANGED file(s)) — running CI..."
     bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
+      CI_LOG_TAIL=$(tail -30 "$BOT_DIR/ci.log" 2>/dev/null | sed 's/"/\\"/g; s/`/'"'"'/g')
+      CHANGED_FILES=$(git diff origin/main..HEAD --name-only 2>/dev/null | head -10)
+
       send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed before push (push-only path) — deploy aborted."
+
+      # Create GitHub issue with local CI failure details
+      python3 - <<LOCAL_FAIL_EOF
+import urllib.request, json, ssl
+
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+token = "$GITHUB_TOKEN"
+repo  = "$REPO"
+sha   = "$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+ci_log = """$CI_LOG_TAIL"""
+changed = """$CHANGED_FILES"""
+
+body = f"""**Local CI failed — deploy blocked** (auto-created by pipeline)
+
+**Commit:** \`{sha}\`
+**Time:** $(date '+%Y-%m-%d %H:%M %Z')
+**Trigger:** Push-only path (src/ changes detected in unpushed commits)
+
+## CI Output (last 30 lines)
+
+\`\`\`
+{ci_log}
+\`\`\`
+
+## Changed Files
+
+\`\`\`
+{changed}
+\`\`\`
+
+## Next Steps
+
+1. Run \`npm run test\` and \`npm run build\` locally to reproduce
+2. Fix the failing tests or build errors
+3. Pipeline will auto-close this issue on next successful deploy
+
+---
+_Auto-created by BabyBloom pipeline on local CI failure._"""
+
+try:
+    data = json.dumps({
+        "title": f"[CI Failed] Local CI blocked deploy on {sha}",
+        "body": body,
+        "labels": ["deploy-failure", "bug"]
+    }).encode()
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/issues",
+        data=data, method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    )
+    resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
+    print(f"📝 Created CI failure issue #{resp['number']}")
+except Exception as e:
+    print(f"⚠️ Could not create failure issue: {e}")
+LOCAL_FAIL_EOF
+
       exit 1
     }
   else
@@ -556,9 +619,174 @@ except: print(0)
 if [ "$ACTIONS_STATUS" = "success" ]; then
   STATUS_LINE="✅ *Build & Deploy: PASSED*"
   LIVE_LINE="🌐 [Open Live App](https://akashkguw.github.io/babybloom/)"
+
+  # ─── Auto-close any open deploy-failure issues ───
+  python3 - <<CLOSE_FAIL_EOF
+import urllib.request, json, ssl
+
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+token = "$GITHUB_TOKEN"
+repo  = "$REPO"
+sha   = "$COMMIT_SHA"
+
+try:
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/issues?state=open&labels=deploy-failure&per_page=10",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+    )
+    issues = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
+    for issue in issues:
+        num = issue["number"]
+        # Comment that it's fixed
+        comment = json.dumps({"body": f"✅ Resolved — deploy succeeded on [\`{sha}\`](https://github.com/{repo}/commit/{sha})."}).encode()
+        req2 = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/issues/{num}/comments",
+            data=comment, method="POST",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        )
+        urllib.request.urlopen(req2, timeout=10, context=ctx)
+        # Close it
+        close = json.dumps({"state": "closed", "state_reason": "completed"}).encode()
+        req3 = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/issues/{num}",
+            data=close, method="PATCH",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        )
+        urllib.request.urlopen(req3, timeout=10, context=ctx)
+        print(f"  ✅ Auto-closed deploy-failure issue #{num}")
+except Exception as e:
+    print(f"  ℹ️ Deploy-failure cleanup: {e}")
+CLOSE_FAIL_EOF
 elif [ "$ACTIONS_STATUS" = "failure" ]; then
   STATUS_LINE="❌ *Build & Deploy: FAILED*"
   LIVE_LINE="🔗 [View failed run]($RUN_URL)"
+
+  # ─── Auto-create GitHub issue with failure details ───
+  echo "📝 Creating GitHub issue for deployment failure..."
+  FAILED_STEP="unknown"
+  FAILURE_LOG=""
+
+  # Fetch failed job details from the Actions run
+  if [ -n "$RUN_URL" ]; then
+    RUN_ID=$(echo "$RUN_URL" | grep -o '[0-9]*$')
+    if [ -n "$RUN_ID" ]; then
+      FAILURE_LOG=$(python3 - <<FAIL_EOF
+import urllib.request, json, ssl, sys
+
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+token = "$GITHUB_TOKEN"
+repo  = "$REPO"
+run_id = "$RUN_ID"
+
+# Get jobs for this run
+try:
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+    )
+    data = json.loads(urllib.request.urlopen(req, timeout=15, context=ctx).read())
+    jobs = data.get("jobs", [])
+
+    parts = []
+    for job in jobs:
+        if job.get("conclusion") == "failure":
+            parts.append(f"**Job:** {job['name']} — FAILED")
+            for step in job.get("steps", []):
+                if step.get("conclusion") == "failure":
+                    parts.append(f"**Failed step:** {step['name']}")
+                    print(step['name'], file=sys.stderr)
+
+    # Get failed step log annotations
+    req2 = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/annotations",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+    )
+    try:
+        annots = json.loads(urllib.request.urlopen(req2, timeout=15, context=ctx).read())
+        for a in annots[:10]:
+            if a.get("annotation_level") in ("failure", "error"):
+                msg = a.get("message", "")[:500]
+                parts.append(f"**Error:** {msg}")
+    except:
+        pass
+
+    print("\\n".join(parts) if parts else "Could not determine failed step")
+except Exception as e:
+    print(f"Could not fetch failure details: {e}")
+FAIL_EOF
+)
+      FAILED_STEP=$(echo "$FAILURE_LOG" 2>&1 | head -1)
+    fi
+  fi
+
+  # Also include recent commit messages for context
+  RECENT_COMMITS=$(git log --oneline -5 2>/dev/null | sed 's/"/\\"/g')
+
+  python3 - <<ISSUE_EOF
+import urllib.request, json, ssl
+
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+token = "$GITHUB_TOKEN"
+repo  = "$REPO"
+sha   = "$COMMIT_SHA"
+run_url = "$RUN_URL"
+failure_log = """$FAILURE_LOG"""
+recent_commits = """$RECENT_COMMITS"""
+
+body = f"""**Deployment failed** (auto-created by pipeline)
+
+**Commit:** [\`{sha}\`](https://github.com/{repo}/commit/{sha})
+**Time:** $(date '+%Y-%m-%d %H:%M %Z')
+**Actions run:** {run_url}
+
+## Failure Details
+
+{failure_log if failure_log.strip() else "_Could not retrieve failure details — check the Actions run link above._"}
+
+## Recent Commits
+
+\`\`\`
+{recent_commits}
+\`\`\`
+
+## Next Steps
+
+1. Check the [failed Actions run]({run_url}) for full logs
+2. Fix the issue locally and push
+3. Pipeline will auto-close this issue on next successful deploy
+
+---
+_Auto-created by BabyBloom pipeline on deploy failure._"""
+
+try:
+    data = json.dumps({
+        "title": f"[Deploy Failed] Build failure on {sha}",
+        "body": body,
+        "labels": ["deploy-failure", "bug"]
+    }).encode()
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/issues",
+        data=data, method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    )
+    resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
+    print(f"📝 Created deploy failure issue #{resp['number']}: {resp['html_url']}")
+except Exception as e:
+    print(f"⚠️ Could not create failure issue: {e}")
+ISSUE_EOF
+
 else
   STATUS_LINE="⚠️ *Build status: unknown (timed out waiting)*"
   LIVE_LINE="🔗 [Check Actions]($ACTIONS_URL)"
