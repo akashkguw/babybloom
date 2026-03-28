@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { C } from '@/lib/constants/colors';
 import type { CountryConfig } from '@/lib/constants/countries';
 
@@ -113,52 +113,26 @@ function ensureStyles() {
   document.head.appendChild(s);
 }
 
-/* ── Tap hint overlay — animated finger + ripple that disappears after first interaction ── */
-function TapHint({ visible }: { visible: boolean }) {
-  if (!visible) return null;
-  return (
-    <div style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {/* Ripple ring */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%', width: 40, height: 40,
-        borderRadius: '50%', border: `2px solid ${C.a}`,
-        animation: 'obRipple 2s ease-out infinite',
-      }} />
-      {/* Finger */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%', fontSize: 22,
-        animation: 'obTapHint 2s ease-in-out infinite',
-        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-      }}>
-        👆
-      </div>
-    </div>
-  );
+/* ── Tap hint overlay — disabled, carousel is now auto-animated ── */
+function TapHint({ visible: _visible }: { visible: boolean }) {
+  return null;
 }
 
-/* ── Mini mock button ── */
-function MockBtn({ emoji, label, border, bg, color, anim, onClick, flash, onTouchStart, onTouchEnd }: {
+/* ── Mini mock button — non-interactive, animation only ── */
+function MockBtn({ emoji, label, border, bg, color, anim, flash }: {
   emoji: string; label: string; border?: string; bg?: string; color?: string;
-  anim?: string; onClick?: () => void; flash?: boolean;
-  onTouchStart?: () => void; onTouchEnd?: () => void;
+  anim?: string; flash?: boolean;
 }) {
   return (
     <div
-      onClick={onClick}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-      onContextMenu={onTouchStart ? (e: React.MouseEvent) => { e.preventDefault(); onTouchStart(); } : undefined}
       style={{
         textAlign: 'center', padding: '6px 2px', borderRadius: 10,
         background: bg || C.bg,
         border: flash ? `1.5px solid ${C.ok}` : `1px solid ${border || C.b}`,
-        flex: 1, minWidth: 0, cursor: onClick ? 'pointer' : 'default',
+        flex: 1, minWidth: 0, cursor: 'default',
         animation: anim || 'none',
         boxShadow: flash ? `0 0 8px ${C.ok}44` : 'none',
-        transition: 'box-shadow 0.3s, border 0.3s',
+        transition: 'all 0.4s ease',
       }}
     >
       <div style={{ fontSize: 16 }}>{emoji}</div>
@@ -167,111 +141,44 @@ function MockBtn({ emoji, label, border, bg, color, anim, onClick, flash, onTouc
   );
 }
 
-/* ── Interactive mini Quick Log demo ── */
+/* ── Auto-animated Quick Log demo — shows features without user interaction ── */
 function MiniDemo() {
-  const [tapped, setTapped] = useState<Record<string, number>>({});
-  const [activeTimer, setActiveTimer] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [sleeping, setSleeping] = useState(false);
-  const [showQty, setShowQty] = useState(false);
+  const [step, setStep] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 1200);
-  }, []);
+  // Auto-play demo sequence
+  const sequence = useMemo(() => [
+    { highlight: 'Nurse Left', timer: true, toast: '🤱 Nurse Left timer started' },
+    { highlight: 'Nurse Left', timer: true, toast: null },
+    { highlight: 'Nurse Left', timer: false, toast: '🤱 Nurse Left — 3s logged' },
+    { highlight: 'Wet', toast: '💧 Wet logged!' },
+    { highlight: 'Formula', toast: '🍼 Formula — 120 ml logged!' },
+    { highlight: 'Sleep', toast: '😴 Sleep started' },
+    { highlight: null, toast: null }, // reset
+  ], []);
 
-  const flash = useCallback((label: string) => {
-    setTapped((p) => ({ ...p, [label]: Date.now() }));
-  }, []);
+  useEffect(() => {
+    let s = 0;
+    const advance = () => {
+      s = (s + 1) % sequence.length;
+      setStep(s);
+      const item = sequence[s];
+      if (item.toast) {
+        setToast(item.toast);
+        setTimeout(() => setToast(null), 1200);
+      }
+    };
+    timerRef.current = setInterval(advance, 1800);
+    // Trigger first step
+    setStep(0);
+    setToast(sequence[0].toast || null);
+    if (sequence[0].toast) setTimeout(() => setToast(null), 1200);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [sequence]);
 
-  const tap = useCallback((label: string, emoji: string) => {
-    flash(label);
-    showToast(`${emoji} ${label} logged!`);
-  }, [flash, showToast]);
-
-  // Timer items: Nurse Left, Nurse Right, Tummy
-  const timerEmojis: Record<string, string> = { 'Nurse Left': '🤱', 'Nurse Right': '🤱', 'Tummy': '🧒' };
-  const isTimerItem = (label: string) => label in timerEmojis;
-
-  const startTimer = useCallback((label: string) => {
-    if (activeTimer === label) {
-      // Stop
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = null;
-      const emoji = timerEmojis[label] || '⏱️';
-      showToast(`${emoji} ${label} — ${elapsed}s logged`);
-      setActiveTimer(null);
-      setElapsed(0);
-      return;
-    }
-    setActiveTimer(label);
-    setElapsed(0);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    const emoji = timerEmojis[label] || '⏱️';
-    showToast(`${emoji} ${label} timer started`);
-  }, [activeTimer, elapsed, showToast]);
-
-  const toggleSleep = useCallback(() => {
-    if (sleeping) {
-      flash('Sleep');
-      showToast('⏰ Wake Up logged!');
-      setSleeping(false);
-    } else {
-      flash('Sleep');
-      showToast('😴 Sleep started');
-      setSleeping(true);
-    }
-  }, [sleeping, flash, showToast]);
-
-  const handleFormula = useCallback(() => {
-    setShowQty(true);
-  }, []);
-
-  const logQty = useCallback((amt: number) => {
-    flash('Formula');
-    showToast(`🍼 Formula — ${amt} ml logged!`);
-    setShowQty(false);
-  }, [flash, showToast]);
-
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
-
-  const isFlashed = (label: string) => {
-    const t = tapped[label];
-    return t ? Date.now() - t < 600 : false;
-  };
-
-  const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-
-  // Is a nursing timer active (for side-switch button)
-  const isBreastTimer = activeTimer === 'Nurse Left' || activeTimer === 'Nurse Right';
-
-  // Long-press info panel state
-  const [infoPanel, setInfoPanel] = useState<string | null>(null);
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const startLongPress = useCallback((label: string) => {
-    longPressRef.current = setTimeout(() => {
-      setInfoPanel(label);
-      longPressRef.current = null;
-    }, 500);
-  }, []);
-
-  const clearLongPress = useCallback(() => {
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
-  }, []);
-
-  const infoPanelData: Record<string, { emoji: string; tips: string[]; history: string[] }> = {
-    'Nurse Left': { emoji: '🤱', tips: ['Alternate sides each feed', 'Aim for 8-12 feeds/day in first month'], history: ['2m ago — 12 min', '3h ago — 8 min'] },
-    'Formula': { emoji: '🍼', tips: ['Follow package mixing ratio', 'Good for 1h at room temp'], history: ['1h ago — 120 ml', '4h ago — 90 ml'] },
-    'Wet': { emoji: '💧', tips: ['Expect 6+ wet diapers per day', 'Pale/clear urine is healthy'], history: ['45m ago', '3h ago'] },
-    'Sleep': { emoji: '😴', tips: ['Short wake windows for newborns', 'Note patterns for schedule planning'], history: ['2h ago — 1.5h nap', '5h ago — 45m nap'] },
-  };
+  const cur = sequence[step];
+  const isHighlight = (label: string) => cur.highlight === label;
 
   return (
     <div style={{ maxWidth: 300, margin: '16px auto 0' }}>
@@ -282,177 +189,53 @@ function MiniDemo() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, padding: '0 2px' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.t }}>Quick Log</span>
-          {!infoPanel && <span style={{ fontSize: 8, color: C.tl }}>Long-press for details</span>}
+          <span style={{ fontSize: 8, color: C.tl }}>Auto-demo</span>
         </div>
 
-        {/* Info panel — shown on long-press */}
-        {infoPanel && infoPanelData[infoPanel] ? (
-          <div style={{ animation: 'obFadeUp 0.2s ease-out' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 16 }}>{infoPanelData[infoPanel].emoji}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: C.t }}>{infoPanel}</span>
-              </div>
-              <div onClick={() => setInfoPanel(null)} style={{
-                width: 24, height: 24, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: C.bg, border: `1px solid ${C.b}`, fontSize: 11, color: C.tl, cursor: 'pointer',
-              }}>✕</div>
-            </div>
-            <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>Recent</div>
-            {infoPanelData[infoPanel].history.map((h, i) => (
-              <div key={i} style={{ fontSize: 9, color: C.t, padding: '2px 0' }}>• {h}</div>
-            ))}
-            <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6, marginBottom: 3 }}>Tips</div>
-            {infoPanelData[infoPanel].tips.map((t, i) => (
-              <div key={i} style={{ fontSize: 9, color: C.s, padding: '2px 0' }}>💡 {t}</div>
-            ))}
-          </div>
-        ) : showQty ? (
-          <div style={{ animation: 'obFadeUp 0.2s ease-out' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 14 }}>🍼</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.s }}>Formula</span>
-              </div>
-              <div onClick={() => setShowQty(false)} style={{
-                fontSize: 10, fontWeight: 700, color: C.p, cursor: 'pointer',
-                padding: '3px 10px', borderRadius: 12, background: C.pl,
-              }}>Cancel</div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-              {[60, 90, 120, 150, 180, 240].map((v) => (
-                <div key={v} onClick={() => logQty(v)} style={{
-                  padding: '6px 4px', textAlign: 'center', cursor: 'pointer',
-                  background: C.bg, borderRadius: 10, border: `1px solid ${C.b}`,
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: C.t }}>{v}</div>
-                  <div style={{ fontSize: 7, color: C.tl }}>ml</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div style={{ position: 'relative' }}>
-            <TapHint visible={Object.keys(tapped).length === 0 && !activeTimer && !sleeping} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {/* Nurse Left — timer + side-switch */}
-              <MockBtn emoji="🤱" label="Nurse Left"
-                border={activeTimer === 'Nurse Left' ? C.a : undefined}
-                bg={activeTimer === 'Nurse Left' ? C.al : undefined}
-                color={activeTimer === 'Nurse Left' ? C.a : undefined}
-                onClick={() => { clearLongPress(); startTimer('Nurse Left'); }}
-                onTouchStart={() => startLongPress('Nurse Left')}
-                onTouchEnd={clearLongPress}
-                flash={isFlashed('Nurse Left')}
-              />
-              {/* Formula — quantity selector */}
-              <MockBtn emoji="🍼" label="Formula"
-                onClick={() => { clearLongPress(); handleFormula(); }}
-                onTouchStart={() => startLongPress('Formula')}
-                onTouchEnd={clearLongPress}
-                flash={isFlashed('Formula')}
-              />
-              {/* Wet — starts with danger pulse, goes neutral after tap */}
-              <MockBtn emoji="💧" label="Wet"
-                border={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.5)'}
-                bg={tapped['Wet'] ? undefined : 'rgba(220,38,38,0.10)'}
-                color={tapped['Wet'] ? undefined : '#dc2626'}
-                anim={tapped['Wet'] ? undefined : 'obDemoPulse 2s ease-in-out infinite'}
-                onClick={() => { clearLongPress(); tap('Wet', '💧'); }}
-                onTouchStart={() => startLongPress('Wet')}
-                onTouchEnd={clearLongPress}
-                flash={isFlashed('Wet')}
-              />
-              {/* Sleep — starts with amber "due soon" pulse, goes neutral after first tap */}
-              <MockBtn
-                emoji={sleeping ? '⏰' : '😴'}
-                label={sleeping ? 'Wake Up' : 'Sleep'}
-                border={sleeping ? C.pu : !tapped['Sleep'] ? 'rgba(245,158,11,0.5)' : undefined}
-                bg={sleeping ? C.pul : !tapped['Sleep'] ? 'rgba(245,158,11,0.10)' : undefined}
-                color={sleeping ? C.pu : !tapped['Sleep'] ? '#d97706' : undefined}
-                anim={!tapped['Sleep'] && !sleeping ? 'obDemoAmber 2.5s ease-in-out infinite' : undefined}
-                onClick={() => { clearLongPress(); toggleSleep(); }}
-                onTouchStart={() => startLongPress('Sleep')}
-                onTouchEnd={clearLongPress}
-                flash={isFlashed('Sleep')}
-              />
-            </div>
-          </div>
-        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <MockBtn emoji="🤱" label="Nurse Left"
+            border={isHighlight('Nurse Left') ? C.a : undefined}
+            bg={isHighlight('Nurse Left') ? C.al : undefined}
+            color={isHighlight('Nurse Left') ? C.a : undefined}
+            flash={isHighlight('Nurse Left')}
+          />
+          <MockBtn emoji="🍼" label="Formula"
+            flash={isHighlight('Formula')}
+          />
+          <MockBtn emoji="💧" label="Wet"
+            border={!isHighlight('Wet') ? 'rgba(220,38,38,0.5)' : undefined}
+            bg={!isHighlight('Wet') ? 'rgba(220,38,38,0.10)' : undefined}
+            color={!isHighlight('Wet') ? '#dc2626' : undefined}
+            anim={!isHighlight('Wet') ? 'obDemoPulse 2s ease-in-out infinite' : undefined}
+            flash={isHighlight('Wet')}
+          />
+          <MockBtn emoji="😴" label="Sleep"
+            border={!isHighlight('Sleep') ? 'rgba(245,158,11,0.5)' : undefined}
+            bg={!isHighlight('Sleep') ? 'rgba(245,158,11,0.10)' : undefined}
+            color={!isHighlight('Sleep') ? '#d97706' : undefined}
+            anim={!isHighlight('Sleep') ? 'obDemoAmber 2.5s ease-in-out infinite' : undefined}
+            flash={isHighlight('Sleep')}
+          />
+        </div>
 
         {/* Legend */}
-        {!showQty && !infoPanel && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, padding: '0 2px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <div style={{ width: 6, height: 6, borderRadius: 3, background: '#dc2626', animation: 'obDemoPulse 2s ease-in-out infinite' }} />
-              <span style={{ fontSize: 7, color: '#dc2626', fontWeight: 700 }}>Needs attention</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <div style={{ width: 6, height: 6, borderRadius: 3, background: '#d97706', animation: 'obDemoAmber 2.5s ease-in-out infinite' }} />
-              <span style={{ fontSize: 7, color: '#d97706', fontWeight: 700 }}>Due soon</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <div style={{ width: 6, height: 6, borderRadius: 3, background: C.a }} />
-              <span style={{ fontSize: 7, color: C.a, fontWeight: 700 }}>Timer on</span>
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, padding: '0 2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 6, height: 6, borderRadius: 3, background: '#dc2626', animation: 'obDemoPulse 2s ease-in-out infinite' }} />
+            <span style={{ fontSize: 7, color: '#dc2626', fontWeight: 700 }}>Needs attention</span>
           </div>
-        )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 6, height: 6, borderRadius: 3, background: '#d97706', animation: 'obDemoAmber 2.5s ease-in-out infinite' }} />
+            <span style={{ fontSize: 7, color: '#d97706', fontWeight: 700 }}>Due soon</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 6, height: 6, borderRadius: 3, background: C.a }} />
+            <span style={{ fontSize: 7, color: C.a, fontWeight: 700 }}>Timer on</span>
+          </div>
+        </div>
       </div>
 
-      {/* Live timer bar — shows for Nurse Left/R and Tummy */}
-      {activeTimer && (
-        <div style={{
-          marginTop: 8, display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 12px', borderRadius: 12,
-          background: C.al, border: `1px solid ${C.a}33`,
-          animation: 'obFadeUp 0.25s ease-out',
-        }}>
-          <div style={{ fontSize: 18 }}>{timerEmojis[activeTimer] || '⏱️'}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.a }}>{activeTimer}</div>
-            <div style={{ fontSize: 8, color: C.tl }}>Tap button to stop</div>
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: C.a, fontVariantNumeric: 'tabular-nums' }}>
-            {fmtTime(elapsed)}
-          </div>
-          {/* Side-switch only for nursing timers */}
-          {isBreastTimer && (
-            <div
-              onClick={() => {
-                const other = activeTimer === 'Nurse Left' ? 'Nurse Right' : 'Nurse Left';
-                if (timerRef.current) clearInterval(timerRef.current);
-                setActiveTimer(other);
-                setElapsed(0);
-                timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-                showToast(`🔄 Switched to ${other}`);
-              }}
-              style={{
-                width: 28, height: 28, borderRadius: 8, background: C.bg, border: `1px solid ${C.b}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
-                cursor: 'pointer',
-              }}
-            >🔄</div>
-          )}
-        </div>
-      )}
-
-      {/* Sleeping indicator */}
-      {sleeping && !activeTimer && (
-        <div style={{
-          marginTop: 8, display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 12px', borderRadius: 12,
-          background: C.pul, border: `1px solid ${C.pu}33`,
-          animation: 'obFadeUp 0.25s ease-out',
-        }}>
-          <div style={{ fontSize: 18 }}>😴</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.pu }}>Sleeping</div>
-            <div style={{ fontSize: 8, color: C.tl }}>Tap Wake Up when done</div>
-          </div>
-        </div>
-      )}
-
-      {/* Mini toast */}
+      {/* Animated toast */}
       {toast && (
         <div style={{
           marginTop: 6, padding: '5px 10px', borderRadius: 10,
@@ -495,41 +278,57 @@ function Confetti() {
   );
 }
 
-/* ── Mom Wellness interactive demo ── */
+/* ── Auto-animated Mom Wellness demo — no user interaction ── */
 function MomWellnessDemo() {
-  const [meals, setMeals] = useState<Record<string, boolean>>({});
-  const [water, setWater] = useState(0);
-  const [mood, setMood] = useState(0);
-  const [vitamin, setVitamin] = useState(false);
-  const [moved, setMoved] = useState(false);
+  const [step, setStep] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 1200);
-  }, []);
+  // Auto-play sequence: progressively fill in wellness items
+  const sequence = useMemo(() => [
+    { meals: {}, water: 0, mood: 0, vitamin: false, moved: false, toast: null },
+    { meals: { breakfast: true }, water: 0, mood: 0, vitamin: false, moved: false, toast: '🥣 Bfast logged!' },
+    { meals: { breakfast: true, lunch: true }, water: 0, mood: 0, vitamin: false, moved: false, toast: '🥗 Lunch logged!' },
+    { meals: { breakfast: true, lunch: true }, water: 3, mood: 0, vitamin: false, moved: false, toast: '💧 +3 glasses' },
+    { meals: { breakfast: true, lunch: true }, water: 3, mood: 4, vitamin: false, moved: false, toast: '☀️ Mood logged' },
+    { meals: { breakfast: true, lunch: true }, water: 3, mood: 4, vitamin: true, moved: false, toast: '💊 Vitamin logged!' },
+    { meals: { breakfast: true, lunch: true }, water: 3, mood: 4, vitamin: true, moved: true, toast: '🧘 Movement logged!' },
+    { meals: {}, water: 0, mood: 0, vitamin: false, moved: false, toast: null }, // reset
+  ], []);
 
-  const hasInteracted = Object.keys(meals).length > 0 || water > 0 || mood > 0 || vitamin || moved;
+  useEffect(() => {
+    let s = 0;
+    const advance = () => {
+      s = (s + 1) % sequence.length;
+      setStep(s);
+      const item = sequence[s];
+      if (item.toast) {
+        setToast(item.toast);
+        setTimeout(() => setToast(null), 1200);
+      }
+    };
+    const timer = setInterval(advance, 1800);
+    return () => clearInterval(timer);
+  }, [sequence]);
 
-  const totalDone = Object.values(meals).filter(Boolean).length
-    + (water >= 3 ? 1 : 0) + (mood > 0 ? 1 : 0) + (vitamin ? 1 : 0) + (moved ? 1 : 0);
-  const progress = Math.round((totalDone / 7) * 100);
-
+  const cur = sequence[step];
   const mealItems = [
     { key: 'breakfast', icon: '🥣', label: 'Bfast' },
     { key: 'lunch', icon: '🥗', label: 'Lunch' },
     { key: 'dinner', icon: '🍲', label: 'Dinner' },
   ];
-
   const moods = ['🥀', '🌥️', '🌤️', '☀️', '✨'];
 
+  const totalDone = Object.values(cur.meals).filter(Boolean).length
+    + (cur.water >= 3 ? 1 : 0) + (cur.mood > 0 ? 1 : 0) + (cur.vitamin ? 1 : 0) + (cur.moved ? 1 : 0);
+  const progress = Math.round((totalDone / 7) * 100);
+
   const pillStyle = (active: boolean, clr: string): React.CSSProperties => ({
-    padding: '5px 0', borderRadius: 10, textAlign: 'center', cursor: 'pointer',
+    padding: '5px 0', borderRadius: 10, textAlign: 'center',
     fontSize: 10, fontWeight: 600, flex: 1, userSelect: 'none',
     background: active ? clr + '20' : C.bg,
     color: active ? clr : C.tl,
     border: `1px solid ${active ? clr + '40' : C.b}`,
-    transition: 'all 0.15s',
+    transition: 'all 0.4s ease',
   });
 
   return (
@@ -545,43 +344,30 @@ function MomWellnessDemo() {
             <span style={{ fontSize: 13 }}>🌿</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: C.t }}>My Wellness</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="none" stroke={C.b} strokeWidth="2.5" />
-              <circle cx="12" cy="12" r="10" fill="none"
-                stroke={progress >= 100 ? '#4CAF50' : '#9C7CF4'}
-                strokeWidth="2.5"
-                strokeDasharray={`${(progress / 100) * 62.8} 62.8`}
-                strokeLinecap="round"
-                transform="rotate(-90 12 12)"
-                style={{ transition: 'stroke-dasharray 0.3s ease' }}
-              />
-              <text x="12" y="12" textAnchor="middle" dominantBaseline="central"
-                style={{ fontSize: 7, fontWeight: 700, fill: C.t }}>
-                {progress}%
-              </text>
-            </svg>
-          </div>
+          <svg width="22" height="22" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke={C.b} strokeWidth="2.5" />
+            <circle cx="12" cy="12" r="10" fill="none"
+              stroke={progress >= 100 ? '#4CAF50' : '#9C7CF4'}
+              strokeWidth="2.5"
+              strokeDasharray={`${(progress / 100) * 62.8} 62.8`}
+              strokeLinecap="round"
+              transform="rotate(-90 12 12)"
+              style={{ transition: 'stroke-dasharray 0.4s ease' }}
+            />
+            <text x="12" y="12" textAnchor="middle" dominantBaseline="central"
+              style={{ fontSize: 7, fontWeight: 700, fill: C.t }}>
+              {progress}%
+            </text>
+          </svg>
         </div>
-
-        {/* Tap hint overlay */}
-        <div style={{ position: 'relative' }}>
-        <TapHint visible={!hasInteracted} />
 
         {/* Meals row */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Meals</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {mealItems.map((m) => (
-              <div key={m.key}
-                onClick={() => {
-                  const next = !meals[m.key];
-                  setMeals(prev => ({ ...prev, [m.key]: next }));
-                  showToast(next ? `${m.icon} ${m.label} logged!` : `${m.label} cleared`);
-                }}
-                style={pillStyle(!!meals[m.key], '#FF8A65')}
-              >
-                {m.icon} {m.label}{meals[m.key] ? ' ✓' : ''}
+              <div key={m.key} style={pillStyle(!!(cur.meals as Record<string, boolean>)[m.key], '#FF8A65')}>
+                {m.icon} {m.label}{(cur.meals as Record<string, boolean>)[m.key] ? ' ✓' : ''}
               </div>
             ))}
           </div>
@@ -590,16 +376,10 @@ function MomWellnessDemo() {
         {/* Water */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-            Water <span style={{ fontWeight: 400, textTransform: 'none', color: water >= 3 ? '#4CAF50' : C.tl }}>{water}/8</span>
+            Water <span style={{ fontWeight: 400, textTransform: 'none', color: cur.water >= 3 ? '#4CAF50' : C.tl }}>{cur.water}/8</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div onClick={() => { if (water > 0) { setWater(w => w - 1); } }}
-              style={{ width: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, border: `1px solid ${C.b}`, fontSize: 13, cursor: 'pointer', color: C.tl }}>−</div>
-            <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.bg, overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min((water / 8) * 100, 100)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4FC3F7, #29B6F6)', transition: 'width 0.2s' }} />
-            </div>
-            <div onClick={() => { setWater(w => Math.min(w + 1, 8)); showToast('💧 +1 glass'); }}
-              style={{ width: 22, height: 22, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#4FC3F720', border: '1px solid #4FC3F740', fontSize: 13, cursor: 'pointer', color: '#29B6F6', fontWeight: 700 }}>+</div>
+          <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.bg, overflow: 'hidden' }}>
+            <div style={{ width: `${Math.min((cur.water / 8) * 100, 100)}%`, height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #4FC3F7, #29B6F6)', transition: 'width 0.4s ease' }} />
           </div>
         </div>
 
@@ -608,36 +388,26 @@ function MomWellnessDemo() {
           <div style={{ fontSize: 8, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>How are you feeling?</div>
           <div style={{ display: 'flex', gap: 3 }}>
             {moods.map((face, i) => (
-              <div key={i}
-                onClick={() => {
-                  const val = i + 1;
-                  setMood(mood === val ? 0 : val);
-                  if (mood !== val) showToast(`${face} Mood logged`);
-                }}
-                style={{
-                  flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 10, fontSize: 16,
-                  cursor: 'pointer', userSelect: 'none',
-                  background: mood === i + 1 ? '#9C7CF420' : 'transparent',
-                  border: `1.5px solid ${mood === i + 1 ? '#9C7CF4' : 'transparent'}`,
-                  transition: 'all 0.15s',
-                }}
-              >{face}</div>
+              <div key={i} style={{
+                flex: 1, textAlign: 'center', padding: '4px 0', borderRadius: 10, fontSize: 16,
+                userSelect: 'none',
+                background: cur.mood === i + 1 ? '#9C7CF420' : 'transparent',
+                border: `1.5px solid ${cur.mood === i + 1 ? '#9C7CF4' : 'transparent'}`,
+                transition: 'all 0.4s ease',
+              }}>{face}</div>
             ))}
           </div>
         </div>
 
         {/* Quick toggles */}
         <div style={{ display: 'flex', gap: 4 }}>
-          <div onClick={() => { setVitamin(v => !v); showToast(vitamin ? 'Vitamin cleared' : '💊 Vitamin logged!'); }}
-            style={pillStyle(vitamin, '#AB47BC')}>
-            💊 Vitamin{vitamin ? ' ✓' : ''}
+          <div style={pillStyle(cur.vitamin, '#AB47BC')}>
+            💊 Vitamin{cur.vitamin ? ' ✓' : ''}
           </div>
-          <div onClick={() => { setMoved(m => !m); showToast(moved ? 'Movement cleared' : '🧘 Movement logged!'); }}
-            style={pillStyle(moved, '#66BB6A')}>
-            🧘 Moved{moved ? ' ✓' : ''}
+          <div style={pillStyle(cur.moved, '#66BB6A')}>
+            🧘 Moved{cur.moved ? ' ✓' : ''}
           </div>
         </div>
-        </div>{/* close TapHint wrapper */}
       </div>
 
       {/* Toast */}
@@ -660,18 +430,11 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
   const [dir, setDir] = useState<'fwd' | 'rev'>('fwd');
   const [animKey, setAnimKey] = useState(0);
   const [dismissing, setDismissing] = useState(false);
-  const touchX = useRef<number | null>(null);
   const name = babyName || 'your baby';
 
   useEffect(() => { ensureStyles(); }, []);
 
   const totalRef = useRef(7); // updated after slides defined
-
-  const goTo = useCallback((next: number, direction: 'fwd' | 'rev') => {
-    setDir(direction);
-    setAnimKey((k) => k + 1);
-    setIdx(next);
-  }, []);
 
   const handleDismiss = useCallback(() => {
     setDismissing(true);
@@ -689,17 +452,6 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
       return cur;
     });
   }, [handleDismiss]);
-
-  const goPrev = useCallback(() => {
-    setIdx((cur) => {
-      if (cur > 0) {
-        setDir('rev');
-        setAnimKey((k) => k + 1);
-        return cur - 1;
-      }
-      return cur;
-    });
-  }, []);
 
   /* ── Slide 1 visual: Interactive mini demo ── */
   const demoVisual = <MiniDemo />;
@@ -889,15 +641,6 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
           overflowY: 'auto',
           animation: `${slideAnim} 0.4s cubic-bezier(0.22,1,0.36,1)`,
         }}
-        onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
-        onTouchEnd={(e) => {
-          if (touchX.current === null) return;
-          const diff = e.changedTouches[0].clientX - touchX.current;
-          touchX.current = null;
-          if (Math.abs(diff) < 50) return;
-          if (diff < 0) goNext();
-          else goPrev();
-        }}
       >
         {slide.heroSlide ? (
           /* ── Apple-style "Hello" final slide ── */
@@ -1003,13 +746,11 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
           {slides.map((_, i) => (
             <div
               key={i}
-              onClick={() => goTo(i, i > idx ? 'fwd' : 'rev')}
               style={{
                 width: i === idx ? 18 : 6,
                 height: 6,
                 borderRadius: 3,
                 background: i === idx ? C.p : i < idx ? C.p + '44' : `${C.t}15`,
-                cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.22,1,0.36,1)',
               }}
             />
