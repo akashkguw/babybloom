@@ -203,7 +203,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/114",
     "created_at": "2026-03-28T04:07:11.530Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User wants to remove the overall/total feed value display from the hero section of the feeding screen. Currently, the hero area in the app feed view shows an aggregated overall feed value (e.g. total mL or oz across all feed types). The user wants this removed so only individual feed entries or category breakdowns are shown. Affected component: the hero/summary area of the feeding tracker UI in src/. Acceptance criteria: the hero section of the feed screen no longer displays an overall/total feed value; individual feed entries or category data remain visible.",
+    "implementation_notes": "Removed overall feed volume display from hero section of HomeTab.\n- Files changed: src/tabs/HomeTab.tsx\n- Removed feedOzToday computation (lines calculating total oz for the day)\n- Removed the conditional render line that showed fmtVol(feedOzToday, volumeUnit) in the hero feed widget\n- Feed count, last feed label, and feed timer remain visible \u2014 only the overall volume total is removed\n- Type-check passes cleanly"
   },
   {
     "number": 115,
@@ -216,7 +219,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/115",
     "created_at": "2026-03-28T04:08:41.026Z",
-    "status": "pending"
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User wants the smart reminder feature to be enabled (true) by default for new users or on first app load. Currently, smart reminders default to false/off, requiring the user to manually enable them. Affected component: the settings/defaults initialization logic in src/, likely where reminder preferences are set. Acceptance criteria: when a user first opens the app or creates a new profile, smart reminders are already toggled on; existing users who have explicitly set a value should not be affected.",
+    "implementation_notes": "Changed default value for smart reminders from false to true.\n- Files changed: src/App.tsx\n- Changed useState default for reminders from { feedInterval: 0, enabled: false } to { feedInterval: 0, enabled: true }\n- Existing users who have saved a preference (stored in IndexedDB) are unaffected since the stored value overwrites the default\n- Only new users or users who never toggled the setting will now see smart reminders enabled by default\n- Type-check passes cleanly"
   },
   {
     "number": 116,
@@ -228,6 +234,8 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/116",
     "created_at": "2026-03-28T04:10:12.436Z",
-    "status": "pending"
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User wants the welcome carousel items to be non-interactive (no click or long-press handlers) and instead display smooth animations. Currently, carousel items may respond to tap/long-press with interactive behavior. The user wants the carousel to auto-animate or show animated transitions instead. Affected component: the welcome/onboarding carousel component in src/. Acceptance criteria: welcome carousel items no longer respond to click or long-press events; items display animations (e.g. auto-advance, fade, slide transitions) for the best onboarding experience."
   }
 ]

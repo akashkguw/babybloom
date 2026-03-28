@@ -88,7 +88,7 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [darkMode, setDarkModeR] = useState<boolean>(true);
   const [timerState, setTSR] = useState<TimerState>({ running: false, type: null, startTime: null });
-  const [reminders, setRemR] = useState<Reminders>({ feedInterval: 0, enabled: false });
+  const [reminders, setRemR] = useState<Reminders>({ feedInterval: 0, enabled: true });
   const [volumeUnit, setVUR] = useState<'ml' | 'oz'>('ml');
   const [feedTimerApp, _setFTA] = useState<FeedTimerApp | null>(null);
   const [siriResult, setSiriResult] = useState<SiriResult | null>(null);
