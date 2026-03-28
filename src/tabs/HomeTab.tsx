@@ -649,7 +649,8 @@ export default function HomeTab({
                       let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
                       const bb1Idx = cleaned.indexOf('BB1:');
                       if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
-                      cleaned = cleaned.replace(/[\s\r\n]+/g, '');
+                      // Strip ALL non-base64 characters (invisible unicode from messaging apps)
+                      cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
                       const binary = atob(cleaned);
                       const bytes = new Uint8Array(binary.length);
                       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

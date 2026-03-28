@@ -87,8 +87,9 @@ function decode(str: string): SyncPayload | null {
       // No BB1: prefix found — try using the whole string as base64
       cleaned = cleaned.trim();
     }
-    // Strip any trailing non-base64 characters (newlines, spaces, punctuation from messaging apps)
-    cleaned = cleaned.replace(/[\s\r\n]+/g, '');
+    // Strip ALL non-base64 characters (handles invisible unicode from messaging apps:
+    // zero-width spaces, RTL marks, soft hyphens, BOM, etc.)
+    cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
     const raw = cleaned;
     const binary = atob(raw);
     const bytes = new Uint8Array(binary.length);
