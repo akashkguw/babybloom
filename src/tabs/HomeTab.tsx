@@ -16,7 +16,7 @@ import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
-import HeroInsightOverlay from '@/features/insights/HeroInsightOverlay';
+
 
 // Map internal DB type names to user-friendly display names
 const displayName = (type: string): string => {
@@ -123,9 +123,6 @@ export default function HomeTab({
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
-  const [heroFlipped, setHeroFlipped] = useState(false);
-  // Key to force-remount back face on each flip (fresh insights, no retained state)
-  const [heroFlipKey, setHeroFlipKey] = useState(0);
 
   // Check if baby turned 2 and milestone carousel hasn't been shown yet
   useEffect(() => {
@@ -1102,40 +1099,21 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* Hero — premium baby dashboard (tap to flip for insights) */}
+      {/* Hero — baby dashboard */}
       <div
-        style={{
-          perspective: 1000,
-          marginBottom: 12,
-          ...reveal(0),
-        }}
-      >
-      <div
-        onClick={() => {
-          if (!heroFlipped) {
-            setHeroFlipKey(k => k + 1); // force fresh insights
-            setHeroFlipped(true);
-          }
-        }}
         style={{
           position: 'relative',
           borderRadius: 16,
-          cursor: 'pointer',
-          WebkitUserSelect: 'none',
-          userSelect: 'none',
-          WebkitTouchCallout: 'none',
-          transformStyle: 'preserve-3d',
-          transition: 'transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1)',
-          transform: heroFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          overflow: 'hidden',
+          marginBottom: 12,
           background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
           backgroundSize: '200% 200%',
           animation: 'heroGradientShift 12s ease-in-out infinite',
           boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
+          ...reveal(0),
         }}
       >
-        {/* ═══ FRONT FACE ═══ */}
-        <div style={{ backfaceVisibility: 'hidden', overflow: 'hidden', borderRadius: 16 }}>
-        {/* Decorative background elements with subtle floating animation */}
+        {/* Decorative background elements */}
         <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', animation: 'heroOrbFloat 8s ease-in-out infinite' }} />
         <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'heroOrbFloat 10s ease-in-out infinite 2s' }} />
         <div style={{ position: 'absolute', top: 20, right: 60, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
@@ -1167,7 +1145,7 @@ export default function HomeTab({
               {/* Re-open 2yr milestone carousel */}
               {age >= 24 && (
                 <div
-                  onClick={(e) => { e.stopPropagation(); setShowMilestoneCarousel(true); }}
+                  onClick={() => setShowMilestoneCarousel(true)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
@@ -1182,7 +1160,7 @@ export default function HomeTab({
 
             {/* Milestone ring */}
             <div
-              onClick={(e) => { e.stopPropagation(); setTab('miles', 'dev'); }}
+              onClick={() => setTab('miles', 'dev')}
               style={{
                 cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                 background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: '10px 12px',
@@ -1212,7 +1190,7 @@ export default function HomeTab({
 
           {/* Today's quick stats */}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'feed'); }} style={{
+            <div onClick={() => setTab('log', 'feed')} style={{
               flex: 1, background: feedTimer ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
               border: feedTimer ? '1px solid rgba(255,255,255,0.25)' : '1px solid transparent',
@@ -1238,7 +1216,7 @@ export default function HomeTab({
                 </>
               )}
             </div>
-            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'diaper'); }} style={{
+            <div onClick={() => setTab('log', 'diaper')} style={{
               flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
@@ -1250,7 +1228,7 @@ export default function HomeTab({
                 </div>
               )}
             </div>
-            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'sleep'); }} style={{
+            <div onClick={() => setTab('log', 'sleep')} style={{
               flex: 1, background: isSleeping ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
@@ -1269,17 +1247,7 @@ export default function HomeTab({
           </div>
 
         </div>
-        </div>{/* end front face */}
-
-        {/* ═══ BACK FACE — insights (tap close to flip back) ═══ */}
-        <HeroInsightOverlay
-          key={heroFlipKey}
-          age={age}
-          babyName={babyName}
-          onClose={() => setHeroFlipped(false)}
-        />
       </div>
-      </div>{/* end perspective wrapper */}
 
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 
