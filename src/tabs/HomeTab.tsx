@@ -649,7 +649,8 @@ export default function HomeTab({
                     // Decode the share code inline (same logic as PartnerSync)
                     try {
                       let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
-                      const bb1Idx = cleaned.indexOf('BB1:');
+                      // Case-insensitive: messaging apps may lowercase "BB1:" to "bb1:"
+                      const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
                       if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
                       // Strip ALL non-base64 characters (invisible unicode from messaging apps)
                       cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');

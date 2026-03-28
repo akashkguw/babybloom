@@ -80,7 +80,8 @@ function decode(str: string): SyncPayload | null {
     // Clean up pasted input: strip whitespace, quotes, and extract BB1:... portion
     let cleaned = str.trim().replace(/^["']+|["']+$/g, '');
     // If the pasted text contains BB1: somewhere (e.g. "Sync code: BB1:abc..."), extract it
-    const bb1Idx = cleaned.indexOf('BB1:');
+    // Case-insensitive search: messaging apps may lowercase "BB1:" to "bb1:"
+    const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
     if (bb1Idx >= 0) {
       cleaned = cleaned.slice(bb1Idx + 4).trim();
     } else {
