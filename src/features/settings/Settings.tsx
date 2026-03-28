@@ -231,8 +231,8 @@ export default function Settings({
 
         {/* Feeding Reminders */}
         <Section title="Feeding Reminders" icon="🔔">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: reminders.enabled ? 12 : 0 }}>
-            <div style={{ fontSize: 13, color: C.t }}>Enable notifications</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 13, color: C.t }}>Enable smart reminders</div>
             <button
               onClick={() => {
                 if (!reminders.enabled && 'Notification' in window) {
@@ -266,22 +266,11 @@ export default function Settings({
               />
             </button>
           </div>
-          {reminders.enabled && (
-            <div>
-              <div style={{ fontSize: 12, color: C.tl, marginBottom: 6 }}>Remind after</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[2, 2.5, 3, 4].map((hr) => (
-                  <Pill
-                    key={hr}
-                    label={hr + 'h'}
-                    active={reminders.feedInterval === hr}
-                    onClick={() => setReminders({ ...reminders, feedInterval: hr })}
-                    color={C.a}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          <div style={{ fontSize: 11, color: C.tl, marginTop: 8, lineHeight: 1.5 }}>
+            {reminders.enabled
+              ? 'Reminders automatically adjust based on your baby\'s age — more frequent for newborns, less as they grow.'
+              : 'When enabled, you\'ll get age-appropriate feeding reminders that adjust automatically as your baby grows.'}
+          </div>
         </Section>
 
         {/* Siri Shortcuts */}

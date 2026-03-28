@@ -412,21 +412,33 @@ export default function HomeTab({
   }, []);
 
   // ═══ Next feed reminder ═══
+  // Age-based smart interval: automatically adjusts to baby's developmental stage
+  const smartFeedInterval = useMemo(() => {
+    if (age < 1) return 2;      // Newborn: every 2h
+    if (age < 3) return 2.5;    // 1-3 months: every 2.5h
+    if (age < 6) return 3;      // 3-6 months: every 3h
+    if (age < 9) return 3.5;    // 6-9 months: every 3.5h
+    if (age < 12) return 4;     // 9-12 months: every 4h
+    return 5;                    // 12+ months: every 5h
+  }, [age]);
+
   const feedReminderText = useMemo(() => {
-    if (!reminders || !reminders.enabled || !reminders.feedInterval) return null;
+    if (!reminders || !reminders.enabled) return null;
+    // Use smart age-based interval (fallback to saved interval for backward compat)
+    const interval = smartFeedInterval;
     const feeds = logs.feed || [];
     const lastFeed = feeds.length > 0 ? feeds[0] : null;
     if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
     const dp2 = lastFeed.date.split('-');
     const parts = lastFeed.time.split(':');
     const lastT = new Date(parseInt(dp2[0]), parseInt(dp2[1]) - 1, parseInt(dp2[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
-    const nextT = new Date(lastT.getTime() + reminders.feedInterval * 3600000);
+    const nextT = new Date(lastT.getTime() + interval * 3600000);
     const now2 = new Date();
     if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
     const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
     const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
     return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
-  }, [reminders, logs.feed]);
+  }, [reminders, logs.feed, smartFeedInterval]);
 
   // 2-year milestone celebration carousel
   if (showMilestoneCarousel && birth) {
@@ -946,6 +958,23 @@ export default function HomeTab({
       : '🍼 ' + (lastFeedToday.type || '')
     : null;
 
+  // Last diaper info for hero widget
+  const lastDiaperToday = (logs.diaper || []).find((x) => x.date === td);
+  const lastDiaperLabel = lastDiaperToday
+    ? lastDiaperToday.type === 'Wet' ? '💧 Wet'
+      : lastDiaperToday.type === 'Dirty' ? '💩 Dirty'
+      : lastDiaperToday.type === 'Both' ? '💧💩 Both'
+      : lastDiaperToday.type || ''
+    : null;
+
+  // Last sleep info for hero widget
+  const lastSleepToday = (logs.sleep || []).find((x) => x.date === td && x.type !== 'Wake Up');
+  const lastSleepLabel = lastSleepToday
+    ? lastSleepToday.type === 'Nap' ? '😴 Nap'
+      : lastSleepToday.type === 'Night Sleep' ? '🌙 Night'
+      : lastSleepToday.type || ''
+    : null;
+
   let _feedMinToday = 0;
   (logs.feed || [])
     .filter((x) => x.date === td && x.mins && !x.oz)
@@ -1196,6 +1225,11 @@ export default function HomeTab({
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{diaperCt}</div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>diapers</div>
+              {lastDiaperLabel && lastDiaperToday?.time && (
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {lastDiaperLabel} · {fmtTime(lastDiaperToday.time)}
+                </div>
+              )}
             </div>
             <div onClick={() => { setTab('log', 'sleep'); }} style={{
               flex: 1, background: isSleeping ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
@@ -1207,6 +1241,11 @@ export default function HomeTab({
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>
                 {isSleeping ? 'sleeping' : 'sleep'}
               </div>
+              {lastSleepLabel && lastSleepToday?.time && (
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {lastSleepLabel} · {fmtTime(lastSleepToday.time)}
+                </div>
+              )}
             </div>
           </div>
         </div>

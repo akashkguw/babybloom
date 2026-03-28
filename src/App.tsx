@@ -475,50 +475,7 @@ function App() {
     // This is a placeholder for the full implementation
   }, [loading, logs]);
 
-  // Feed reminder notifications — check immediately on mount, on visibility change, and on interval
-  const lastNotifRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!reminders.enabled || !reminders.feedInterval) return;
-    if (!isNative && 'Notification' in window && (Notification as any).permission === 'default')
-      (Notification as any).requestPermission();
-    lastNotifRef.current = null;
-
-    function checkAndNotify() {
-      // On native, sendNotification handles permissions internally
-      if (!isNative && (!('Notification' in window) || (Notification as any).permission !== 'granted')) return;
-      const feeds = logs.feed || [];
-      const lastFeed = feeds.length > 0 ? feeds[0] : null;
-      if (lastFeed && lastFeed.date && lastFeed.time) {
-        const dp = lastFeed.date.split('-');
-        const parts = lastFeed.time.split(':');
-        const lastTime = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
-        const feedKey = lastFeed.date + '_' + lastFeed.time;
-        const diff = (Date.now() - lastTime.getTime()) / 3600000;
-        if (diff >= reminders.feedInterval && lastNotifRef.current !== feedKey) {
-          lastNotifRef.current = feedKey;
-          const body = `Time for a feeding! Last feed was ${Math.round(diff * 10) / 10} hours ago.`;
-          sendNotification('BabyBloom Reminder', body);
-        }
-      }
-    }
-
-    // Check immediately on mount / when reminders or feeds change
-    checkAndNotify();
-
-    // Re-check when app returns to foreground (e.g. user switches back to tab/PWA)
-    function onVisibilityChange() {
-      if (document.visibilityState === 'visible') checkAndNotify();
-    }
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // Also keep periodic check as a fallback while app is open
-    const intv = setInterval(checkAndNotify, 300000);
-
-    return () => {
-      clearInterval(intv);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [reminders, logs.feed]);
+  // Feed reminder notifications are set up after age calculation below
 
   // Calculate age
   let age = 0;
@@ -530,6 +487,59 @@ function App() {
   }
 
   const babyName = profiles.length ? (profiles.find((p) => p.id === activeProfile)?.name || 'Baby') : 'Baby';
+
+  // Smart age-based feed interval (auto-adjusts to baby's developmental stage)
+  const smartFeedInterval = (() => {
+    if (age < 1) return 2;      // Newborn: every 2h
+    if (age < 3) return 2.5;    // 1-3 months: every 2.5h
+    if (age < 6) return 3;      // 3-6 months: every 3h
+    if (age < 9) return 3.5;    // 6-9 months: every 3.5h
+    if (age < 12) return 4;     // 9-12 months: every 4h
+    return 5;                    // 12+ months: every 5h
+  })();
+
+  // Feed reminder notifications — check immediately on mount, on visibility change, and on interval
+  const lastNotifRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reminders.enabled) return;
+    if (!isNative && 'Notification' in window && (Notification as any).permission === 'default')
+      (Notification as any).requestPermission();
+    lastNotifRef.current = null;
+
+    const interval = smartFeedInterval;
+
+    function checkAndNotify() {
+      if (!isNative && (!('Notification' in window) || (Notification as any).permission !== 'granted')) return;
+      const feeds = logs.feed || [];
+      const lastFeed = feeds.length > 0 ? feeds[0] : null;
+      if (lastFeed && lastFeed.date && lastFeed.time) {
+        const dp = lastFeed.date.split('-');
+        const parts = lastFeed.time.split(':');
+        const lastTime = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
+        const feedKey = lastFeed.date + '_' + lastFeed.time;
+        const diff = (Date.now() - lastTime.getTime()) / 3600000;
+        if (diff >= interval && lastNotifRef.current !== feedKey) {
+          lastNotifRef.current = feedKey;
+          const body = `Time for a feeding! Last feed was ${Math.round(diff * 10) / 10} hours ago.`;
+          sendNotification('BabyBloom Reminder', body);
+        }
+      }
+    }
+
+    checkAndNotify();
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') checkAndNotify();
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const intv = setInterval(checkAndNotify, 300000);
+
+    return () => {
+      clearInterval(intv);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [reminders, logs.feed, smartFeedInterval]);
 
   // Active timer elapsed time for the persistent banners
   const activeTimerSource = feedTimerApp ? feedTimerApp.startTime : (timerState.running && timerState.startTime ? timerState.startTime : null);
