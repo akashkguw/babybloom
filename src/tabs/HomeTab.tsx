@@ -1106,8 +1106,6 @@ export default function HomeTab({
       <div
         style={{
           perspective: 1000,
-          overflow: 'hidden',
-          borderRadius: 16,
           marginBottom: 12,
           ...reveal(0),
         }}
