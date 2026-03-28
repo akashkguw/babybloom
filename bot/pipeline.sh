@@ -425,70 +425,7 @@ if [ -n "$UNPUSHED" ]; then
   if [ "$SRC_CHANGED" -gt 0 ]; then
     echo "🧪 src/ changes detected in unpushed commits ($SRC_CHANGED file(s)) — running CI..."
     bash "$BOT_DIR/ci.sh" "$REPO_DIR" || {
-      CI_LOG_TAIL=$(tail -30 "$BOT_DIR/ci.log" 2>/dev/null | sed 's/"/\\"/g; s/`/'"'"'/g')
-      CHANGED_FILES=$(git diff origin/main..HEAD --name-only 2>/dev/null | head -10)
-
       send_telegram "🚨 *BabyBloom BLOCKER:* Local CI failed before push (push-only path) — deploy aborted."
-
-      # Create GitHub issue with local CI failure details
-      python3 - <<LOCAL_FAIL_EOF
-import urllib.request, json, ssl
-
-try:
-    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
-except ImportError:
-    ctx = ssl.create_default_context(); ctx.load_default_certs()
-
-token = "$GITHUB_TOKEN"
-repo  = "$REPO"
-sha   = "$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
-ci_log = """$CI_LOG_TAIL"""
-changed = """$CHANGED_FILES"""
-
-body = f"""**Local CI failed — deploy blocked** (auto-created by pipeline)
-
-**Commit:** \`{sha}\`
-**Time:** $(date '+%Y-%m-%d %H:%M %Z')
-**Trigger:** Push-only path (src/ changes detected in unpushed commits)
-
-## CI Output (last 30 lines)
-
-\`\`\`
-{ci_log}
-\`\`\`
-
-## Changed Files
-
-\`\`\`
-{changed}
-\`\`\`
-
-## Next Steps
-
-1. Run \`npm run test\` and \`npm run build\` locally to reproduce
-2. Fix the failing tests or build errors
-3. Pipeline will auto-close this issue on next successful deploy
-
----
-_Auto-created by BabyBloom pipeline on local CI failure._"""
-
-try:
-    data = json.dumps({
-        "title": f"[CI Failed] Local CI blocked deploy on {sha}",
-        "body": body,
-        "labels": ["deploy-failure", "bug"]
-    }).encode()
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{repo}/issues",
-        data=data, method="POST",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    )
-    resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
-    print(f"📝 Created CI failure issue #{resp['number']}")
-except Exception as e:
-    print(f"⚠️ Could not create failure issue: {e}")
-LOCAL_FAIL_EOF
-
       exit 1
     }
   else
