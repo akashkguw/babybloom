@@ -193,22 +193,6 @@
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
-    "number": 114,
-    "title": "in hero app feed, don\u2019t show overall feed value",
-    "body": "## \u2728 Feature Request\n\nin hero app feed, don\u2019t show overall feed value\n\n---\n\n**Category:** `enhancement` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "feeding"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/114",
-    "created_at": "2026-03-28T04:07:11.530Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User wants to remove the overall/total feed value display from the hero section of the feeding screen. Currently, the hero area in the app feed view shows an aggregated overall feed value (e.g. total mL or oz across all feed types). The user wants this removed so only individual feed entries or category breakdowns are shown. Affected component: the hero/summary area of the feeding tracker UI in src/. Acceptance criteria: the hero section of the feed screen no longer displays an overall/total feed value; individual feed entries or category data remain visible.",
-    "implementation_notes": "Removed overall feed volume display from hero section of HomeTab.\n- Files changed: src/tabs/HomeTab.tsx\n- Removed feedOzToday computation (lines calculating total oz for the day)\n- Removed the conditional render line that showed fmtVol(feedOzToday, volumeUnit) in the hero feed widget\n- Feed count, last feed label, and feed timer remain visible \u2014 only the overall volume total is removed\n- Type-check passes cleanly"
-  },
-  {
     "number": 115,
     "title": "smart reminder should be true by default",
     "body": "## \u2728 Feature Request\n\nsmart reminder should be true by default\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
