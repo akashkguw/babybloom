@@ -191,53 +191,5 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
-  },
-  {
-    "number": 122,
-    "title": "the long press hero widget is coming as a bottom sheet, no - I want animation...",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe long press hero widget is coming as a bottom sheet, no - I want animation in the hero widget itself and then details there only.\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "enhancement"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/122",
-    "created_at": "2026-03-28T21:09:17.927Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports that long-pressing the hero widget opens a bottom sheet, but the desired behavior is an in-place animation/expansion within the hero widget itself showing details.\n- Affected component: Hero widget (likely in the main dashboard/home screen)\n- Current behavior: Long press triggers a bottom sheet modal\n- Expected behavior: Long press triggers an animation within the hero widget, expanding it to show details in-place\n- Edge cases: Handle animation interruption if user releases early, ensure smooth transition back on dismiss\n- Acceptance criteria: Long press on hero widget animates/expands in-place to show details without any bottom sheet appearing",
-    "implementation_notes": "Converted HeroInsightOverlay from a fixed full-screen bottom sheet overlay to an inline expandable section within the hero widget.\n- Files changed: src/features/insights/HeroInsightOverlay.tsx (rewrote as inline component using max-height animation), src/tabs/HomeTab.tsx (moved overlay rendering inside hero div, hide hint text when expanded)\n- Approach: The overlay now renders inside the hero widget div instead of as a fixed overlay. Uses max-height + opacity transitions for smooth expand/collapse animation. All content uses rgba white colors to blend with the hero gradient background. Close button stops event propagation to prevent re-triggering long press.\n- Trade-offs: max-height is set to 600px as an upper bound for the animation; actual content is shorter but this ensures all content is visible."
-  },
-  {
-    "number": 123,
-    "title": "instead of sync code can it work on QR code with a very intuitive experience",
-    "body": "## \u2728 Feature Request\n\ninstead of sync code can it work on QR code with a very intuitive experience. Look for all ingress of sync code.\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/123",
-    "created_at": "2026-03-28T21:11:52.565Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User requests replacing the current sync-code-based device syncing mechanism with a QR-code-based experience for a more intuitive UX.\n- Affected component: Device sync/pairing flow (all ingress points where sync code is used)\n- Current behavior: Users enter a text-based sync code to pair devices\n- Expected behavior: Users scan a QR code to pair devices, providing a smoother and more intuitive sync experience\n- Edge cases: Camera permissions, QR code generation/display on source device, fallback if camera unavailable, handle expired QR codes\n- Acceptance criteria: All sync code entry points replaced with QR code generation and scanning; QR experience is intuitive and requires minimal user input",
-    "implementation_notes": "Added QR code support for partner sync with intuitive scan-based experience.\n- Files changed: src/lib/utils/qr.ts (new \u2014 minimal QR code encoder, byte mode, EC level L, versions 1-20), src/features/sync/QRCode.tsx (new \u2014 SVG QR code display component), src/features/sync/QRScanner.tsx (new \u2014 camera-based QR scanner using native BarcodeDetector API), src/features/sync/PartnerSync.tsx (updated share/receive UI to use QR), src/tabs/HomeTab.tsx (updated join code text), src/features/settings/Settings.tsx (updated text reference)\n- Approach: Share flow now generates and displays a QR code prominently with text fallback. Receive flow offers QR scanning as primary action with paste as fallback. QR encoder is pure TypeScript with no dependencies. QR scanner uses native BarcodeDetector API with graceful fallback.\n- Trade-offs: QR codes have size limits (~858 bytes at version 20); very large full-sync payloads may not fit in QR and will show a fallback message. Text paste remains available for all cases."
-  },
-  {
-    "number": 124,
-    "title": "instead of wet dirty have pee poop",
-    "body": "## \ud83d\udc1b Bug Report\n\ninstead of wet dirty have pee poop\n\n---\n\n**Category:** `bug` `diaper`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "diaper"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/124",
-    "created_at": "2026-03-28T21:25:28.785Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User requests changing diaper tracking labels from \"wet/dirty\" to \"pee/poop\" for clearer, more intuitive terminology.\n- Affected component: Diaper tracking module \u2014 UI labels, data model constants, any related strings\n- Current behavior: Diaper types are labeled as \"wet\" and \"dirty\"\n- Expected behavior: Diaper types should be labeled as \"pee\" and \"poop\"\n- Edge cases: Ensure existing stored data with old labels still renders correctly (backward compatibility), update all references in UI text, tooltips, and any reports/summaries\n- Acceptance criteria: All user-facing instances of \"wet\" changed to \"pee\" and \"dirty\" changed to \"poop\"; existing data continues to display correctly",
-    "implementation_notes": "Renamed all user-facing diaper labels from \"wet/dirty\" to \"pee/poop\" while preserving backward compatibility with stored data.\n- Files changed: src/tabs/LogTab.tsx (display mapping in displayName + pill buttons), src/tabs/HomeTab.tsx (quick log labels, warning messages, info panel tips, sorting maps, hero display), src/features/insights/useDynamicRedFlags.ts (alert text), src/features/insights/SmartStatus.tsx (status detail text), src/features/voice/VoiceButton.tsx (example text), src/features/voice/useVoiceRecognition.ts (error hint), src/features/shortcuts/SiriShortcutsSetup.tsx (shortcut names/descriptions), src/features/stats/StatsView.tsx (metric pill labels)\n- Approach: Changed all user-facing display text from \"wet\"\u2192\"pee\" and \"dirty\"\u2192\"poop\". Internal data model types remain as \"Wet\" and \"Dirty\" for backward compatibility with existing stored data. Added display mapping in LogTab displayName function.\n- Trade-offs: Voice parser already supported \"pee\" and \"poop\" as input; no changes needed there. The quick URL params for Siri shortcuts keep the old names (quick=wet, quick=dirty) for URL stability."
   }
 ]
