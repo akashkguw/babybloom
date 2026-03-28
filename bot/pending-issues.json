@@ -191,5 +191,98 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
+  },
+  {
+    "number": 106,
+    "title": "I can get started with the share code to use the app if I\u2019m a new user (have ...",
+    "body": "## \u2728 Feature Request\n\nI can get started with the share code to use the app if I\u2019m a new user (have share code?)\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/106",
+    "created_at": "2026-03-28T02:15:06.674Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User wants a way for new users to get started using a share code. Currently, the app has a share code feature for syncing data between devices, but there is no clear onboarding flow for a brand new user who received a share code from someone else.\n- Affected area: Onboarding / Welcome screen / Share code input flow\n- Expected: A new user with a share code can enter it during initial setup to join an existing baby profile\n- Current: No clear path for new users to input a share code on first launch\n- Edge cases: Invalid codes, expired codes, user already has data\n- Acceptance criteria: New user can enter a share code during onboarding and load the shared baby profile successfully",
+    "implementation_notes": "Files changed: src/tabs/HomeTab.tsx\n- Added \"Have a share code?\" expandable section to the onboarding screen (before birth date is set)\n- New users can paste a BB1: sync code to import partner data and auto-set birth date\n- Uses inline decode logic matching PartnerSync.tsx for consistency\n- Shows textarea input with join button and cancel option"
+  },
+  {
+    "number": 107,
+    "title": "share code doesn\u2019t work seen copy pasted until I delete the prefix",
+    "body": "## \ud83d\udc1b Bug Report\n\nshare code doesn\u2019t work seen copy pasted until I delete the prefix.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/107",
+    "created_at": "2026-03-28T02:15:09.526Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "Share code does not work when copy-pasted because it includes a prefix that must be manually deleted. The share code likely includes a label like \"Code: \" or similar prefix text that gets copied along with the actual code.\n- Affected area: Share code input/parsing logic\n- Expected: Copy-pasting a share code (with or without prefix) should work seamlessly\n- Current: User must manually delete the prefix before the code is accepted\n- Edge cases: Different prefix formats, whitespace, different clipboard sources\n- Acceptance criteria: Share code input should trim/strip any known prefixes and whitespace automatically before validation",
+    "implementation_notes": "Files changed: src/features/sync/PartnerSync.tsx\n- Rewrote decode() to handle messy copy-paste scenarios\n- Strips surrounding quotes, whitespace, newlines\n- Extracts BB1: portion from anywhere in pasted text (e.g. \"Sync code: BB1:abc...\")\n- Removes internal whitespace from base64 payload"
+  },
+  {
+    "number": 108,
+    "title": "reset all data - also suggest info to store the generate code if needed in fu...",
+    "body": "## \u2728 Feature Request\n\nreset all data - also suggest info to store the generate code if needed in future.\n\n---\n\n**Category:** `enhancement` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/108",
+    "created_at": "2026-03-28T02:15:12.891Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User wants a \"Reset All Data\" feature that clears all stored baby data, with a suggestion to save/store the generated share code before resetting so they can recover or re-share in the future.\n- Affected area: Settings / Data management / IndexedDB storage\n- Expected: A reset option that warns the user, suggests saving their share code, then clears all data\n- Current: No reset all data feature exists\n- Edge cases: Confirming destructive action, backing up share code first, handling shared profiles\n- Acceptance criteria: Settings has a reset option with confirmation dialog that reminds user to save their share code, then clears all local data and returns to welcome screen"
+  },
+  {
+    "number": 109,
+    "title": "in the generate report, naps / nights is always 0",
+    "body": "## \ud83d\udc1b Bug Report\n\nin the generate report, naps / nights is always 0\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/109",
+    "created_at": "2026-03-28T02:15:15.620Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "In the generated report feature, the naps/nights count always shows 0 regardless of actual logged sleep data. This is a bug in the report generation logic where sleep entries are not being counted or categorized correctly.\n- Affected area: Report generation logic / Sleep data aggregation\n- Expected: Report should show accurate counts of naps and night sleeps based on logged data\n- Current: Naps/nights count is always displayed as 0\n- Edge cases: Days with no sleep logged, mixed nap/night entries, timezone boundaries\n- Acceptance criteria: Generated report accurately reflects the number of naps and night sleep sessions logged in the selected time period",
+    "implementation_notes": "Files changed: src/features/reports/PediatrReport.tsx\n- Fixed naps/nights count always showing 0\n- Root cause: sleep entries of type Nap/Night Sleep don't have mins (it's set on Wake Up entries)\n- Solution: count naps/nights from all sleep entries in range, use mins-filtered set only for duration calculations"
+  },
+  {
+    "number": 110,
+    "title": "if mother has been not using the app, the alert might say that they have not ...",
+    "body": "## \ud83d\udc1b Bug Report\n\nif mother has been not using the app, the alert might say that they have not done some activity for days, months or year. Similarly after age 2, tracking is not needed. So notify  right messages instead.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/110",
+    "created_at": "2026-03-28T02:15:18.547Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "When a mother has not used the app for a long time, alerts may incorrectly say activities have not been done for days/months/years, which is alarming and unhelpful. Also after age 2, tracking alerts are not needed. The app should send contextually appropriate messages instead of raw time-since-last-activity alerts.\n- Affected area: Alert/notification system / Time-based reminders\n- Expected: If the user has been inactive for extended periods, show a gentle \"welcome back\" instead of alarming gap alerts. After age 2, suppress or modify tracking alerts.\n- Current: Alerts show literal time gaps (e.g., \"no feeding for 30 days\") which is incorrect/alarming\n- Edge cases: Varying inactivity durations, baby age transitions, re-engagement after long breaks\n- Acceptance criteria: Alerts are contextually appropriate \u2014 long gaps show welcome-back messages, post-2yr alerts are suppressed or adapted"
+  },
+  {
+    "number": 111,
+    "title": "when baby reaches 2 years of age, when they open the app for the first time s...",
+    "body": "## \u2728 Feature Request\n\nwhen baby reaches 2 years of age, when they open the app for the first time show a courasel similar to welcome screen on all the activities that they have done. Only important ones. Make them feel good. at the end, suggest that, you can still use the app, but there will not be any alert. The caurasel is shown only once but they can open it again from the hero widget. Post 2 years age data should not come in this courasel.\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "ui",
+      "priority"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/111",
+    "created_at": "2026-03-28T02:15:21.760Z",
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "When baby reaches 2 years old, show a celebratory carousel (similar to the welcome screen) on first app open highlighting important milestone activities. Make parents feel good about the journey. At the end, suggest they can still use the app but alerts will stop. The carousel is shown only once but can be reopened from the hero widget. Post-2yr data should NOT appear in this carousel.\n- Affected area: Hero widget / Welcome/milestone carousel / Age-based triggers\n- Expected: One-time celebratory carousel at 2yr milestone showing key activities, with option to reopen from hero widget\n- Current: No age-based milestone celebration exists\n- Edge cases: Baby already past 2yrs on first install, carousel content when minimal data exists, multiple babies\n- Acceptance criteria: Carousel appears once when baby turns 2, shows pre-2yr highlights only, has a warm congratulatory tone, dismissible, re-accessible from hero widget, and ends with a note about continued usage without alerts"
   }
 ]

@@ -11,6 +11,7 @@ import { getAvailableCountries } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import WelcomeCarousel from '@/components/onboarding/WelcomeCarousel';
+import MilestoneCarousel from '@/components/onboarding/MilestoneCarousel';
 import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
@@ -120,6 +121,16 @@ export default function HomeTab({
   const [revealStage, setRevealStage] = useState<number | null>(null);
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
+
+  // Check if baby turned 2 and milestone carousel hasn't been shown yet
+  useEffect(() => {
+    if (age >= 24 && birth) {
+      dg('milestone2yrSeen').then((seen: boolean | null) => {
+        if (!seen) setShowMilestoneCarousel(true);
+      });
+    }
+  }, [age, birth]);
 
   // Show guide when triggered from Settings
   useEffect(() => {
@@ -160,6 +171,25 @@ export default function HomeTab({
 
   // ═══ Quick-log warning colors — highlight important buttons not used recently ═══
   const quickLogWarnings = useMemo(() => {
+    // Post-2yr: suppress all tracking alerts (baby no longer needs intensive monitoring)
+    if (age >= 24) return {};
+
+    // Long inactivity: if the most recent log across all categories is > 3 days old,
+    // suppress individual warnings (the red-flag carousel shows a "welcome back" instead)
+    const allRecentEntries = [...(logs.feed || []), ...(logs.diaper || []), ...(logs.sleep || [])];
+    if (allRecentEntries.length > 0) {
+      let latestMs = 0;
+      for (const e of allRecentEntries) {
+        if (e.date && e.time) {
+          const dp = e.date.split('-');
+          const tp = e.time.split(':');
+          const t = new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
+          if (t > latestMs) latestMs = t;
+        }
+      }
+      if (latestMs > 0 && (Date.now() - latestMs) / 86400000 >= 3) return {};
+    }
+
     // Thresholds in hours: [warningStart, dangerStart]
     // After warningStart hours → amber tint; after dangerStart hours → red tint
     const babyAgeMonths = Math.floor(age);
@@ -397,6 +427,28 @@ export default function HomeTab({
     const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
     return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
   }, [reminders, logs.feed]);
+
+  // 2-year milestone celebration carousel
+  if (showMilestoneCarousel && birth) {
+    const milestonesCount = checked ? Object.values(checked).reduce((sum: number, mo: any) => {
+      if (mo && typeof mo === 'object') return sum + Object.values(mo).filter(Boolean).length;
+      return sum;
+    }, 0) : 0;
+    return (
+      <MilestoneCarousel
+        babyName={babyName}
+        birth={birth}
+        logs={logs}
+        milestonesChecked={milestonesCount}
+        teethCount={0}
+        firstsCount={0}
+        onDismiss={() => {
+          setShowMilestoneCarousel(false);
+          ds('milestone2yrSeen', true);
+        }}
+      />
+    );
+  }
 
   // Welcome carousel — full-screen overlay, blocks everything beneath
   if (showWelcome) {
@@ -1062,6 +1114,21 @@ export default function HomeTab({
                 <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>{ageStr}</span>
                 {ms && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>· {ms.l}</span>}
               </div>
+
+              {/* Re-open 2yr milestone carousel */}
+              {age >= 24 && (
+                <div
+                  onClick={() => setShowMilestoneCarousel(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+                    borderRadius: 20, padding: '4px 10px', marginTop: 6, cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>🎉</span>
+                  <span style={{ color: 'white', fontSize: 11, fontWeight: 600 }}>Relive the journey</span>
+                </div>
+              )}
             </div>
 
             {/* Milestone ring */}

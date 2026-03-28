@@ -329,10 +329,20 @@ export default function Settings({
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
             This will permanently delete all profiles, logs, milestones, and vaccine records from this device.
           </div>
+          <div style={{
+            background: C.al, borderRadius: 12, padding: '10px 12px', marginBottom: 12,
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+          }}>
+            <Icon n="info" s={16} c={C.a} st={{ marginTop: 1, flexShrink: 0 }} />
+            <div style={{ fontSize: 11, color: C.t, lineHeight: 1.5 }}>
+              <strong>Before resetting:</strong> Go to <span style={{ color: C.s, fontWeight: 600 }}>Sync / Share Data</span> above
+              and generate a full sync code. Save it somewhere safe — you can use it to restore your data later or share with a partner.
+            </div>
+          </div>
           <Button
             label="Reset All Data"
             onClick={() => {
-              if (window.confirm('Delete ALL data?')) {
+              if (window.confirm('Have you saved your sync code? This will delete ALL data and cannot be undone.')) {
                 dcl().then(() => {
                   setTimeout(() => {
                     location.reload();

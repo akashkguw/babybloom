@@ -58,6 +58,37 @@ export default function useDynamicRedFlags(
     const nowMs = Date.now();
     const td = today();
 
+    // ── 0. Post-2yr: suppress all tracking alerts ──
+    if (age >= 24) {
+      return [];
+    }
+
+    // ── 0b. Long inactivity detection ──
+    // If the most recent log across all categories is older than 3 days,
+    // show a gentle "welcome back" instead of alarming gap alerts
+    const allEntries = [
+      ...(logs.feed || []),
+      ...(logs.diaper || []),
+      ...(logs.sleep || []),
+    ];
+    if (allEntries.length > 0) {
+      let latestMs = 0;
+      for (const e of allEntries) {
+        const ms = parseEntryMs(e);
+        if (ms > latestMs) latestMs = ms;
+      }
+      const inactiveDays = (nowMs - latestMs) / 86400000;
+      if (inactiveDays >= 3) {
+        flags.push({
+          id: 'welcome-back',
+          emoji: '👋',
+          text: 'Welcome back! Pick up where you left off — tap any button to start logging again',
+          severity: 'warning',
+        });
+        return flags;
+      }
+    }
+
     // ── 1. Extended feeding gap ──
     const feeds = logs.feed || [];
     // Suppress feed-gap flag when baby is sleeping
