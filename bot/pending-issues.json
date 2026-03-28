@@ -31,7 +31,7 @@
   {
     "number": 30,
     "title": "issues resolved is not coming in telegram message",
-    "body": "## 🐛 Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -45,7 +45,7 @@
   {
     "number": 31,
     "title": "Chicken is little hard",
-    "body": "## 💬 Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "feedback",
       "telegram"
@@ -59,7 +59,7 @@
   {
     "number": 34,
     "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## ✨ Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -73,7 +73,7 @@
   {
     "number": 59,
     "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## 🐛 Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -82,12 +82,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/59",
     "created_at": "2026-03-24T08:45:33.058Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels — created 1 second apart). Will be addressed via #58."
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
   },
   {
     "number": 61,
     "title": "- I want dark mode as default",
-    "body": "## ✨ Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -96,7 +96,7 @@
     "url": "https://github.com/akashkguw/babybloom/issues/61",
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels — created at the same second). Will be addressed via #60."
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
   },
   {
     "number": 80,
@@ -114,7 +114,7 @@
   {
     "number": 87,
     "title": "test do not do anything",
-    "body": "## 🐛 Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -123,12 +123,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:57.058Z",
     "status": "skipped",
-    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" — no feature, bug, or change to implement."
+    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" \u2014 no feature, bug, or change to implement."
   },
   {
     "number": 89,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -136,12 +136,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/89",
     "created_at": "2026-03-25T23:44:30Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale — no action needed."
+    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale \u2014 no action needed."
   },
   {
     "number": 90,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -149,12 +149,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/90",
     "created_at": "2026-03-25T23:50:36Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale — the failing tests have been fixed."
+    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale \u2014 the failing tests have been fixed."
   },
   {
     "number": 91,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -166,8 +166,8 @@
   },
   {
     "number": 92,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -180,7 +180,7 @@
   {
     "number": 93,
     "title": "GitHub issue not getting created from anshimitt telegram",
-    "body": "## 🐛 Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram"
@@ -189,13 +189,13 @@
     "created_at": "2026-03-26T02:02:33Z",
     "status": "skipped",
     "route": "infrastructure",
-    "skip_reason": "MANUAL ONLY — Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
+    "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
     "number": 119,
-    "title": "when baby is nursing the feed overdue doesn’t go away in hero widget",
-    "body": "## 🐛 Bug Report\n\nwhen baby is nursing the feed overdue doesn’t go away in hero widget\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "title": "when baby is nursing the feed overdue doesn\u2019t go away in hero widget",
+    "body": "## \ud83d\udc1b Bug Report\n\nwhen baby is nursing the feed overdue doesn\u2019t go away in hero widget\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -203,15 +203,15 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/119",
     "created_at": "2026-03-28T17:56:12.891Z",
-    "status": "triaged",
+    "status": "implemented",
     "route": "implementation",
     "enhanced_description": "User reports that the hero widget continues to show a \"feed overdue\" indicator even while the baby is actively nursing.\n- Affected component: Hero widget / feed status display in the main dashboard\n- Expected: When a feeding session is in progress (nursing), the overdue indicator should be hidden or replaced with an \"in progress\" state\n- Current: The overdue badge/indicator persists during an active nursing session, which is confusing\n- Edge cases: Different feed types (nursing vs bottle), timer-based feeds, feeds started from different entry points\n- Acceptance criteria: Hero widget suppresses the overdue indicator when an active feeding session is detected; indicator returns if the session is cancelled without completing",
     "implementation_notes": "Fixed hero widget showing feed overdue while baby is actively nursing.\n- Files changed: src/tabs/HomeTab.tsx\n- Approach: Added an early return in the feedReminderText useMemo that checks if feedTimer is active (non-null). When a feeding session is in progress, the widget now shows \"Feeding in progress...\" with overdue: false instead of the misleading overdue indicator. Added feedTimer to the useMemo dependency array.\n- Trade-offs: Simple, targeted fix. The \"Feeding in progress\" text covers all timer-based feed types (nursing L/R, tummy time)."
   },
   {
     "number": 120,
-    "title": "sync still doesn’t work",
-    "body": "## 🐛 Bug Report\n\nsync still doesn’t work. I have to delete bb1: to sync every time\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "title": "sync still doesn\u2019t work",
+    "body": "## \ud83d\udc1b Bug Report\n\nsync still doesn\u2019t work. I have to delete bb1: to sync every time\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -224,7 +224,7 @@
   {
     "number": 121,
     "title": "add an awesome feature at long press hero widget with a cool animation",
-    "body": "## ✨ Feature Request\n\nadd an awesome feature at long press hero widget with a cool animation. You deep dive what best info should be served there.\n\n---\n\n**Category:** `enhancement` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\nadd an awesome feature at long press hero widget with a cool animation. You deep dive what best info should be served there.\n\n---\n\n**Category:** `enhancement` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
