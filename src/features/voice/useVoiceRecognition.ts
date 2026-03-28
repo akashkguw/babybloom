@@ -92,7 +92,7 @@ export default function useVoiceRecognition(onResult: (parsed: VoiceParseResult)
           setLS('idle');
         }, 2000);
       } else {
-        setErr('Didn\'t catch that — try: "bottle 4 oz" or "wet diaper" or "nap"');
+        setErr('Didn\'t catch that — try: "bottle 4 oz" or "pee diaper" or "nap"');
         setLS('idle');
       }
     }

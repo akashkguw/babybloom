@@ -102,10 +102,10 @@ export default function VoiceButton({ onResult, quickLog, babyName }: VoiceButto
             <div style={{ fontSize: 48, marginBottom: 12, animation: 'pulse 1.5s infinite' }}>🎙️</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: C.t, marginBottom: 6 }}>Listening...</div>
             <div style={{ fontSize: 13, color: C.tl, marginBottom: 12 }}>
-              {transcript || 'Say something like "bottle 4 oz" or "wet diaper"'}
+              {transcript || 'Say something like "bottle 4 oz" or "pee diaper"'}
             </div>
             <div style={{ fontSize: 12, color: C.tl, marginBottom: 16 }}>
-              Examples: breast left 15 min, dirty diaper, nap, woke up, temp 99.5
+              Examples: breast left 15 min, poop diaper, nap, woke up, temp 99.5
             </div>
             <button
               onClick={cancelVoice}

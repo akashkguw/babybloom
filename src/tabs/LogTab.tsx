@@ -16,7 +16,7 @@ import TimerView from '@/features/feeding/TimerView';
 import StatsView from '@/features/stats/StatsView';
 
 const displayName = (type: string): string => {
-  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
+  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right', 'Wet': 'Pee', 'Dirty': 'Poop' };
   return map[type] || type;
 };
 
@@ -1031,13 +1031,13 @@ const LogTab: React.FC<LogTabProps> = ({
                     Type
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {['Wet', 'Dirty', 'Both'].map((t) => (
+                    {([['Wet', 'Pee'], ['Dirty', 'Poop'], ['Both', 'Both']] as const).map(([val, label]) => (
                       <Pill
-                        key={t}
-                        label={t}
-                        active={form.type === t}
+                        key={val}
+                        label={label}
+                        active={form.type === val}
                         onClick={() =>
-                          setForm({ ...form, type: t })
+                          setForm({ ...form, type: val })
                         }
                         color={C.bl}
                       />

@@ -115,7 +115,7 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
         emoji: '💧',
         status: 'action',
         text: wetToday < wetTarget ? 'Check hydration' : 'Check diaper',
-        detail: wetToday + ' wet today · last ' + fmtHoursAgo(diaperHrs),
+        detail: wetToday + ' pee today · last ' + fmtHoursAgo(diaperHrs),
       });
     } else if (diaperHrs >= 5) {
       result.push({
@@ -123,7 +123,7 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
         emoji: '💧',
         status: 'watch',
         text: 'Check soon',
-        detail: wetToday + ' wet today',
+        detail: wetToday + ' pee today',
       });
     } else {
       result.push({
@@ -131,7 +131,7 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
         emoji: '💧',
         status: 'good',
         text: 'On track',
-        detail: todayDiapers.length + ' changes · ' + wetToday + ' wet',
+        detail: todayDiapers.length + ' changes · ' + wetToday + ' pee',
       });
     }
 

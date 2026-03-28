@@ -201,8 +201,8 @@ export default function HomeTab({
       'Nurse Right': { cat: 'feed', types: ['Breast R'], warnH: 5, dangerH: 8, warnMsg: 'Right side not nursed in over {h}h', dangerMsg: 'Right side not nursed in over {h}h — might be time for a feed', neverMsg: 'No right side nursing logged yet' },
       // Tummy time warnings: skip for newborns < 1 month (warning fires immediately when never logged, causing alarm for brand-new parents)
       ...(babyAgeMonths >= 1 && babyAgeMonths < 12 ? { 'Tummy': { cat: 'tummy', types: ['Tummy Time'], warnH: 48, dangerH: 72, warnMsg: 'No tummy time in over {h}h', dangerMsg: 'No tummy time in {h}h — good time for some tummy play', neverMsg: 'No tummy time logged yet' } } : {}),
-      'Wet':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 12, warnMsg: 'No wet diaper in {h}h', dangerMsg: 'No wet diaper in {h}h — keep an eye on hydration', neverMsg: 'No wet diapers logged yet' },
-      'Dirty':    { cat: 'diaper', types: ['Dirty'], warnH: 36, dangerH: 72, warnMsg: 'No dirty diaper in {h}h', dangerMsg: 'No dirty diaper in {h}h — this can be normal — mention at next checkup if it continues', neverMsg: 'No dirty diapers logged yet' },
+      'Pee':      { cat: 'diaper', types: ['Wet'], warnH: 6, dangerH: 12, warnMsg: 'No pee diaper in {h}h', dangerMsg: 'No pee diaper in {h}h — keep an eye on hydration', neverMsg: 'No pee diapers logged yet' },
+      'Poop':     { cat: 'diaper', types: ['Dirty'], warnH: 36, dangerH: 72, warnMsg: 'No poop diaper in {h}h', dangerMsg: 'No poop diaper in {h}h — this can be normal — mention at next checkup if it continues', neverMsg: 'No poop diapers logged yet' },
       ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 12, dangerH: 24, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — might be time for a meal', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
     };
     const warnings: Record<string, { level: 'warn' | 'danger'; reason: string } | null> = {};
@@ -327,8 +327,8 @@ export default function HomeTab({
     'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], settingKey: 'Formula' },
-    'Wet': { cat: 'diaper', types: ['Wet'], tips: ['6+ wet diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 wet diapers may signal dehydration'] },
-    'Dirty': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'] },
+    'Pee': { cat: 'diaper', types: ['Wet'], tips: ['6+ pee diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 pee diapers may signal dehydration'] },
+    'Poop': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'] },
     'Sleep': { cat: 'sleep', types: ['Nap', 'Night Sleep'], tips: ['Newborns sleep 14-17 hours total per day', 'Always place on back for safe sleep', 'Consistent routine helps establish patterns'] },
     'Wake Up': { cat: 'sleep', types: ['Wake Up'], tips: ['Note wake windows for schedule planning', 'Short wake windows (45-90min) for newborns', 'Fussiness often signals overtiredness'] },
     'Tummy': { cat: 'tummy', types: ['Tummy Time'], tips: ['Start with 3-5 minutes, build up gradually', 'Best on a firm, flat surface', 'Try after diaper changes when baby is alert', 'Aim for 15-30 min total daily by 2 months'], timerToggleKey: 'Tummy' },
@@ -961,8 +961,8 @@ export default function HomeTab({
   // Last diaper info for hero widget
   const lastDiaperToday = (logs.diaper || []).find((x) => x.date === td);
   const lastDiaperLabel = lastDiaperToday
-    ? lastDiaperToday.type === 'Wet' ? '💧 Wet'
-      : lastDiaperToday.type === 'Dirty' ? '💩 Dirty'
+    ? lastDiaperToday.type === 'Wet' ? '💧 Pee'
+      : lastDiaperToday.type === 'Dirty' ? '💩 Poop'
       : lastDiaperToday.type === 'Both' ? '💧💩 Both'
       : lastDiaperToday.type || ''
     : null;
@@ -1309,7 +1309,7 @@ export default function HomeTab({
                   <span style={{ fontSize: 11, fontWeight: 700, color: borderColor }}>
                     {rf.id === 'feed-gap' ? (isCritical ? 'Feed now' : 'Feed soon')
                       : rf.id === 'low-wet' ? 'Check hydration'
-                      : rf.id === 'dirty-gap' ? 'Check diaper'
+                      : rf.id === 'dirty-gap' ? 'Check poop'
                       : rf.id === 'feed-drop' ? 'Intake dropping'
                       : rf.id === 'tummy-gap' ? 'Tummy time'
                       : 'Heads up'}
@@ -1514,8 +1514,8 @@ export default function HomeTab({
           if (feedTimer) {
             // During breast/tummy/feed: can log diapers and sleep
             companionItems.push(
-              { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet') },
-              { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty') },
+              { e: '💧', l: 'Pee', fn: () => quickLog('diaper', { type: 'Wet' }, 'Pee') },
+              { e: '💩', l: 'Poop', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Poop') },
             );
             if (!isSleeping) {
               companionItems.push({
@@ -1538,8 +1538,8 @@ export default function HomeTab({
           } else if (isSleeping) {
             // During sleep: can log diapers and feeds
             companionItems.push(
-              { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet') },
-              { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty') },
+              { e: '💧', l: 'Pee', fn: () => quickLog('diaper', { type: 'Wet' }, 'Pee') },
+              { e: '💩', l: 'Poop', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Poop') },
               { e: '🍼', l: 'Formula', fn: () => { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } },
             );
           }
@@ -1552,8 +1552,8 @@ export default function HomeTab({
           const qlTummy   = qlTapOnly['Tummy']
             ? { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false }
             : { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
-          const qlWet     = { e: '💧', l: 'Wet', fn: () => quickLog('diaper', { type: 'Wet' }, 'Wet'), active: false, dis: false, needsQty: false };
-          const qlDirty   = { e: '💩', l: 'Dirty', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Dirty'), active: false, dis: false, needsQty: false };
+          const qlWet     = { e: '💧', l: 'Pee', fn: () => quickLog('diaper', { type: 'Wet' }, 'Pee'), active: false, dis: false, needsQty: false };
+          const qlDirty   = { e: '💩', l: 'Poop', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Poop'), active: false, dis: false, needsQty: false };
           const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: false, highlight: isSleeping, needsQty: false };
           const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: false, needsQty: false };
           const qlBath    = { e: '🛁', l: 'Bath', fn: () => quickLog('bath', { type: 'Full Bath' }, 'Bath'), active: false, dis: false, needsQty: false };
@@ -1577,10 +1577,10 @@ export default function HomeTab({
           const sl = isSleeping ? 'Wake Up' : 'Sleep';
           const agePriority: Record<string, number> =
             ageMonths >= 12
-              ? { 'Solids': 1, [sl]: 2, 'Wet': 3, 'Dirty': 4, 'Formula': 5, 'Bath': 6, 'Nurse Left': 7, 'Nurse Right': 8, 'Massage': 9, 'Bottle': 10, 'Meds': 11, 'Temp': 12, 'Express': 13 }
+              ? { 'Solids': 1, [sl]: 2, 'Pee': 3, 'Poop': 4, 'Formula': 5, 'Bath': 6, 'Nurse Left': 7, 'Nurse Right': 8, 'Massage': 9, 'Bottle': 10, 'Meds': 11, 'Temp': 12, 'Express': 13 }
               : ageMonths >= 6
-                ? { 'Nurse Left': 1, 'Nurse Right': 2, 'Solids': 3, 'Formula': 4, 'Wet': 5, 'Dirty': 6, [sl]: 7, 'Tummy': 8, 'Bath': 9, 'Massage': 10, 'Bottle': 11, 'Express': 12, 'Meds': 13, 'Temp': 14 }
-                : { 'Nurse Left': 1, 'Nurse Right': 2, 'Formula': 3, 'Wet': 4, 'Dirty': 5, [sl]: 6, 'Tummy': 7, 'Bath': 8, 'Massage': 9, 'Bottle': 10, 'Express': 11, 'Meds': 12, 'Temp': 13 };
+                ? { 'Nurse Left': 1, 'Nurse Right': 2, 'Solids': 3, 'Formula': 4, 'Pee': 5, 'Poop': 6, [sl]: 7, 'Tummy': 8, 'Bath': 9, 'Massage': 10, 'Bottle': 11, 'Express': 12, 'Meds': 13, 'Temp': 14 }
+                : { 'Nurse Left': 1, 'Nurse Right': 2, 'Formula': 3, 'Pee': 4, 'Poop': 5, [sl]: 6, 'Tummy': 7, 'Bath': 8, 'Massage': 9, 'Bottle': 10, 'Express': 11, 'Meds': 12, 'Temp': 13 };
 
           // Sort: usage count (desc) as primary, age priority as tiebreaker
           const totalUsage = Object.values(qlUsage).reduce((a, b) => a + b, 0);

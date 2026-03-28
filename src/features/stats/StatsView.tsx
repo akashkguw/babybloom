@@ -404,8 +404,8 @@ export default function StatsView({
         <MetricPills
           options={[
             { id: 'count', label: 'Count' },
-            { id: 'wet', label: 'Wet' },
-            { id: 'dirty', label: 'Dirty' },
+            { id: 'wet', label: 'Pee' },
+            { id: 'dirty', label: 'Poop' },
           ]}
           active={diaperMetric}
           onSelect={setDiaperMetric}

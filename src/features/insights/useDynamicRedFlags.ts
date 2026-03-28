@@ -133,7 +133,7 @@ export default function useDynamicRedFlags(
       flags.push({
         id: 'low-wet',
         emoji: '💧',
-        text: 'Only ' + wetToday + ' wet diaper' + (wetToday !== 1 ? 's' : '') +
+        text: 'Only ' + wetToday + ' pee diaper' + (wetToday !== 1 ? 's' : '') +
           ' today — expected ' + wetTarget + '+ per day; check hydration',
         severity: wetToday === 0 && hour >= 16 ? 'critical' : 'warning',
       });
@@ -152,7 +152,7 @@ export default function useDynamicRedFlags(
           flags.push({
             id: 'dirty-gap',
             emoji: '💩',
-            text: 'No dirty diaper in ' + Math.round(dirtyHrs / 24) + ' day' +
+            text: 'No poop diaper in ' + Math.round(dirtyHrs / 24) + ' day' +
               (Math.round(dirtyHrs / 24) !== 1 ? 's' : '') + ' — consult doctor if persists',
             severity: 'critical',
           });
@@ -160,7 +160,7 @@ export default function useDynamicRedFlags(
           flags.push({
             id: 'dirty-gap',
             emoji: '💩',
-            text: 'No dirty diaper in ' + Math.round(dirtyHrs) + 'h — monitor closely',
+            text: 'No poop diaper in ' + Math.round(dirtyHrs) + 'h — monitor closely',
             severity: 'warning',
           });
         }
