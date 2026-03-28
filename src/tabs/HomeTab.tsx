@@ -123,8 +123,9 @@ export default function HomeTab({
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
-  const [showHeroInsight, setShowHeroInsight] = useState(false);
-  const heroLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [heroFlipped, setHeroFlipped] = useState(false);
+  // Key to force-remount back face on each flip (fresh insights, no retained state)
+  const [heroFlipKey, setHeroFlipKey] = useState(0);
 
   // Check if baby turned 2 and milestone carousel hasn't been shown yet
   useEffect(() => {
@@ -1101,34 +1102,39 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* Hero — premium baby dashboard (long press for insights) */}
+      {/* Hero — premium baby dashboard (tap to flip for insights) */}
       <div
-        onTouchStart={() => {
-          heroLongPressRef.current = setTimeout(() => setShowHeroInsight(true), 500);
+        style={{
+          perspective: 1000,
+          marginBottom: 12,
+          ...reveal(0),
         }}
-        onTouchEnd={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
-        onTouchMove={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
-        onMouseDown={() => {
-          heroLongPressRef.current = setTimeout(() => setShowHeroInsight(true), 500);
+      >
+      <div
+        onClick={() => {
+          if (!heroFlipped) {
+            setHeroFlipKey(k => k + 1); // force fresh insights
+            setHeroFlipped(true);
+          }
         }}
-        onMouseUp={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
-        onMouseLeave={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
         style={{
           position: 'relative',
-          overflow: 'hidden',
           borderRadius: 16,
-          marginBottom: 12,
           cursor: 'pointer',
           WebkitUserSelect: 'none',
           userSelect: 'none',
           WebkitTouchCallout: 'none',
-          ...reveal(0),
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1)',
+          transform: heroFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
           backgroundSize: '200% 200%',
           animation: 'heroGradientShift 12s ease-in-out infinite',
           boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
         }}
       >
+        {/* ═══ FRONT FACE ═══ */}
+        <div style={{ backfaceVisibility: 'hidden', overflow: 'hidden', borderRadius: 16 }}>
         {/* Decorative background elements with subtle floating animation */}
         <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', animation: 'heroOrbFloat 8s ease-in-out infinite' }} />
         <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'heroOrbFloat 10s ease-in-out infinite 2s' }} />
@@ -1161,7 +1167,7 @@ export default function HomeTab({
               {/* Re-open 2yr milestone carousel */}
               {age >= 24 && (
                 <div
-                  onClick={() => setShowMilestoneCarousel(true)}
+                  onClick={(e) => { e.stopPropagation(); setShowMilestoneCarousel(true); }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
@@ -1176,7 +1182,7 @@ export default function HomeTab({
 
             {/* Milestone ring */}
             <div
-              onClick={() => { setTab('miles', 'dev'); }}
+              onClick={(e) => { e.stopPropagation(); setTab('miles', 'dev'); }}
               style={{
                 cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                 background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: '10px 12px',
@@ -1206,7 +1212,7 @@ export default function HomeTab({
 
           {/* Today's quick stats */}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <div onClick={() => { setTab('log', 'feed'); }} style={{
+            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'feed'); }} style={{
               flex: 1, background: feedTimer ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
               border: feedTimer ? '1px solid rgba(255,255,255,0.25)' : '1px solid transparent',
@@ -1232,7 +1238,7 @@ export default function HomeTab({
                 </>
               )}
             </div>
-            <div onClick={() => { setTab('log', 'diaper'); }} style={{
+            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'diaper'); }} style={{
               flex: 1, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
@@ -1244,7 +1250,7 @@ export default function HomeTab({
                 </div>
               )}
             </div>
-            <div onClick={() => { setTab('log', 'sleep'); }} style={{
+            <div onClick={(e) => { e.stopPropagation(); setTab('log', 'sleep'); }} style={{
               flex: 1, background: isSleeping ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
@@ -1262,27 +1268,20 @@ export default function HomeTab({
             </div>
           </div>
 
-          {/* Subtle long-press hint */}
-          {!showHeroInsight && (
-            <div style={{
-              textAlign: 'center', padding: '0 0 6px',
-              fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 500,
-              letterSpacing: 0.3,
-            }}>
-              Hold for insights
-            </div>
-          )}
         </div>
+        </div>{/* end front face */}
 
-        {/* Hero insight inline expansion (triggered by long press) */}
-        {showHeroInsight && (
+        {/* ═══ BACK FACE — insights (tap close to flip back) ═══ */}
+        {heroFlipped && (
           <HeroInsightOverlay
+            key={heroFlipKey}
             age={age}
             babyName={babyName}
-            onClose={() => setShowHeroInsight(false)}
+            onClose={() => setHeroFlipped(false)}
           />
         )}
       </div>
+      </div>{/* end perspective wrapper */}
 
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 

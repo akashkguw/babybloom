@@ -1,10 +1,11 @@
 /**
- * HeroInsightOverlay
- * Long-press the hero widget to reveal age-appropriate baby development insights.
- * Shows an animated inline expansion within the hero widget with milestone tips, fun facts, and development info.
+ * HeroInsightOverlay — Back face of the hero card flip.
+ * Shows age-appropriate baby development insights in a compact layout
+ * that fits within the same card dimensions as the front face.
+ * Tap the hero card to flip → shows this. Tap close to flip back.
+ * No state is retained between flips — fresh insights each time.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { C } from '@/lib/constants/colors';
+import { useMemo } from 'react';
 import { MILESTONES } from '@/lib/constants/milestones';
 import { Icon as Ic } from '@/components/shared';
 
@@ -97,7 +98,7 @@ const FUN_FACTS: Record<number, string[]> = {
   ],
 };
 
-/** Pick insight content for the baby's current age */
+/** Pick insight content for the baby's current age — called fresh each render (no memoization across flips) */
 function getInsights(ageMonths: number) {
   const ms = (() => {
     const keys = Object.keys(MILESTONES).map(Number).sort((a, b) => a - b);
@@ -129,64 +130,46 @@ function getInsights(ageMonths: number) {
 }
 
 export default function HeroInsightOverlay({ age, babyName, onClose }: HeroInsightOverlayProps) {
-  const [contentVisible, setContentVisible] = useState(false);
-  const insightsRef = useRef(getInsights(Math.floor(age)));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Trigger staggered content reveal
-    const t = setTimeout(() => setContentVisible(true), 80);
-    return () => clearTimeout(t);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setContentVisible(false);
-    setTimeout(onClose, 250);
-  }, [onClose]);
-
-  const { highlights, selectedFacts, tip } = insightsRef.current;
+  // useMemo keyed on age only — but since parent unmounts/remounts on each flip,
+  // this effectively gives fresh random insights each time
+  const { highlights, selectedFacts, tip } = useMemo(() => getInsights(Math.floor(age)), [age]);
   const ageMonths = Math.floor(age);
   const stageEmoji = age < 3 ? '\u{1F37C}' : age < 6 ? '\u{1F476}' : age < 12 ? '\u{1F9F8}' : age < 24 ? '\u{1F9D2}' : '\u{1F31F}';
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        overflow: 'hidden',
-        transition: 'max-height 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease',
-        maxHeight: contentVisible ? 600 : 0,
-        opacity: contentVisible ? 1 : 0,
-      }}
-    >
-      {/* Divider line */}
+    <div style={{
+      position: 'absolute', inset: 0,
+      backfaceVisibility: 'hidden',
+      transform: 'rotateY(180deg)',
+      borderRadius: 16,
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* Decorative background orbs (match front face) */}
+      <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', animation: 'heroOrbFloat 8s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'heroOrbFloat 10s ease-in-out infinite 2s' }} />
+
+      {/* Main content — scrollable within card bounds */}
       <div style={{
-        height: 1,
-        background: 'rgba(255,255,255,0.15)',
-        margin: '0 20px',
-      }} />
-
-      {/* Inline insight content */}
-      <div style={{ padding: '12px 20px 6px', position: 'relative' }}>
-
+        position: 'relative', zIndex: 1,
+        padding: '14px 16px 10px',
+        flex: 1, overflow: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      }}>
         {/* Header row */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: 10,
-          opacity: contentVisible ? 1 : 0,
-          transform: contentVisible ? 'translateY(0)' : 'translateY(-8px)',
-          transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 16 }}>{stageEmoji}</span>
+            <span style={{ fontSize: 15 }}>{stageEmoji}</span>
             <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>
               {babyName || 'Your Baby'} at {ageMonths}mo
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 500 }}>
-              Development snapshot
-            </span>
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); handleClose(); }}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
             style={{
               background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10,
               width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -197,84 +180,66 @@ export default function HeroInsightOverlay({ age, babyName, onClose }: HeroInsig
           </button>
         </div>
 
-        {/* Fun Facts */}
+        {/* Fun Facts — compact */}
         {selectedFacts.map((fact, i) => (
           <div
             key={i}
             style={{
-              opacity: contentVisible ? 1 : 0,
-              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
-              transition: `opacity 0.35s ease ${0.1 + i * 0.08}s, transform 0.35s ease ${0.1 + i * 0.08}s`,
               background: 'rgba(255,255,255,0.1)',
               borderRadius: 10,
-              padding: '8px 10px',
-              marginBottom: 6,
+              padding: '6px 10px',
+              marginBottom: 5,
               display: 'flex',
               alignItems: 'flex-start',
-              gap: 8,
+              gap: 7,
             }}
           >
-            <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{'\u2728'}</span>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 1.45, fontWeight: 500 }}>{fact}</div>
+            <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>{'\u2728'}</span>
+            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, fontWeight: 500 }}>{fact}</div>
           </div>
         ))}
 
-        {/* Milestone highlights */}
+        {/* Milestone highlights — 2x2 compact grid */}
         {highlights.length > 0 && (
-          <div
-            style={{
-              opacity: contentVisible ? 1 : 0,
-              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
-              transition: 'opacity 0.35s ease 0.25s, transform 0.35s ease 0.25s',
-              marginTop: 4,
-            }}
-          >
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               What to look for
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {highlights.map((h, i) => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+              {highlights.map((h) => (
                 <div
                   key={h.category}
                   style={{
-                    opacity: contentVisible ? 1 : 0,
-                    transform: contentVisible ? 'scale(1)' : 'scale(0.93)',
-                    transition: `opacity 0.3s ease ${0.3 + i * 0.06}s, transform 0.3s ease ${0.3 + i * 0.06}s`,
                     background: 'rgba(255,255,255,0.08)',
-                    borderRadius: 10,
-                    padding: '8px 10px',
+                    borderRadius: 8,
+                    padding: '6px 8px',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                    <span style={{ fontSize: 11 }}>{h.emoji}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{h.category}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 2 }}>
+                    <span style={{ fontSize: 10 }}>{h.emoji}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.3 }}>{h.category}</span>
                   </div>
-                  <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.35 }}>{h.item}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>{h.item}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Pro tip */}
+        {/* Pro tip — compact */}
         {tip && (
-          <div
-            style={{
-              opacity: contentVisible ? 1 : 0,
-              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
-              transition: 'opacity 0.35s ease 0.45s, transform 0.35s ease 0.45s',
-              marginTop: 8,
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 10,
-              padding: '8px 12px',
-              borderLeft: '2px solid rgba(255,255,255,0.35)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-              <span style={{ fontSize: 11 }}>{'\u{1F4A1}'}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>Pro tip</span>
+          <div style={{
+            marginTop: 6,
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            padding: '6px 10px',
+            borderLeft: '2px solid rgba(255,255,255,0.3)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <span style={{ fontSize: 10 }}>{'\u{1F4A1}'}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Pro tip</span>
             </div>
-            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.45 }}>{tip}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>{tip}</div>
           </div>
         )}
       </div>
