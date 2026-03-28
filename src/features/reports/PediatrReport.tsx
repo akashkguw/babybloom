@@ -90,13 +90,16 @@ export default function PediatrReport({
     const dirtyCount = diapers.filter((e) => e.type === 'Dirty' || e.type === 'Both').length;
 
     // ─── Sleep summary ───
-    const sleeps = entriesInRange(logs.sleep || [], days).filter((e) => e.mins);
+    const allSleepEntries = entriesInRange(logs.sleep || [], days);
+    const sleepsWithMins = allSleepEntries.filter((e) => e.mins);
     let totalSleepMins = 0;
-    sleeps.forEach((e) => { totalSleepMins += e.mins || 0; });
-    const sleepDays = new Set(sleeps.map((e) => e.date)).size || 1;
+    sleepsWithMins.forEach((e) => { totalSleepMins += e.mins || 0; });
+    const sleepDays = new Set(sleepsWithMins.map((e) => e.date)).size || 1;
     const avgSleepHrs = Math.round((totalSleepMins / sleepDays / 60) * 10) / 10;
-    const naps = sleeps.filter((e) => e.type === 'Nap');
-    const nights = sleeps.filter((e) => e.type === 'Night Sleep');
+    // Count naps/nights from all sleep entries (not just those with mins,
+    // since mins is set on the Wake Up entry, not the Nap/Night Sleep entry)
+    const naps = allSleepEntries.filter((e) => e.type === 'Nap');
+    const nights = allSleepEntries.filter((e) => e.type === 'Night Sleep');
 
     // ─── Growth ───
     const growth = (logs.growth || []).sort((a, b) => b.date.localeCompare(a.date));

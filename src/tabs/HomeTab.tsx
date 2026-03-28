@@ -118,6 +118,8 @@ export default function HomeTab({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [revealStage, setRevealStage] = useState<number | null>(null);
+  const [showJoinCode, setShowJoinCode] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
 
   // Show guide when triggered from Settings
   useEffect(() => {
@@ -543,6 +545,75 @@ export default function HomeTab({
               full={true}
             />
           </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: C.b, margin: '20px -4px 16px' }} />
+
+          {/* Have a share code? */}
+          {!showJoinCode ? (
+            <div
+              onClick={() => setShowJoinCode(true)}
+              style={{ cursor: 'pointer', textAlign: 'center' }}
+            >
+              <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
+                Have a share code from your partner?
+              </span>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
+                Paste share code
+              </div>
+              <textarea
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="Paste the BB1:... code here"
+                style={{
+                  width: '100%', height: 70, background: C.bg,
+                  border: '1px solid ' + C.b, borderRadius: 12,
+                  padding: 10, fontSize: 11, fontFamily: 'monospace',
+                  color: C.t, resize: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ marginTop: 8 }}>
+                <Btn
+                  label="Join with share code"
+                  onClick={() => {
+                    if (!joinCode.trim()) { toast('Please paste a share code'); return; }
+                    // Decode the share code inline (same logic as PartnerSync)
+                    try {
+                      let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
+                      const bb1Idx = cleaned.indexOf('BB1:');
+                      if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
+                      cleaned = cleaned.replace(/[\s\r\n]+/g, '');
+                      const binary = atob(cleaned);
+                      const bytes = new Uint8Array(binary.length);
+                      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                      const json = new TextDecoder().decode(bytes);
+                      const payload = JSON.parse(json);
+                      if (payload.v !== 1) { toast('Invalid sync code format'); return; }
+                      // Apply data from share code
+                      if (payload.logs) setLogs(payload.logs);
+                      if (payload.birth) setBirth(payload.birth);
+                      else setBirth(today());
+                      toast('Data synced from partner!');
+                      setShowWelcome(true);
+                    } catch {
+                      toast('Invalid sync code — check and try again');
+                    }
+                  }}
+                  color={C.s}
+                  full={true}
+                />
+              </div>
+              <div
+                onClick={() => { setShowJoinCode(false); setJoinCode(''); }}
+                style={{ cursor: 'pointer', textAlign: 'center', marginTop: 8 }}
+              >
+                <span style={{ fontSize: 12, color: C.tl }}>Cancel</span>
+              </div>
+            </div>
+          )}
         </Cd>
 
         <div style={{ marginTop: 20, fontSize: 11, color: C.tl, lineHeight: 1.6 }}>

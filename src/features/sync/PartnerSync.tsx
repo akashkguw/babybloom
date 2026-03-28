@@ -77,7 +77,19 @@ function encode(payload: SyncPayload): string {
 
 function decode(str: string): SyncPayload | null {
   try {
-    const raw = str.startsWith('BB1:') ? str.slice(4) : str;
+    // Clean up pasted input: strip whitespace, quotes, and extract BB1:... portion
+    let cleaned = str.trim().replace(/^["']+|["']+$/g, '');
+    // If the pasted text contains BB1: somewhere (e.g. "Sync code: BB1:abc..."), extract it
+    const bb1Idx = cleaned.indexOf('BB1:');
+    if (bb1Idx >= 0) {
+      cleaned = cleaned.slice(bb1Idx + 4).trim();
+    } else {
+      // No BB1: prefix found — try using the whole string as base64
+      cleaned = cleaned.trim();
+    }
+    // Strip any trailing non-base64 characters (newlines, spaces, punctuation from messaging apps)
+    cleaned = cleaned.replace(/[\s\r\n]+/g, '');
+    const raw = cleaned;
     const binary = atob(raw);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
