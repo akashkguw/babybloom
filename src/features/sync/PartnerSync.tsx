@@ -15,6 +15,8 @@ import { C } from '@/lib/constants/colors';
 import { Card as Cd, Button as Btn, Icon as Ic } from '@/components/shared';
 import { toast } from '@/lib/utils/toast';
 import { today } from '@/lib/utils/date';
+import QRCode from '@/features/sync/QRCode';
+import QRScanner from '@/features/sync/QRScanner';
 
 interface LogEntry {
   id: number;
@@ -144,6 +146,8 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
   const [receiveCode, setReceiveCode] = useState<string>('');
   const [shareMode, setShareMode] = useState<'today' | 'full'>('today');
   const [mergePreview, setMergePreview] = useState<{ incoming: SyncPayload; newCount: number } | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showTextCode, setShowTextCode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const generateCode = useCallback(() => {
@@ -260,7 +264,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Share data</div>
                   <div style={{ fontSize: 12, color: C.tl }}>
-                    Generate a sync code for your partner's device
+                    Show a QR code for your partner to scan
                   </div>
                 </div>
               </div>
@@ -275,14 +279,14 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Receive data</div>
                   <div style={{ fontSize: 12, color: C.tl }}>
-                    Paste a sync code from your partner
+                    Scan a QR code or paste a code from your partner
                   </div>
                 </div>
               </div>
             </Cd>
 
             <div style={{ padding: '12px 0', fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.5 }}>
-              How it works: One device shares a code, the other pastes it.
+              How it works: One device shows a QR code, the other scans it.
               Entries are merged without duplicates. No internet required.
             </div>
           </div>
@@ -317,76 +321,142 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
               ))}
             </div>
 
-            <Btn label="Generate sync code" onClick={generateCode} color={C.s} full />
+            <Btn label="Generate QR code" onClick={generateCode} color={C.s} full />
 
             {shareCode && (
               <div style={{ marginTop: 12 }}>
-                <textarea
-                  ref={textareaRef}
-                  readOnly
-                  value={shareCode}
-                  style={{
-                    width: '100%',
-                    height: 80,
-                    background: C.cd,
-                    border: '1px solid ' + C.b,
-                    borderRadius: 12,
-                    padding: 12,
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                    color: C.t,
-                    resize: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                  <Btn label="Copy code" onClick={copyToClipboard} color={C.a} full />
+                {/* QR Code display */}
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  background: '#fff', borderRadius: 16, padding: 20, marginBottom: 10,
+                }}>
+                  <QRCode data={shareCode} size={220} />
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
+                    Your partner scans this QR code to sync
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: C.tl, marginTop: 8, textAlign: 'center' }}>
-                  Send this code to your partner via any messaging app.
-                  They paste it on their device to sync.
-                </div>
+
+                {/* Text fallback (collapsed by default) */}
+                {!showTextCode ? (
+                  <div
+                    onClick={() => setShowTextCode(true)}
+                    style={{ textAlign: 'center', cursor: 'pointer', padding: '6px 0' }}
+                  >
+                    <span style={{ fontSize: 12, color: C.tl }}>
+                      Can't scan? Tap to show text code
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      ref={textareaRef}
+                      readOnly
+                      value={shareCode}
+                      style={{
+                        width: '100%',
+                        height: 80,
+                        background: C.cd,
+                        border: '1px solid ' + C.b,
+                        borderRadius: 12,
+                        padding: 12,
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: C.t,
+                        resize: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                      <Btn label="Copy code" onClick={copyToClipboard} color={C.a} full />
+                    </div>
+                    <div style={{ fontSize: 11, color: C.tl, marginTop: 6, textAlign: 'center' }}>
+                      Send this code to your partner via any messaging app.
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             <div style={{ marginTop: 16 }}>
-              <Btn label="← Back" onClick={() => { setMode('menu'); setShareCode(''); }} outline />
+              <Btn label="← Back" onClick={() => { setMode('menu'); setShareCode(''); setShowTextCode(false); }} outline />
             </div>
           </div>
         )}
 
         {mode === 'receive' && (
           <div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
-                Paste sync code from your partner
+            {/* QR Scanner (primary) */}
+            {showScanner ? (
+              <div style={{ marginBottom: 12 }}>
+                <QRScanner
+                  onScan={(data) => {
+                    setShowScanner(false);
+                    setReceiveCode(data);
+                    // Auto-trigger preview
+                    const payload = decode(data.trim());
+                    if (!payload) {
+                      toast('Invalid QR code — try scanning again or paste the code');
+                      return;
+                    }
+                    let newCount = 0;
+                    for (const [cat, entries] of Object.entries(payload.logs)) {
+                      if (!Array.isArray(entries)) continue;
+                      const current = (logs[cat] || []) as LogEntry[];
+                      const currentIds = new Set(current.map((e) => e.id));
+                      const currentKeys = new Set(current.map((e) => e.date + '|' + e.time + '|' + e.type));
+                      newCount += entries.filter(
+                        (e) => !currentIds.has(e.id) && !currentKeys.has(e.date + '|' + e.time + '|' + e.type)
+                      ).length;
+                    }
+                    setMergePreview({ incoming: payload, newCount });
+                  }}
+                  onClose={() => setShowScanner(false)}
+                />
               </div>
-              <textarea
-                value={receiveCode}
-                onChange={(e) => setReceiveCode(e.target.value)}
-                placeholder="Paste the BB1:... code here"
-                style={{
-                  width: '100%',
-                  height: 80,
-                  background: C.cd,
-                  border: '1px solid ' + C.b,
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: C.t,
-                  resize: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
+            ) : !mergePreview && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                <Btn
+                  label="Scan QR code"
+                  onClick={() => setShowScanner(true)}
+                  color={C.s}
+                  full
+                />
+                <div style={{ textAlign: 'center', fontSize: 12, color: C.tl }}>or</div>
 
-            <Btn
-              label="Preview sync"
-              onClick={handleReceive}
-              color={C.s}
-              full
-            />
+                {/* Text paste fallback */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
+                    Paste code from your partner
+                  </div>
+                  <textarea
+                    value={receiveCode}
+                    onChange={(e) => setReceiveCode(e.target.value)}
+                    placeholder="Paste the BB1:... code here"
+                    style={{
+                      width: '100%',
+                      height: 70,
+                      background: C.cd,
+                      border: '1px solid ' + C.b,
+                      borderRadius: 12,
+                      padding: 12,
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: C.t,
+                      resize: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <Btn
+                      label="Preview sync"
+                      onClick={handleReceive}
+                      color={C.a}
+                      full
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {mergePreview && (
               <Cd style={{ marginTop: 12, padding: 16 }}>
@@ -410,7 +480,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
             )}
 
             <div style={{ marginTop: 16 }}>
-              <Btn label="← Back" onClick={() => { setMode('menu'); setReceiveCode(''); setMergePreview(null); }} outline />
+              <Btn label="← Back" onClick={() => { setMode('menu'); setReceiveCode(''); setMergePreview(null); setShowScanner(false); }} outline />
             </div>
           </div>
         )}

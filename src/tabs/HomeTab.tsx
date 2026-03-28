@@ -625,7 +625,7 @@ export default function HomeTab({
               style={{ cursor: 'pointer', textAlign: 'center' }}
             >
               <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
-                Have a share code from your partner?
+                Have a QR code or share code from your partner?
               </span>
             </div>
           ) : (
