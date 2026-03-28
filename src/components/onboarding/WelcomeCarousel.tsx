@@ -113,6 +113,22 @@ function ensureStyles() {
       85%  { stroke-dasharray:100 0; opacity:0.5; }
       100% { stroke-dasharray:100 0; opacity:0; }
     }
+    @keyframes obHoldDown {
+      0%   { opacity:0; transform:translate(0, -10px) scale(0.7); }
+      12%  { opacity:1; transform:translate(0, 0) scale(1); }
+      20%  { transform:translate(0, 2px) scale(0.92); opacity:1; }
+      70%  { transform:translate(0, 2px) scale(0.92); opacity:1; }
+      80%  { transform:translate(0, 0) scale(1); opacity:0.8; }
+      90%  { opacity:0; transform:translate(0, -4px) scale(0.8); }
+      100% { opacity:0; transform:translate(0, -4px) scale(0.8); }
+    }
+    @keyframes obHoldLabel {
+      0%   { opacity:0; transform:translateY(4px); }
+      15%  { opacity:1; transform:translateY(0); }
+      70%  { opacity:1; transform:translateY(0); }
+      85%  { opacity:0; transform:translateY(-2px); }
+      100% { opacity:0; }
+    }
     @keyframes obInfoSlideUp {
       from { opacity:0; transform:translateY(10px); }
       to   { opacity:1; transform:translateY(0); }
@@ -148,28 +164,44 @@ function TapCursor({ visible, offsetX, offsetY, delay }: { visible: boolean; off
   );
 }
 
-/* ── Long-press cursor with ring fill animation ── */
+/* ── Long-press cursor — finger presses DOWN and HOLDS with a filling ring + "Hold" label ── */
 function LongPressCursor({ visible, offsetX, offsetY, delay }: { visible: boolean; offsetX?: number; offsetY?: number; delay?: number }) {
   if (!visible) return null;
+  const d = delay ?? 0;
   return (
     <div style={{
       position: 'absolute',
       left: offsetX ?? '50%', top: offsetY ?? '50%',
       zIndex: 10, pointerEvents: 'none',
-      animation: `obCursorTap 3.2s ${delay ?? 0}s ease-in-out infinite`,
+      animation: `obHoldDown 3.2s ${d}s ease-in-out infinite`,
     }}>
-      <div style={{ position: 'relative', width: 32, height: 32 }}>
-        <svg width="32" height="32" viewBox="0 0 32 32" style={{
-          position: 'absolute', top: 0, left: 0,
-          animation: `obLongPressRing 3.2s ${delay ?? 0}s ease-in-out infinite`,
-        }}>
-          <circle cx="16" cy="16" r="14" fill="none" stroke={C.a} strokeWidth="2.5"
-            strokeDasharray="0 100" strokeLinecap="round" opacity="0.7"
-            transform="rotate(-90 16 16)"
-            style={{ animation: `obLongPressRing 3.2s ${delay ?? 0}s ease-in-out infinite` }}
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        {/* Progress ring fills while finger is held down */}
+        <svg width="36" height="36" viewBox="0 0 36 36" style={{ position: 'absolute', top: 0, left: 0 }}>
+          <circle cx="18" cy="18" r="16" fill="none" stroke={C.a} strokeWidth="2"
+            strokeDasharray="0 100" strokeLinecap="round" opacity="0.25"
+            transform="rotate(-90 18 18)"
+          />
+          <circle cx="18" cy="18" r="16" fill="none" stroke={C.a} strokeWidth="2.5"
+            strokeDasharray="0 100" strokeLinecap="round"
+            transform="rotate(-90 18 18)"
+            style={{ animation: `obLongPressRing 3.2s ${d}s ease-in-out infinite` }}
           />
         </svg>
-        <span style={{ position: 'absolute', top: 5, left: 7, fontSize: 16, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>👆</span>
+        {/* Finger icon — pressed down */}
+        <span style={{
+          position: 'absolute', top: 7, left: 9, fontSize: 18,
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
+        }}>👇</span>
+      </div>
+      {/* "Hold" label below the finger */}
+      <div style={{
+        position: 'absolute', top: 38, left: '50%', transform: 'translateX(-50%)',
+        fontSize: 8, fontWeight: 700, color: C.a, whiteSpace: 'nowrap',
+        animation: `obHoldLabel 3.2s ${d}s ease-in-out infinite`,
+        textShadow: `0 0 4px ${C.bg}`,
+      }}>
+        Hold
       </div>
     </div>
   );
@@ -534,16 +566,18 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
     setTimeout(() => onDismiss(), 600);
   }, [onDismiss]);
 
+  const idxRef = useRef(0);
+  idxRef.current = idx;
+
   const goNext = useCallback(() => {
-    setIdx((cur) => {
-      if (cur < totalRef.current - 1) {
-        setDir('fwd');
-        setAnimKey((k) => k + 1);
-        return cur + 1;
-      }
+    const cur = idxRef.current;
+    if (cur < totalRef.current - 1) {
+      setDir('fwd');
+      setAnimKey((k) => k + 1);
+      setIdx(cur + 1);
+    } else {
       handleDismiss();
-      return cur;
-    });
+    }
   }, [handleDismiss]);
 
   /* ── Slide 1 visual: Interactive mini demo ── */
