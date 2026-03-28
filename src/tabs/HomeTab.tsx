@@ -1106,6 +1106,8 @@ export default function HomeTab({
       <div
         style={{
           perspective: 1000,
+          overflow: 'hidden',
+          borderRadius: 16,
           marginBottom: 12,
           ...reveal(0),
         }}
@@ -1272,14 +1274,12 @@ export default function HomeTab({
         </div>{/* end front face */}
 
         {/* ═══ BACK FACE — insights (tap close to flip back) ═══ */}
-        {heroFlipped && (
-          <HeroInsightOverlay
-            key={heroFlipKey}
-            age={age}
-            babyName={babyName}
-            onClose={() => setHeroFlipped(false)}
-          />
-        )}
+        <HeroInsightOverlay
+          key={heroFlipKey}
+          age={age}
+          babyName={babyName}
+          onClose={() => setHeroFlipped(false)}
+        />
       </div>
       </div>{/* end perspective wrapper */}
 
