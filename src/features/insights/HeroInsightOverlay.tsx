@@ -1,7 +1,7 @@
 /**
  * HeroInsightOverlay
  * Long-press the hero widget to reveal age-appropriate baby development insights.
- * Shows a beautiful animated overlay with milestone tips, fun facts, and development info.
+ * Shows an animated inline expansion within the hero widget with milestone tips, fun facts, and development info.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { C } from '@/lib/constants/colors';
@@ -119,196 +119,164 @@ function getInsights(ageMonths: number) {
   // Pick a random tip from each milestone category
   const highlights: { emoji: string; category: string; item: string }[] = [];
   if (ms) {
-    if (ms.motor.length) highlights.push({ emoji: '💪', category: 'Motor', item: ms.motor[Math.floor(Math.random() * ms.motor.length)] });
-    if (ms.cog.length) highlights.push({ emoji: '🧠', category: 'Cognitive', item: ms.cog[Math.floor(Math.random() * ms.cog.length)] });
-    if (ms.soc.length) highlights.push({ emoji: '💕', category: 'Social', item: ms.soc[Math.floor(Math.random() * ms.soc.length)] });
-    if (ms.lang.length) highlights.push({ emoji: '🗣️', category: 'Language', item: ms.lang[Math.floor(Math.random() * ms.lang.length)] });
+    if (ms.motor.length) highlights.push({ emoji: '\u{1F4AA}', category: 'Motor', item: ms.motor[Math.floor(Math.random() * ms.motor.length)] });
+    if (ms.cog.length) highlights.push({ emoji: '\u{1F9E0}', category: 'Cognitive', item: ms.cog[Math.floor(Math.random() * ms.cog.length)] });
+    if (ms.soc.length) highlights.push({ emoji: '\u{1F495}', category: 'Social', item: ms.soc[Math.floor(Math.random() * ms.soc.length)] });
+    if (ms.lang.length) highlights.push({ emoji: '\u{1F5E3}\uFE0F', category: 'Language', item: ms.lang[Math.floor(Math.random() * ms.lang.length)] });
   }
 
   return { ms, highlights, selectedFacts, tip: ms?.tips || '' };
 }
 
 export default function HeroInsightOverlay({ age, babyName, onClose }: HeroInsightOverlayProps) {
-  const [visible, setVisible] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
   const insightsRef = useRef(getInsights(Math.floor(age)));
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Trigger entrance animation
-    requestAnimationFrame(() => setVisible(true));
-    const t = setTimeout(() => setContentVisible(true), 150);
+    // Trigger staggered content reveal
+    const t = setTimeout(() => setContentVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
 
   const handleClose = useCallback(() => {
     setContentVisible(false);
-    setVisible(false);
-    setTimeout(onClose, 300);
+    setTimeout(onClose, 250);
   }, [onClose]);
 
   const { highlights, selectedFacts, tip } = insightsRef.current;
   const ageMonths = Math.floor(age);
-  const stageEmoji = age < 3 ? '🍼' : age < 6 ? '👶' : age < 12 ? '🧸' : age < 24 ? '🧒' : '🌟';
+  const stageEmoji = age < 3 ? '\u{1F37C}' : age < 6 ? '\u{1F476}' : age < 12 ? '\u{1F9F8}' : age < 24 ? '\u{1F9D2}' : '\u{1F31F}';
 
   return (
     <div
-      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      ref={containerRef}
       style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 250,
-        background: visible ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0)',
-        transition: 'background 0.3s ease',
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
+        overflow: 'hidden',
+        transition: 'max-height 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease',
+        maxHeight: contentVisible ? 600 : 0,
+        opacity: contentVisible ? 1 : 0,
       }}
     >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 430,
-          background: `linear-gradient(170deg, ${C.bg} 0%, ${C.cd} 100%)`,
-          borderRadius: '24px 24px 0 0',
-          padding: '0 0 40px',
-          maxHeight: '80vh',
-          overflowY: 'auto',
-          transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1)',
-        }}
-      >
-        {/* Gradient header */}
-        <div
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            background: `linear-gradient(145deg, ${C.p}, ${C.s} 50%, ${C.pu} 100%)`,
-            borderRadius: '24px 24px 0 0',
-            padding: '24px 20px 20px',
-          }}
-        >
-          {/* Animated orbs */}
-          <div style={{
-            position: 'absolute', top: -20, right: -10, width: 80, height: 80, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.1)',
-            animation: 'heroOrbFloat 6s ease-in-out infinite',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: -30, left: 20, width: 60, height: 60, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.07)',
-            animation: 'heroOrbFloat 8s ease-in-out infinite 1s',
-          }} />
+      {/* Divider line */}
+      <div style={{
+        height: 1,
+        background: 'rgba(255,255,255,0.15)',
+        margin: '0 20px',
+      }} />
 
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: 28, marginBottom: 4 }}>{stageEmoji}</div>
-                <div style={{ color: 'white', fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
-                  {babyName || 'Your Baby'} at {ageMonths} month{ageMonths !== 1 ? 's' : ''}
+      {/* Inline insight content */}
+      <div style={{ padding: '12px 20px 6px', position: 'relative' }}>
+
+        {/* Header row */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: 10,
+          opacity: contentVisible ? 1 : 0,
+          transform: contentVisible ? 'translateY(0)' : 'translateY(-8px)',
+          transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 16 }}>{stageEmoji}</span>
+            <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>
+              {babyName || 'Your Baby'} at {ageMonths}mo
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 500 }}>
+              Development snapshot
+            </span>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleClose(); }}
+            style={{
+              background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10,
+              width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', backdropFilter: 'blur(8px)', flexShrink: 0,
+            }}
+          >
+            <Ic n="x" s={14} c="white" />
+          </button>
+        </div>
+
+        {/* Fun Facts */}
+        {selectedFacts.map((fact, i) => (
+          <div
+            key={i}
+            style={{
+              opacity: contentVisible ? 1 : 0,
+              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: `opacity 0.35s ease ${0.1 + i * 0.08}s, transform 0.35s ease ${0.1 + i * 0.08}s`,
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: 10,
+              padding: '8px 10px',
+              marginBottom: 6,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{'\u2728'}</span>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 1.45, fontWeight: 500 }}>{fact}</div>
+          </div>
+        ))}
+
+        {/* Milestone highlights */}
+        {highlights.length > 0 && (
+          <div
+            style={{
+              opacity: contentVisible ? 1 : 0,
+              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'opacity 0.35s ease 0.25s, transform 0.35s ease 0.25s',
+              marginTop: 4,
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              What to look for
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {highlights.map((h, i) => (
+                <div
+                  key={h.category}
+                  style={{
+                    opacity: contentVisible ? 1 : 0,
+                    transform: contentVisible ? 'scale(1)' : 'scale(0.93)',
+                    transition: `opacity 0.3s ease ${0.3 + i * 0.06}s, transform 0.3s ease ${0.3 + i * 0.06}s`,
+                    background: 'rgba(255,255,255,0.08)',
+                    borderRadius: 10,
+                    padding: '8px 10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                    <span style={{ fontSize: 11 }}>{h.emoji}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{h.category}</span>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.35 }}>{h.item}</div>
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 4, fontWeight: 500 }}>
-                  Development snapshot
-                </div>
-              </div>
-              <button
-                onClick={handleClose}
-                style={{
-                  background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 12,
-                  width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', backdropFilter: 'blur(8px)',
-                }}
-              >
-                <Ic n="x" s={18} c="white" />
-              </button>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Content sections with staggered reveal */}
-        <div style={{ padding: '16px 20px 0' }}>
-
-          {/* Fun Facts */}
-          {selectedFacts.map((fact, i) => (
-            <div
-              key={i}
-              style={{
-                opacity: contentVisible ? 1 : 0,
-                transform: contentVisible ? 'translateY(0)' : 'translateY(12px)',
-                transition: `opacity 0.4s ease ${0.1 + i * 0.1}s, transform 0.4s ease ${0.1 + i * 0.1}s`,
-                background: `${C.sl}66`,
-                borderRadius: 14,
-                padding: '12px 14px',
-                marginBottom: 8,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-              }}
-            >
-              <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>✨</span>
-              <div style={{ fontSize: 13, color: C.t, lineHeight: 1.5, fontWeight: 500 }}>{fact}</div>
+        {/* Pro tip */}
+        {tip && (
+          <div
+            style={{
+              opacity: contentVisible ? 1 : 0,
+              transform: contentVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'opacity 0.35s ease 0.45s, transform 0.35s ease 0.45s',
+              marginTop: 8,
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: 10,
+              padding: '8px 12px',
+              borderLeft: '2px solid rgba(255,255,255,0.35)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+              <span style={{ fontSize: 11 }}>{'\u{1F4A1}'}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>Pro tip</span>
             </div>
-          ))}
-
-          {/* Milestone highlights */}
-          {highlights.length > 0 && (
-            <div
-              style={{
-                opacity: contentVisible ? 1 : 0,
-                transform: contentVisible ? 'translateY(0)' : 'translateY(12px)',
-                transition: 'opacity 0.4s ease 0.3s, transform 0.4s ease 0.3s',
-                marginTop: 8,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 10 }}>
-                What to look for
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {highlights.map((h, i) => (
-                  <div
-                    key={h.category}
-                    style={{
-                      opacity: contentVisible ? 1 : 0,
-                      transform: contentVisible ? 'scale(1)' : 'scale(0.92)',
-                      transition: `opacity 0.35s ease ${0.35 + i * 0.08}s, transform 0.35s ease ${0.35 + i * 0.08}s`,
-                      background: C.cd,
-                      borderRadius: 14,
-                      padding: '12px 12px',
-                      border: `1px solid ${C.b}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14 }}>{h.emoji}</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h.category}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.t, lineHeight: 1.4 }}>{h.item}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Pro tip */}
-          {tip && (
-            <div
-              style={{
-                opacity: contentVisible ? 1 : 0,
-                transform: contentVisible ? 'translateY(0)' : 'translateY(12px)',
-                transition: 'opacity 0.4s ease 0.55s, transform 0.4s ease 0.55s',
-                marginTop: 14,
-                background: `linear-gradient(135deg, ${C.p}15, ${C.s}15)`,
-                borderRadius: 14,
-                padding: '14px 16px',
-                borderLeft: `3px solid ${C.s}`,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 14 }}>💡</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.s }}>Pro tip</span>
-              </div>
-              <div style={{ fontSize: 12, color: C.t, lineHeight: 1.5 }}>{tip}</div>
-            </div>
-          )}
-        </div>
+            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.45 }}>{tip}</div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1263,24 +1263,26 @@ export default function HomeTab({
           </div>
 
           {/* Subtle long-press hint */}
-          <div style={{
-            textAlign: 'center', padding: '0 0 6px',
-            fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 500,
-            letterSpacing: 0.3,
-          }}>
-            Hold for insights
-          </div>
+          {!showHeroInsight && (
+            <div style={{
+              textAlign: 'center', padding: '0 0 6px',
+              fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 500,
+              letterSpacing: 0.3,
+            }}>
+              Hold for insights
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Hero insight overlay (triggered by long press) */}
-      {showHeroInsight && (
-        <HeroInsightOverlay
-          age={age}
-          babyName={babyName}
-          onClose={() => setShowHeroInsight(false)}
-        />
-      )}
+        {/* Hero insight inline expansion (triggered by long press) */}
+        {showHeroInsight && (
+          <HeroInsightOverlay
+            age={age}
+            babyName={babyName}
+            onClose={() => setShowHeroInsight(false)}
+          />
+        )}
+      </div>
 
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 
