@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { dg, ds } from '@/lib/db';
-import { today, now, fmtTime, fmtDate } from '@/lib/utils/date';
-import { fmtVol, volLabel, ozToMl, mlToOz } from '@/lib/utils/volume';
-import { MILESTONES, TEETH_ORDER } from '@/lib/constants/milestones';
+import { today } from '@/lib/utils/date';
 import { C, applyTheme } from '@/lib/constants/colors';
 import HomeTab from '@/tabs/HomeTab';
 import LogTab from '@/tabs/LogTab';
@@ -17,8 +15,8 @@ import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
-import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
-import { isNative, setStatusBarStyle, hapticTap, hapticConfirm, sendNotification } from '@/lib/native';
+import type { CountryCode } from '@/lib/constants/countries';
+import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };

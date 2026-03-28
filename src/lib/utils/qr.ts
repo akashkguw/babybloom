@@ -22,12 +22,6 @@ const NUM_BLOCKS: number[] = [
   4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 ];
 
-// Total data codewords per version
-const TOTAL_CW: number[] = [
-  0, 26, 44, 70, 100, 134, 172, 196, 242, 292, 346,
-  404, 466, 532, 581, 655, 733, 815, 901, 991, 1085,
-];
-
 // Alignment pattern positions by version
 const ALIGN_POS: number[][] = [
   [], [], [6,18], [6,22], [6,26], [6,30], [6,34],
@@ -97,7 +91,6 @@ function encodeData(str: string, version: number): number[] {
   // Data
   for (const b of bytes) push(b, 8);
   // Terminator (up to 4 bits)
-  const totalBits = TOTAL_CW[version] * 8 - (TOTAL_CW[version] - VERSION_CAP[version]) * 8;
   const dataCW = VERSION_CAP[version];
   const needed = dataCW * 8;
   const termLen = Math.min(4, needed - bits.length);
@@ -279,7 +272,7 @@ function penalty(m: number[][]): number {
 function writeFormat(m: number[][], mask: number) {
   const size = m.length;
   // Format info = 5 bits (EC level 01 + mask) + 10 EC bits
-  let data = (1 << 3) | mask; // EC level L = 01
+  const data = (1 << 3) | mask; // EC level L = 01
   let rem = data;
   for (let i = 0; i < 10; i++) {
     rem = (rem << 1) ^ ((rem & 0x200) ? 0x537 : 0);
@@ -332,7 +325,7 @@ function writeVersion(m: number[][], version: number) {
   }
   // Actually, simpler approach:
   let vBits = version << 12;
-  let divisor = 0x1f25;
+  const divisor = 0x1f25;
   for (let i = 17; i >= 12; i--) {
     if (vBits & (1 << i)) vBits ^= divisor << (i - 12);
   }
