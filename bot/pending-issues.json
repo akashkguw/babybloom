@@ -219,7 +219,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/120",
     "created_at": "2026-03-28T18:51:16.073Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the sync feature still does not work correctly. They have to manually delete the \"bb1:\" prefix from stored data in order for sync to complete successfully.\n- Affected area: sync/storage logic, likely in the IndexedDB or localStorage layer where data keys are prefixed with \"bb1:\"\n- Expected behaviour: sync should work automatically without manual key prefix deletion\n- Current behaviour: sync fails or stalls until the user manually removes the \"bb1:\" prefix from stored entries\n- Edge cases: partial sync states, data loss during prefix cleanup, multiple devices with stale prefixed keys\n- Acceptance criteria: sync completes successfully without any manual user intervention around key prefixes",
+    "implementation_notes": "Fixed case-sensitive BB1: prefix detection in sync code decoding.\n- Files changed: src/features/sync/PartnerSync.tsx (decode function), src/tabs/HomeTab.tsx (inline decode logic)\n- Approach: Changed indexOf('BB1:') to toUpperCase().indexOf('BB1:') so that bb1:, Bb1:, bB1: etc. are all recognized\n- Root cause: Messaging apps (WhatsApp, iMessage, etc.) can auto-lowercase the BB1: prefix, causing the decoder to fail and treat the entire string including the prefix as base64, which is invalid\n- Type-check passes. Tests could not run due to rollup arm64/x86 mismatch in sandbox (not a code issue)."
   },
   {
     "number": 121,
@@ -232,6 +235,9 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/121",
     "created_at": "2026-03-28T19:56:53.844Z",
-    "status": "pending"
+    "status": "triaged",
+    "route": "implementation",
+    "enhanced_description": "User requests a new interactive feature on the hero widget: when the user long-presses the hero section, a cool animation should play and contextually relevant baby info/tips should be displayed.\n- Affected area: hero widget component in src/, likely the main dashboard/home screen hero section\n- Expected behaviour: long press on hero widget triggers an animation and shows curated baby development info (e.g. milestones, tips, fun facts based on baby age)\n- Current behaviour: no long press interaction exists on the hero widget\n- Edge cases: animation performance on older devices, accessibility (screen readers should announce the content), content should be age-appropriate based on baby profile\n- Acceptance criteria: long press gesture detected on hero widget, smooth animation plays, relevant baby info is displayed in an overlay or expanded view",
+    "implementation_notes": "Added long-press-to-reveal baby development insights on the hero widget.\n- Files changed:\n  - src/features/insights/HeroInsightOverlay.tsx (NEW) \u2014 overlay component with animated slide-up sheet showing age-appropriate fun facts, milestone highlights (motor/cognitive/social/language), and pro tips from MILESTONES data\n  - src/tabs/HomeTab.tsx \u2014 added long-press handlers (touch + mouse) on hero widget, 'Hold for insights' hint text, and overlay render\n- Approach: 500ms long-press triggers a bottom-sheet overlay with staggered reveal animations. Content is pulled from existing MILESTONES constants plus a curated FUN_FACTS dictionary keyed by age ranges. Each view shows 2 random fun facts, 4 milestone category highlights, and the stage-specific tip.\n- Trade-offs: Fun facts are static content embedded in the component rather than fetched. Content covers 0-24 months with graceful fallback to nearest age bracket.\n- Type-check passes."
   }
 ]

@@ -16,6 +16,7 @@ import { getEncouragement } from '@/lib/constants/encouragements';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
+import HeroInsightOverlay from '@/features/insights/HeroInsightOverlay';
 
 // Map internal DB type names to user-friendly display names
 const displayName = (type: string): string => {
@@ -122,6 +123,8 @@ export default function HomeTab({
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
+  const [showHeroInsight, setShowHeroInsight] = useState(false);
+  const heroLongPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if baby turned 2 and milestone carousel hasn't been shown yet
   useEffect(() => {
@@ -1098,13 +1101,27 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* Hero — premium baby dashboard */}
+      {/* Hero — premium baby dashboard (long press for insights) */}
       <div
+        onTouchStart={() => {
+          heroLongPressRef.current = setTimeout(() => setShowHeroInsight(true), 500);
+        }}
+        onTouchEnd={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
+        onTouchMove={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
+        onMouseDown={() => {
+          heroLongPressRef.current = setTimeout(() => setShowHeroInsight(true), 500);
+        }}
+        onMouseUp={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
+        onMouseLeave={() => { if (heroLongPressRef.current) clearTimeout(heroLongPressRef.current); }}
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
           marginBottom: 12,
+          cursor: 'pointer',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
           ...reveal(0),
           background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
           backgroundSize: '200% 200%',
@@ -1244,8 +1261,26 @@ export default function HomeTab({
               )}
             </div>
           </div>
+
+          {/* Subtle long-press hint */}
+          <div style={{
+            textAlign: 'center', padding: '0 0 6px',
+            fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 500,
+            letterSpacing: 0.3,
+          }}>
+            Hold for insights
+          </div>
         </div>
       </div>
+
+      {/* Hero insight overlay (triggered by long press) */}
+      {showHeroInsight && (
+        <HeroInsightOverlay
+          age={age}
+          babyName={babyName}
+          onClose={() => setShowHeroInsight(false)}
+        />
+      )}
 
       {/* SmartStatus & PredictiveNudges moved into carousel */}
 

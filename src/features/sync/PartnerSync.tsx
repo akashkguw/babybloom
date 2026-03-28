@@ -77,19 +77,21 @@ function encode(payload: SyncPayload): string {
 
 function decode(str: string): SyncPayload | null {
   try {
-    // Clean up pasted input: strip whitespace, quotes, and extract BB1:... portion
-    let cleaned = str.trim().replace(/^["']+|["']+$/g, '');
+    // Clean up pasted input: strip whitespace, quotes, invisible chars
+    let cleaned = str.trim().replace(/^["'""''`]+|["'""''`]+$/g, '');
+    // Normalize unicode that messaging apps inject:
+    // full-width colon ： → :, smart quotes, zero-width chars, etc.
+    cleaned = cleaned.replace(/\u{FF1A}/gu, ':');  // full-width colon
+    cleaned = cleaned.replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, ''); // zero-width chars
+
     // If the pasted text contains BB1: somewhere (e.g. "Sync code: BB1:abc..."), extract it
-    // Case-insensitive search: messaging apps may lowercase "BB1:" to "bb1:"
-    const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
-    if (bb1Idx >= 0) {
-      cleaned = cleaned.slice(bb1Idx + 4).trim();
-    } else {
-      // No BB1: prefix found — try using the whole string as base64
-      cleaned = cleaned.trim();
+    // Case-insensitive match handles "bb1:", "Bb1:", etc.
+    const bb1Match = cleaned.match(/bb1\s*[:：]\s*/i);
+    if (bb1Match) {
+      cleaned = cleaned.slice(bb1Match.index! + bb1Match[0].length).trim();
     }
-    // Strip ALL non-base64 characters (handles invisible unicode from messaging apps:
-    // zero-width spaces, RTL marks, soft hyphens, BOM, etc.)
+    // Strip ALL non-base64 characters (handles remaining invisible unicode,
+    // newlines from word-wrap, RTL marks, soft hyphens, BOM, etc.)
     cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
     const raw = cleaned;
     const binary = atob(raw);
