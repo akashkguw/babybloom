@@ -191,5 +191,20 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
+  },
+  {
+    "number": 117,
+    "title": "- the Animation of hand and long press is not very intuitive",
+    "body": "## \u2728 Feature Request\n\n- the Animation of hand and long press is not very intuitive. Add best and intuitive. Also next / continue gets stuck in this page.\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/117",
+    "created_at": "2026-03-28T08:36:02.377Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the hand animation and long-press interaction on a particular page is not intuitive and needs improvement. Additionally, the next/continue button on the same page gets stuck, preventing navigation forward.\n- Affected area: Onboarding or tutorial page with hand gesture animation and long-press instruction\n- Current behaviour: Hand animation is confusing, long-press UX is unclear, and next/continue button becomes unresponsive\n- Expected behaviour: Clear, intuitive animation guiding user to long-press, and next/continue button should always remain functional\n- Edge cases: Different screen sizes, animation timing, touch vs click events\n- Acceptance criteria: Replace hand animation with a more intuitive gesture guide, fix the stuck next/continue button so navigation always works",
+    "implementation_notes": "Fixed two issues in the onboarding WelcomeCarousel:\n\n1. Long-press animation made more intuitive:\n   - Changed finger emoji from pointing-up (tap gesture) to pointing-down (press gesture)\n   - Added new obHoldDown keyframe: finger arrives and STAYS pressed (unlike old tap animation that appeared/disappeared)\n   - Added obHoldLabel keyframe with a 'Hold' text label below the finger\n   - Enlarged the progress ring (32px -> 36px) with a visible background track circle\n   - Ring fills while finger is held, clearly communicating press-and-hold\n\n2. Fixed stuck Continue/Next button:\n   - Moved setDir and setAnimKey calls OUT of the setIdx functional updater\n   - Used an idxRef to read current index synchronously, avoiding stale closure issues\n   - All three state updates now happen at the same level, ensuring proper React batching\n\nFiles changed:\n- src/components/onboarding/WelcomeCarousel.tsx (LongPressCursor component, goNext callback, keyframe animations)\n\nTrade-offs: Tests could not run in sandbox (rollup architecture mismatch) but TypeScript type-check passes."
   }
 ]
