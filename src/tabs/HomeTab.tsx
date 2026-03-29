@@ -958,12 +958,19 @@ export default function HomeTab({
   // Last feed info for hero widget
   const lastFeedToday = (logs.feed || []).find((x) => x.date === td);
   const lastFeedLabel = lastFeedToday
-    ? lastFeedToday.type === 'Breast L' ? '🤱 Left'
-      : lastFeedToday.type === 'Breast R' ? '🤱 Right'
-      : lastFeedToday.type === 'Formula' ? '🍼 Formula'
-      : lastFeedToday.type === 'Pumped Milk' ? '🍼 Pumped'
-      : lastFeedToday.type === 'Solids' ? '🥄 Solids'
-      : '🍼 ' + (lastFeedToday.type || '')
+    ? (() => {
+        const sides = (lastFeedToday as any).sides as string[] | undefined;
+        if (sides && sides.length > 1) {
+          const map: Record<string, string> = { 'Breast L': 'L', 'Breast R': 'R' };
+          return '🤱 ' + sides.map((s) => map[s] || s).join(' → ');
+        }
+        return lastFeedToday.type === 'Breast L' ? '🤱 Left'
+          : lastFeedToday.type === 'Breast R' ? '🤱 Right'
+          : lastFeedToday.type === 'Formula' ? '🍼 Formula'
+          : lastFeedToday.type === 'Pumped Milk' ? '🍼 Pumped'
+          : lastFeedToday.type === 'Solids' ? '🥄 Solids'
+          : '🍼 ' + (lastFeedToday.type || '');
+      })()
     : null;
 
   // Last diaper info for hero widget
@@ -1579,7 +1586,8 @@ export default function HomeTab({
             return (agePriority[a.l] || 99) - (agePriority[b.l] || 99);
           });
 
-          // Pin Nurse Left + Right together in L→R order on the same row (positions 0-1, 2-3, 4-5, or 6-7)
+          // Pin Nurse Left + Right together: Left in column 1 (left), Right in column 2 (right)
+          // Snap to positions 0-1 of the row so Left is visually on the left side
           const idxL = sorted.findIndex((q) => q.l === 'Nurse Left');
           const idxR = sorted.findIndex((q) => q.l === 'Nurse Right');
           if (idxL >= 0 && idxR >= 0) {
@@ -1587,10 +1595,10 @@ export default function HomeTab({
             const itemR = sorted[idxR];
             // Remove both from their current positions
             const without = sorted.filter((q) => q.l !== 'Nurse Left' && q.l !== 'Nurse Right');
-            // Insert position = whichever was higher, snapped to even index (row start)
+            // Snap to start of the row (multiple of 4) so Left sits in col 1, Right in col 2
             const insertAt = Math.min(idxL, idxR);
-            const evenPos = insertAt % 2 === 0 ? insertAt : insertAt - 1;
-            without.splice(evenPos, 0, itemL, itemR);
+            const rowStart = insertAt - (insertAt % 4); // align to row boundary (0, 4, 8…)
+            without.splice(rowStart, 0, itemL, itemR);
             sorted.length = 0;
             sorted.push(...without);
           }
@@ -1945,7 +1953,7 @@ export default function HomeTab({
                           padding: '5px 0', borderBottom: i < qlInfoPanel.history.length - 1 ? '1px solid ' + C.b : 'none',
                         }}>
                           <div>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: C.t }}>{entry.type}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: C.t }}>{(() => { const sides = (entry as any).sides as string[] | undefined; const m: Record<string, string> = { 'Breast L': 'Left', 'Breast R': 'Right' }; if (sides && sides.length > 1) return 'Nurse ' + sides.map((s: string) => m[s] || s).join(' → '); return { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' }[entry.type] || entry.type; })()}</span>
                             {entry.amount && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.amount}</span>}
                             {entry.oz && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.oz}oz</span>}
                             {entry.mins && !entry.amount && <span style={{ fontSize: 10, color: C.tl, marginLeft: 4 }}>{entry.mins}min</span>}

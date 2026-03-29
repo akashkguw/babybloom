@@ -15,9 +15,15 @@ import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
 import TimerView from '@/features/feeding/TimerView';
 import StatsView from '@/features/stats/StatsView';
 
-const displayName = (type: string): string => {
-  const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right', 'Wet': 'Pee', 'Dirty': 'Poop' };
-  return map[type] || type;
+const displayName = (type: string, sides?: string[]): string => {
+  const map: Record<string, string> = { 'Breast L': 'Left', 'Breast R': 'Right', 'Wet': 'Pee', 'Dirty': 'Poop' };
+  // For merged breast sessions show "Left → Right" or "Right → Left"
+  if (sides && sides.length > 1) {
+    const labels = sides.map((s) => map[s] || s);
+    return 'Nurse ' + labels.join(' → ');
+  }
+  const simple: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
+  return simple[type] || map[type] || type;
 };
 
 interface LogEntry {
@@ -547,7 +553,7 @@ const LogTab: React.FC<LogTabProps> = ({
                       }}
                     >
                       {fmtTime(entry.time)}
-                      {entry.type ? ' — ' + displayName(entry.type) : ''}
+                      {entry.type ? ' — ' + displayName(entry.type, (entry as any).sides) : ''}
                       {entry.oz
                         ? ' — ' + fmtVol(entry.oz, volumeUnit)
                         : entry.amount
