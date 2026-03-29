@@ -232,22 +232,6 @@
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
   },
   {
-    "number": 150,
-    "title": "feed in ml is not coming from 26th",
-    "body": "## \ud83d\udc1b Bug Report\n\nfeed in ml is not coming from 26th\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feeding"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/150",
-    "created_at": "2026-03-29T18:07:20.057Z",
-    "status": "failed",
-    "route": "implementation",
-    "enhanced_description": "User reports that feed volume in ml is no longer displayed since around March 26.\n\nRoot cause: Commit 8a8b6f9 (March 27) removed the daily total feed volume display from the hero widget in HomeTab.tsx. The feedOzToday calculation and its display line were both deleted as part of issue #114.\n\nWhat was removed:\n- The feedOzToday variable that summed all feed oz values for today\n- The display line showing fmtVol(feedOzToday, volumeUnit) below the last feed info in the hero card\n\nAffected component: src/tabs/HomeTab.tsx \u2014 hero widget feed stat card (around line 1253)\n\nCurrent behavior: Hero shows feed count + last feed type/time, but NO total volume\nExpected behavior: Hero should also show total daily feed volume in the user's preferred unit (ml or oz)\n\nFix approach:\n1. Re-add the feedOzToday calculation: sum oz from all feed entries where date === today\n2. Re-add the display line showing fmtVol(feedOzToday, volumeUnit) in the hero feed card, below the last feed label\n\nEdge cases:\n- Days with zero oz feeds (breast only with duration) should show nothing for volume\n- Mixed feeds (some with oz, some without) should only sum entries that have oz\n- Respect user volumeUnit preference (ml vs oz)\n\nTesting:\n- Add unit test verifying feedOzToday calculation sums correctly across mixed feed types\n- Add test that entries without oz field are excluded from sum\n- Add test that fmtVol correctly converts oz to ml when volumeUnit is ml",
-    "failure_reason": "Claude CLI exited with code 1. Check /Users/akashkg/saanvi/babybloom/bot/claude-issue.log for details."
-  },
-  {
     "number": 151,
     "title": "if something needs attention / risk in quick log, it should continue to remai...",
     "body": "## \ud83d\udc1b Bug Report\n\nif something needs attention / risk in quick log, it should continue to remain in top 8.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
@@ -257,8 +241,21 @@
       "feedback"
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/151",
-    "created_at": "2026-03-29T18:07:53.625Z",
+    "created_at": "2026-03-29T18:07:53Z",
     "status": "failed",
     "failure_reason": "Claude CLI exited with code 1. Check /Users/akashkg/saanvi/babybloom/bot/claude-issue.log for details."
+  },
+  {
+    "number": 150,
+    "title": "feed in ml is not coming from 26th",
+    "body": "## \ud83d\udc1b Bug Report\n\nfeed in ml is not coming from 26th\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/150",
+    "created_at": "2026-03-29T18:07:19Z",
+    "status": "pending"
   }
 ]
