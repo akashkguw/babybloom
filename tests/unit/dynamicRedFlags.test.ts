@@ -41,6 +41,26 @@ function parseEntryMs(e: LogEntry): number {
   return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
 }
 
+function latestEntryMs(entries: LogEntry[]): number {
+  let bestMs = 0;
+  for (const e of entries) {
+    const ms = parseEntryMs(e);
+    if (ms > bestMs) bestMs = ms;
+  }
+  return bestMs;
+}
+
+function latestEntryOf(entries: LogEntry[], filter: (e: LogEntry) => boolean): { entry: LogEntry; ms: number } | null {
+  let best: LogEntry | null = null;
+  let bestMs = 0;
+  for (const e of entries) {
+    if (!filter(e)) continue;
+    const ms = parseEntryMs(e);
+    if (ms > bestMs) { bestMs = ms; best = e; }
+  }
+  return best ? { entry: best, ms: bestMs } : null;
+}
+
 /**
  * Pure computation extracted from useDynamicRedFlags — identical logic,
  * just without the useMemo wrapper so we can unit-test it.
@@ -60,7 +80,7 @@ function computeRedFlags(
   const feeds = logs.feed || [];
   if (!isSleeping) {
     if (feeds.length > 0) {
-      const lastFeedMs = parseEntryMs(feeds[0]);
+      const lastFeedMs = latestEntryMs(feeds);
       if (lastFeedMs > 0) {
         const feedHrs = (nowMs - lastFeedMs) / 3600000;
         const criticalH = age < 1 ? 4 : age < 3 ? 5 : age < 6 ? 6 : 8;
@@ -104,9 +124,9 @@ function computeRedFlags(
   }
 
   // 3. Extended dirty diaper gap
-  const lastDirty = diapers.find((e) => e.type === 'Dirty' || e.type === 'Both');
-  if (lastDirty) {
-    const dirtyMs = parseEntryMs(lastDirty);
+  const lastDirtyResult = latestEntryOf(diapers, (e) => e.type === 'Dirty' || e.type === 'Both');
+  if (lastDirtyResult) {
+    const dirtyMs = lastDirtyResult.ms;
     if (dirtyMs > 0) {
       const dirtyHrs = (nowMs - dirtyMs) / 3600000;
       const criticalDirtyH = age < 2 ? 36 : 72;
@@ -175,9 +195,9 @@ function computeRedFlags(
   // 5. Tummy time gap
   if (age < 12) {
     const tummyEntries = [...(logs.tummy || []), ...(logs.sleep || [])];
-    const lastTummy = tummyEntries.find((e) => e.type === 'Tummy Time');
-    if (lastTummy) {
-      const tummyMs = parseEntryMs(lastTummy);
+    const lastTummyResult = latestEntryOf(tummyEntries, (e) => e.type === 'Tummy Time');
+    if (lastTummyResult) {
+      const tummyMs = lastTummyResult.ms;
       if (tummyMs > 0) {
         const tummyHrs = (nowMs - tummyMs) / 3600000;
         if (tummyHrs >= 72) {
@@ -423,7 +443,46 @@ describe('dynamic red flags', () => {
     });
   });
 
-  // ── 6. Sorting ──
+  // ── 6. Past-date feed ordering (issue #152) ──
+  describe('past-date entry ordering', () => {
+    it('no false feed-gap alert when past-date feed is prepended but recent feed exists', () => {
+      vi.setSystemTime(new Date(2025, 2, 15, 10, 30));
+      // Recent feed at 10:00 today (30min ago) — should NOT trigger alert
+      // But a past-date feed was just added and is at feeds[0]
+      const feeds = [
+        mkFeed('2025-03-14', '08:00'), // yesterday — added later, at index 0
+        mkFeed('2025-03-15', '10:00'), // today — the actual most recent feed
+      ];
+      const flags = computeRedFlags({ feed: feeds }, 0, '2025-03-01');
+      expect(flags.find((f) => f.id === 'feed-gap')).toBeUndefined();
+    });
+
+    it('still alerts when all feeds are old even if order is mixed', () => {
+      vi.setSystemTime(new Date(2025, 2, 15, 15, 0));
+      // Both feeds are from yesterday — should still trigger alert
+      const feeds = [
+        mkFeed('2025-03-14', '08:00'),
+        mkFeed('2025-03-14', '12:00'),
+      ];
+      const flags = computeRedFlags({ feed: feeds }, 0, '2025-03-01');
+      expect(flags.find((f) => f.id === 'feed-gap')).toBeDefined();
+    });
+
+    it('no false dirty-gap alert when recent dirty diaper exists but is not at index 0', () => {
+      vi.setSystemTime(new Date(2025, 2, 15, 14, 0));
+      // Recent dirty diaper exists but old one is at index 0
+      const diapers = [
+        mkDiaper('2025-03-13', '08:00', 'Dirty'), // 2 days ago — at index 0
+        mkDiaper('2025-03-15', '12:00', 'Dirty'),  // today — the actual most recent
+      ];
+      const flags = computeRedFlags(
+        { feed: [mkFeed('2025-03-15', '13:30')], diaper: diapers }, 1, '2025-02-01'
+      );
+      expect(flags.find((f) => f.id === 'dirty-gap')).toBeUndefined();
+    });
+  });
+
+  // ── 7. Sorting ──
   describe('sorting', () => {
     it('places critical flags before warnings', () => {
       vi.setSystemTime(new Date(2025, 2, 15, 17, 0));

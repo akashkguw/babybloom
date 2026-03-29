@@ -46,6 +46,28 @@ function parseEntryMs(e: LogEntry): number {
   return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
 }
 
+/** Find the entry with the latest date+time (chronologically most recent) */
+function latestEntryMs(entries: LogEntry[]): number {
+  let bestMs = 0;
+  for (const e of entries) {
+    const ms = parseEntryMs(e);
+    if (ms > bestMs) bestMs = ms;
+  }
+  return bestMs;
+}
+
+/** Find the latest entry matching a filter */
+function latestEntryOf(entries: LogEntry[], filter: (e: LogEntry) => boolean): { entry: LogEntry; ms: number } | null {
+  let best: LogEntry | null = null;
+  let bestMs = 0;
+  for (const e of entries) {
+    if (!filter(e)) continue;
+    const ms = parseEntryMs(e);
+    if (ms > bestMs) { bestMs = ms; best = e; }
+  }
+  return best ? { entry: best, ms: bestMs } : null;
+}
+
 export default function useDynamicRedFlags(
   logs: Logs,
   age: number,
@@ -72,11 +94,7 @@ export default function useDynamicRedFlags(
       ...(logs.sleep || []),
     ];
     if (allEntries.length > 0) {
-      let latestMs = 0;
-      for (const e of allEntries) {
-        const ms = parseEntryMs(e);
-        if (ms > latestMs) latestMs = ms;
-      }
+      const latestMs = latestEntryMs(allEntries);
       const inactiveDays = (nowMs - latestMs) / 86400000;
       if (inactiveDays >= 3) {
         flags.push({
@@ -94,7 +112,7 @@ export default function useDynamicRedFlags(
     // Suppress feed-gap flag when baby is sleeping
     if (!isSleeping) {
       if (feeds.length > 0) {
-        const lastFeedMs = parseEntryMs(feeds[0]);
+        const lastFeedMs = latestEntryMs(feeds);
         if (lastFeedMs > 0) {
           const feedHrs = (nowMs - lastFeedMs) / 3600000;
           // Age-based critical thresholds (hours)
@@ -140,9 +158,9 @@ export default function useDynamicRedFlags(
     }
 
     // ── 3. Extended dirty diaper gap (constipation) ──
-    const lastDirty = diapers.find((e) => e.type === 'Dirty' || e.type === 'Both');
-    if (lastDirty) {
-      const dirtyMs = parseEntryMs(lastDirty);
+    const lastDirtyResult = latestEntryOf(diapers, (e) => e.type === 'Dirty' || e.type === 'Both');
+    if (lastDirtyResult) {
+      const dirtyMs = lastDirtyResult.ms;
       if (dirtyMs > 0) {
         const dirtyHrs = (nowMs - dirtyMs) / 3600000;
         // For babies < 6 weeks, no stool for 24h+ is notable; older babies can go longer
@@ -214,9 +232,9 @@ export default function useDynamicRedFlags(
     // ── 5. Extended no tummy time ──
     if (age < 12) {
       const tummyEntries = [...(logs.tummy || []), ...(logs.sleep || [])];
-      const lastTummy = tummyEntries.find((e) => e.type === 'Tummy Time');
-      if (lastTummy) {
-        const tummyMs = parseEntryMs(lastTummy);
+      const lastTummyResult = latestEntryOf(tummyEntries, (e) => e.type === 'Tummy Time');
+      if (lastTummyResult) {
+        const tummyMs = lastTummyResult.ms;
         if (tummyMs > 0) {
           const tummyHrs = (nowMs - tummyMs) / 3600000;
           if (tummyHrs >= 72) {

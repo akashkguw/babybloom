@@ -44,6 +44,17 @@ function parseTime(date: string, time: string): number {
   return new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
 }
 
+/** Find the chronologically most recent entry's timestamp */
+function latestMs(entries: LogEntry[]): number {
+  let best = 0;
+  for (const e of entries) {
+    if (!e.date || !e.time) continue;
+    const ms = parseTime(e.date, e.time);
+    if (ms > best) best = ms;
+  }
+  return best;
+}
+
 /**
  * Compute average interval (in ms) between recent entries of a category.
  * Uses the last 7 days of data to find the pattern.
@@ -105,7 +116,7 @@ export default function PredictiveNudges({ logs, age }: PredictiveNudgesProps) {
     const feeds = logs.feed || [];
     const feedInterval = avgInterval(feeds);
     if (feedInterval && feeds.length > 0) {
-      const lastFeedMs = parseTime(feeds[0].date, feeds[0].time);
+      const lastFeedMs = latestMs(feeds);
       const predictedNext = lastFeedMs + feedInterval;
       const minsUntil = (predictedNext - nowMs) / 60000;
       const avgMins = Math.round(feedInterval / 60000);
@@ -140,17 +151,23 @@ export default function PredictiveNudges({ logs, age }: PredictiveNudgesProps) {
     );
     const sleepInterval = avgInterval(logs.sleep || [], ['Nap', 'Night Sleep']);
     if (sleepInterval && sleeps.length > 0) {
-      const lastSleepMs = parseTime(sleeps[0].date, sleeps[0].time);
-      // Check if currently sleeping
-      const lastSleepEntry = (logs.sleep || []).find(
+      const lastSleepMs = latestMs(sleeps);
+      // Check if currently sleeping — find chronologically latest sleep/wake entry
+      const sleepWakeEntries = (logs.sleep || []).filter(
         (e) => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up'
       );
+      let lastSleepEntry: LogEntry | null = null;
+      let lastSleepEntryMs = 0;
+      for (const e of sleepWakeEntries) {
+        const ms = parseTime(e.date, e.time);
+        if (ms > lastSleepEntryMs) { lastSleepEntryMs = ms; lastSleepEntry = e; }
+      }
       const isSleeping = lastSleepEntry && lastSleepEntry.type !== 'Wake Up';
 
       if (!isSleeping) {
         // Use wake time if available, otherwise sleep time
         const wakeUps = (logs.sleep || []).filter((e) => e.type === 'Wake Up');
-        const lastWakeMs = wakeUps.length > 0 ? parseTime(wakeUps[0].date, wakeUps[0].time) : lastSleepMs;
+        const lastWakeMs = wakeUps.length > 0 ? latestMs(wakeUps) : lastSleepMs;
         const awakeInterval = avgInterval(logs.sleep || [], ['Wake Up']);
         const baseMs = awakeInterval ? lastWakeMs : lastSleepMs;
         const interval = awakeInterval || sleepInterval;
@@ -177,7 +194,7 @@ export default function PredictiveNudges({ logs, age }: PredictiveNudgesProps) {
     const diapers = logs.diaper || [];
     const diaperInterval = avgInterval(diapers);
     if (diaperInterval && diapers.length > 0) {
-      const lastDiaperMs = parseTime(diapers[0].date, diapers[0].time);
+      const lastDiaperMs = latestMs(diapers);
       const predictedNext = lastDiaperMs + diaperInterval;
       const minsUntil = (predictedNext - nowMs) / 60000;
 

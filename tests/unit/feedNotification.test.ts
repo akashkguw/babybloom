@@ -81,14 +81,25 @@ describe('checkFeedNotification', () => {
       expect(result.shouldNotify).toBe(false);
     });
 
-    it('only checks the first (most recent) feed', () => {
-      // First feed is recent (not overdue), second is old (overdue)
+    it('uses chronologically latest feed regardless of array order', () => {
+      // Chronologically latest feed is recent (not overdue), even though it is at index 1
       const feeds = [
-        makeFeed('2025-03-15', '13:00'), // 1h ago — not overdue
-        makeFeed('2025-03-15', '08:00'), // 6h ago — overdue
+        makeFeed('2025-03-15', '08:00'), // 6h ago — at index 0 but NOT the latest
+        makeFeed('2025-03-15', '13:00'), // 1h ago — chronologically latest
       ];
       const result = checkFeedNotification(feeds, 3, null, nowMs);
       expect(result.shouldNotify).toBe(false);
+    });
+
+    it('no false alert when past-date feed is prepended before recent feed', () => {
+      // Past-date feed added to index 0, but today's feed is more recent
+      const feeds = [
+        makeFeed('2025-03-14', '08:00'), // yesterday — prepended at index 0
+        makeFeed('2025-03-15', '13:00'), // today 1h ago — chronologically latest
+      ];
+      const result = checkFeedNotification(feeds, 3, null, nowMs);
+      expect(result.shouldNotify).toBe(false);
+      expect(result.feedKey).toBe('2025-03-15_13:00');
     });
 
     it('handles feeds from previous days correctly', () => {

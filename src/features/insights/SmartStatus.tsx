@@ -49,6 +49,17 @@ function hoursAgo(ms: number): number {
   return (Date.now() - ms) / 3600000;
 }
 
+/** Find the entry with the latest date+time (chronologically most recent) */
+function latestEntry(entries: LogEntry[]): LogEntry | null {
+  let best: LogEntry | null = null;
+  let bestMs = 0;
+  for (const e of entries) {
+    const ms = parseEntryTime(e);
+    if (ms > bestMs) { bestMs = ms; best = e; }
+  }
+  return best;
+}
+
 function fmtHoursAgo(h: number): string {
   if (h < 1) return Math.round(h * 60) + 'm ago';
   if (h < 24) return Math.round(h * 10) / 10 + 'h ago';
@@ -64,7 +75,7 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
     // ─── Feeding status ───
     const feeds = logs.feed || [];
     const todayFeeds = feeds.filter((e) => e.date === td);
-    const lastFeed = feeds.length > 0 ? feeds[0] : null;
+    const lastFeed = latestEntry(feeds);
     const lastFeedMs = lastFeed ? parseEntryTime(lastFeed) : 0;
     const feedHrs = lastFeedMs ? hoursAgo(lastFeedMs) : 999;
 
@@ -101,7 +112,7 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
     // ─── Diaper status ───
     const diapers = logs.diaper || [];
     const todayDiapers = diapers.filter((e) => e.date === td);
-    const lastDiaper = diapers.length > 0 ? diapers[0] : null;
+    const lastDiaper = latestEntry(diapers);
     const lastDiaperMs = lastDiaper ? parseEntryTime(lastDiaper) : 0;
     const diaperHrs = lastDiaperMs ? hoursAgo(lastDiaperMs) : 999;
     const wetToday = todayDiapers.filter((e) => e.type === 'Wet' || e.type === 'Both').length;
@@ -137,9 +148,15 @@ export default function SmartStatus({ logs, age, birth }: SmartStatusProps) {
 
     // ─── Sleep status ───
     const sleeps = logs.sleep || [];
-    const lastSleep = sleeps.find(
-      (e) => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up'
-    );
+    // Find the chronologically latest sleep/wake entry (not array[0])
+    let lastSleep: LogEntry | null = null;
+    let lastSleepMs = 0;
+    for (const e of sleeps) {
+      if (e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up') {
+        const ms = parseEntryTime(e);
+        if (ms > lastSleepMs) { lastSleepMs = ms; lastSleep = e; }
+      }
+    }
     const isSleeping =
       lastSleep && (lastSleep.type === 'Nap' || lastSleep.type === 'Night Sleep');
 

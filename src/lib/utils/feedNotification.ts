@@ -40,23 +40,23 @@ export function checkFeedNotification(
     return { shouldNotify: false };
   }
 
-  const lastFeed = feeds[0];
-  if (!lastFeed.date || !lastFeed.time) {
+  // Find chronologically most recent feed (not just array[0])
+  // to avoid false alerts when logging feeds for past dates
+  let lastFeed: FeedEntry | null = null;
+  let lastTimeMs = 0;
+  for (const f of feeds) {
+    if (!f.date || !f.time) continue;
+    const dp = f.date.split('-');
+    const tp = f.time.split(':');
+    const ms = new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
+    if (ms > lastTimeMs) { lastTimeMs = ms; lastFeed = f; }
+  }
+  if (!lastFeed || !lastFeed.date || !lastFeed.time) {
     return { shouldNotify: false };
   }
 
-  const dp = lastFeed.date.split('-');
-  const parts = lastFeed.time.split(':');
-  const lastTime = new Date(
-    parseInt(dp[0]),
-    parseInt(dp[1]) - 1,
-    parseInt(dp[2]),
-    parseInt(parts[0]),
-    parseInt(parts[1]),
-    0
-  );
   const feedKey = lastFeed.date + '_' + lastFeed.time;
-  const diffHours = (nowMs - lastTime.getTime()) / 3600000;
+  const diffHours = (nowMs - lastTimeMs) / 3600000;
 
   if (diffHours >= intervalHours && feedKey !== lastNotifiedKey) {
     const body = `Time for a feeding! Last feed was ${Math.round(diffHours * 10) / 10} hours ago.`;
