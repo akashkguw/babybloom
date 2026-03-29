@@ -272,31 +272,45 @@ ISSUES_PROCESSED=0
 if command -v claude &>/dev/null; then
   echo "🤖 Claude CLI found — processing pending issues..."
 
+  # Persistent log: append all Claude runs (not overwritten like the per-issue log)
+  CLAUDE_HISTORY_LOG="$BOT_DIR/claude-history.log"
+
   while [ $ISSUES_PROCESSED -lt $MAX_ISSUES_PER_RUN ]; do
-    # Count pending issues
-    PENDING_COUNT=$(python3 -c "
+    # Get next pending/triaged issue details
+    NEXT_ISSUE=$(python3 -c "
 import json
 try:
   q=json.load(open('$QUEUE_FILE'))
-  pending=[i for i in q if i.get('status') in ('pending', 'triaged')]
-  print(len(pending))
-except: print(0)
-" 2>/dev/null || echo 0)
+  for i in q:
+    if i.get('status') in ('pending', 'triaged'):
+      route = i.get('route', 'pending')
+      print(f'{i[\"number\"]}|{i[\"title\"]}|{i[\"status\"]}|{route}')
+      break
+except: pass
+" 2>/dev/null)
 
-    if [ "$PENDING_COUNT" -eq 0 ]; then
-      echo "✅ No more pending issues to process"
+    if [ -z "$NEXT_ISSUE" ]; then
+      echo "✅ No more pending/triaged issues to process"
       break
     fi
 
+    ISSUE_NUM=$(echo "$NEXT_ISSUE" | cut -d'|' -f1)
+    ISSUE_TITLE=$(echo "$NEXT_ISSUE" | cut -d'|' -f2)
+    ISSUE_STATUS=$(echo "$NEXT_ISSUE" | cut -d'|' -f3)
+    ISSUE_ROUTE=$(echo "$NEXT_ISSUE" | cut -d'|' -f4)
+
     ISSUES_PROCESSED=$((ISSUES_PROCESSED + 1))
     echo ""
-    echo "━━━ Processing issue $ISSUES_PROCESSED/$MAX_ISSUES_PER_RUN ($PENDING_COUNT remaining) ━━━"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Issue $ISSUES_PROCESSED/$MAX_ISSUES_PER_RUN: #$ISSUE_NUM — $ISSUE_TITLE"
+    echo "  Status: $ISSUE_STATUS | Route: $ISSUE_ROUTE"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     # Call Claude CLI to triage and implement ONE issue
-    # -p = non-interactive prompt mode (prints output and exits)
-    # timeout prevents runaway sessions
-    # Output goes to a log file so we can capture the real exit code
     CLAUDE_LOG="$BOT_DIR/claude-issue.log"
+    CLAUDE_START=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "  ⏱️  Started: $CLAUDE_START"
+
     timeout "$CLAUDE_TIMEOUT" claude -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
@@ -319,18 +333,56 @@ REPO_DIR=$REPO_DIR
 " > "$CLAUDE_LOG" 2>&1
 
     CLAUDE_EXIT=$?
-    # Show last 20 lines of output
-    echo "  [claude] --- output (last 20 lines) ---"
-    tail -20 "$CLAUDE_LOG" 2>/dev/null | while IFS= read -r line; do echo "  [claude] $line"; done
+    CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Check what status the issue ended up in after Claude processed it
+    ISSUE_RESULT=$(python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('number') == $ISSUE_NUM:
+      status = i.get('status', 'unknown')
+      route = i.get('route', '-')
+      notes = (i.get('implementation_notes') or i.get('skip_reason') or i.get('rejection_reason') or i.get('failure_reason') or '')[:200]
+      print(f'{status}|{route}|{notes}')
+      break
+except: pass
+" 2>/dev/null)
+
+    RESULT_STATUS=$(echo "$ISSUE_RESULT" | cut -d'|' -f1)
+    RESULT_ROUTE=$(echo "$ISSUE_RESULT" | cut -d'|' -f2)
+    RESULT_NOTES=$(echo "$ISSUE_RESULT" | cut -d'|' -f3-)
+
+    # Check for new git commits
+    NEW_COMMIT=$(git log -1 --oneline 2>/dev/null | head -1)
+
+    # Log summary
+    echo "  ⏱️  Finished: $CLAUDE_END (exit code: $CLAUDE_EXIT)"
+    echo "  📋 Result: #$ISSUE_NUM → $RESULT_STATUS (route: $RESULT_ROUTE)"
+    [ -n "$RESULT_NOTES" ] && echo "  📝 Notes: $RESULT_NOTES"
+
+    # Show key lines from Claude output (git commits, test results, errors)
+    echo "  ─── Claude highlights ───"
+    grep -iE "(commit|✅|❌|⚠️|test|passed|failed|error|implemented|analyzed|documented|triaged|rejected|skipped)" "$CLAUDE_LOG" 2>/dev/null | tail -15 | while IFS= read -r line; do echo "  $line"; done
+    echo "  ─── end highlights ───"
 
     if [ $CLAUDE_EXIT -ne 0 ]; then
-      echo "⚠️  Claude CLI exited with code $CLAUDE_EXIT (timeout=$CLAUDE_TIMEOUT)"
-      # Don't break — try to deploy whatever was committed, then continue
+      echo "  ⚠️  Claude CLI exited with code $CLAUDE_EXIT (timeout=$CLAUDE_TIMEOUT)"
     fi
 
+    # Append to history log
+    echo "" >> "$CLAUDE_HISTORY_LOG"
+    echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+    echo "Route: $RESULT_ROUTE | Result: $RESULT_STATUS | Exit: $CLAUDE_EXIT" >> "$CLAUDE_HISTORY_LOG"
+    [ -n "$RESULT_NOTES" ] && echo "Notes: $RESULT_NOTES" >> "$CLAUDE_HISTORY_LOG"
+    echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+
     # Deploy after each issue if there are committed changes
-    if [ -n "$(git status --porcelain | grep -v '^??')" ] || [ -n "$(git log origin/main..HEAD --oneline 2>/dev/null)" ]; then
-      echo "📦 Changes found after issue processing — running deploy..."
+    UNPUSHED_NOW=$(git log origin/main..HEAD --oneline 2>/dev/null)
+    UNCOMMITTED=$(git status --porcelain | grep -v '^??' 2>/dev/null)
+    if [ -n "$UNCOMMITTED" ] || [ -n "$UNPUSHED_NOW" ]; then
+      echo "  📦 Changes detected — deploying..."
       rm -f "$BOT_DIR/.deploy_env"
       bash "$BOT_DIR/deploy.sh"
       if [ -f "$BOT_DIR/.deploy_env" ]; then
@@ -338,14 +390,31 @@ REPO_DIR=$REPO_DIR
         rm -f "$BOT_DIR/.deploy_env"
       fi
       if [ -n "$DEPLOY_PUSHED_SHA" ]; then
-        echo "📌 Deployed: $DEPLOY_PUSHED_SHA"
+        echo "  📌 Deployed: $DEPLOY_PUSHED_SHA"
       fi
     else
-      echo "ℹ️  No changes after processing — moving on"
+      echo "  ℹ️  No code changes — nothing to deploy (issue may be analysis/docs/skip)"
     fi
   done
 
-  [ $ISSUES_PROCESSED -gt 0 ] && echo "🤖 Claude processed $ISSUES_PROCESSED issue(s) this run"
+  # Run summary
+  if [ $ISSUES_PROCESSED -gt 0 ]; then
+    echo ""
+    echo "🤖 ═══ Claude Run Summary: $ISSUES_PROCESSED issue(s) ═══"
+    python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  # Show all non-pending issues (recently processed)
+  for i in q:
+    s = i.get('status','?')
+    if s != 'pending':
+      r = i.get('route','-')
+      print(f'  #{i[\"number\"]:>4} | {s:<20} | {r:<15} | {i.get(\"title\",\"\")}')
+except: pass
+" 2>/dev/null
+    echo "═══════════════════════════════════════════════════════════"
+  fi
 else
   echo "⚠️  claude CLI not found — skipping issue processing (install with: npm install -g @anthropic-ai/claude-code)"
 fi
