@@ -232,19 +232,20 @@
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
   },
   {
-    "number": 148,
-    "title": "top nav bar are not in vertical center",
-    "body": "## \ud83d\udc1b Bug Report\n\ntop nav bar are not in vertical center. can you check the actual root cause and fix it?\n\n---\n\n**Category:** `bug` `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 149,
+    "title": "the top nav looks right, but island area is not of the same color as nav, it\u2019...",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe top nav looks right, but island area is not of the same color as nav, it\u2019s white/black on light / dark mode. I want a beautiful experience, please fix it\n\n---\n\n**Category:** `bug` `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
-      "enhancement"
+      "enhancement",
+      "ui"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/148",
-    "created_at": "2026-03-29T17:43:18.181Z",
+    "url": "https://github.com/akashkguw/babybloom/issues/149",
+    "created_at": "2026-03-29T17:55:15.444Z",
     "status": "implemented",
     "route": "implementation",
-    "enhanced_description": "The user reports that the top navigation bar elements are not vertically centered.\n\n- What the user reported: The items in the top nav bar are not vertically aligned/centered within the bar\n- Affected component: Top navigation bar (header area with app title, date navigation, settings icon, etc.)\n- Expected behavior: All nav bar elements (text, icons, buttons) should be vertically centered within the nav bar container\n- Current behavior: Elements appear misaligned vertically \u2014 likely some items sit higher or lower than others\n- Root cause investigation needed: Check CSS for the nav bar container \u2014 look for missing align-items: center, inconsistent padding/margin, line-height issues, or flexbox alignment problems\n- Edge cases: Ensure fix works across different screen sizes and doesn't break when nav items wrap\n- Acceptance criteria: All top nav bar elements are visually vertically centered in the nav bar container across mobile and tablet viewports\n- Testing: Add unit test to verify the nav bar container uses proper vertical centering CSS (e.g., align-items: center if using flexbox)",
-    "implementation_notes": "Fixed top nav bar vertical centering issue.\n\n- Files changed:\n  - src/styles/base.css: Changed .app-header padding from asymmetric (8px top, 12px bottom) to symmetric (10px top, 10px bottom). Updated padding-top safe-area calc to match. Updated header-spacer comment to reflect new values (total height unchanged at 54px).\n\n- Tests added:\n  - tests/unit/layout.test.ts: Added \"base.css \u2014 app-header vertical centering (#148)\" test suite with 2 tests:\n    1. Verifies .app-header has symmetric vertical padding (top == bottom)\n    2. Verifies .app-header uses align-items: center for flexbox vertical centering\n\n- Approach: The root cause was asymmetric padding on .app-header \u2014 8px top vs 12px bottom. This made the flex-centered content appear shifted upward. Changed to equal 10px top/bottom padding, keeping the total header height at 54px (matching the header-spacer).\n\n- No trade-offs \u2014 purely a CSS padding fix."
+    "enhanced_description": "The user reports that the \"island\" area (the dynamic island / status bar area at the top of the screen on modern iPhones) does not match the nav bar color. In light mode it appears white and in dark mode it appears black, rather than matching the nav bar's theme color.\n\n- Affected component: Top navigation bar / status bar area / meta theme-color\n- Expected behavior: The status bar / dynamic island area should match the nav bar color in both light and dark modes, creating a seamless visual experience\n- Current behavior: The island area is white in light mode and black in dark mode, visually disconnected from the nav bar\n- Root cause likely: The HTML meta theme-color tag or CSS background on the body/html element does not match the nav bar color, or there are separate theme-color values needed for light/dark modes\n- Edge cases: Must work correctly in both light and dark mode; should handle PWA standalone mode and Safari browser mode\n- Acceptance criteria: The status bar / island area color matches the nav bar color in both light and dark modes\n- Testing: Add unit tests verifying that theme-color meta tag values are correct for both light and dark modes; test that the top-level background color matches the nav bar color",
+    "implementation_notes": "Fixed theme-color meta tag to match nav gradient start color:\n- Files changed:\n  - src/lib/constants/colors.ts: Changed light-mode theme-color from C.a (#00C9A7 teal) to #FF6B8A (nav gradient start pink)\n  - index.html: Changed initial theme-color from #FFF8F0 (light bg) to #2A2654 (dark nav gradient start, since app defaults to dark)\n- Tests added:\n  - tests/unit/themeColor.test.ts: 6 tests verifying theme-color values match nav gradient starts in both modes\n- Approach: The dynamic island/status bar area color is controlled by the meta theme-color tag. It was mismatched with the nav gradient, causing a visual disconnect."
   }
 ]
