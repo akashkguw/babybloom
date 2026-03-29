@@ -1661,15 +1661,16 @@ export default function HomeTab({
           const qlItems = sorted;
 
           // Always keep warning/active items in top 8
-          const topItems: typeof qlItems = [];
-          const restItems: typeof qlItems = [];
+          const priorityItems: typeof qlItems = [];
+          const normalItems: typeof qlItems = [];
           for (const q of qlItems) {
             const hasWarn = !!(quickLogWarnings[q.l]);
             const isActive = !!(q as any).active || !!(q as any).highlight;
-            if (topItems.length < 8 || hasWarn || isActive) topItems.push(q);
-            else restItems.push(q);
+            if (hasWarn || isActive) priorityItems.push(q);
+            else normalItems.push(q);
           }
-          // If warnings/active pushed us past 8, trim rest from end of topItems
+          // Priority items first, then fill remaining slots with normal items
+          const topItems = [...priorityItems, ...normalItems.slice(0, Math.max(0, 8 - priorityItems.length))];
           const visibleItems = qlExpanded ? qlItems : topItems.slice(0, 8);
           const hiddenCount = qlItems.length - 8;
           const showSeeMore = hiddenCount > 0 && !qlExpanded;
