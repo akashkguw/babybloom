@@ -267,7 +267,7 @@ HAS_WORK=$(python3 -c "
 import json
 try:
   q=json.load(open('$QUEUE_FILE'))
-  actionable = [i for i in q if i.get('status') in ('pending','triaged','implemented','infra_implemented','documented','analyzed','rejected','failed')]
+  actionable = [i for i in q if i.get('status') in ('pending','triaged','implemented','infra_implemented','documented','analyzed','rejected') or (i.get('status')=='failed' and not i.get('notified'))]
   print(len(actionable))
 except: print(0)
 " 2>/dev/null || echo 0)
@@ -910,7 +910,7 @@ import sys,json
 try:
   q=json.load(open('$QUEUE_FILE'))
   for i in q:
-    if i.get('status')=='failed':
+    if i.get('status')=='failed' and not i.get('notified'):
       print(i['number'],'|',i.get('title',''),'|',i.get('failure_reason','Unknown failure'))
 except: pass
 " 2>/dev/null || true)
@@ -937,8 +937,18 @@ The issue remains open on GitHub for manual review or retry.
     echo "⚠️ Failed & notified: #$num — $title"
   done <<< "$FAILED"
 
-  # Keep failed issues in queue (status=failed) so GitHub sync doesn't re-add them.
-  # They stay as 'failed' until manually reopened or removed.
+  # Mark failed issues as notified so we don't spam Telegram every 60s.
+  # They stay in queue (to block GitHub sync re-adding) but won't trigger notifications again.
+  python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  for i in q:
+    if i.get('status')=='failed' and not i.get('notified'):
+      i['notified'] = True
+  json.dump(q, open('$QUEUE_FILE','w'), indent=2)
+except: pass
+" 2>/dev/null || true
 fi
 
 # ─── Post analysis results as GitHub comments (leave issue open) ───
