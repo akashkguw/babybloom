@@ -230,5 +230,21 @@
     "created_at": "2026-03-29T05:58:12Z",
     "status": "skipped",
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
+  },
+  {
+    "number": 138,
+    "title": "there is a background bleed on hero widget in dark mode",
+    "body": "## \ud83d\udc1b Bug Report\n\nthere is a background bleed on hero widget in dark mode.\n\n---\n\n**Category:** `bug` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "ui"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/138",
+    "created_at": "2026-03-29T07:51:20.938Z",
+    "status": "in_progress",
+    "route": "implementation",
+    "enhanced_description": "Bug: Background color bleed on the hero widget when dark mode is active.\n\n- What the user reported: In dark mode, the hero widget (the main top-of-page summary card) has a visible background bleed \u2014 likely a lighter background color or gradient leaking through or around the widget edges, creating a visual inconsistency against the dark mode background.\n\n- Component affected: Hero widget component (likely in src/components/ area), specifically its dark mode styling.\n\n- Expected behaviour: The hero widget should have a seamless, clean appearance in dark mode with no background bleed or color leakage. The widget background should fully match or complement the dark mode theme.\n\n- Current behaviour: A background bleed is visible \u2014 this could be caused by: (1) a missing or incorrect dark mode background override on the hero widget container, (2) a parent element background showing through due to padding/margin gaps, (3) a border-radius causing corner bleed with a contrasting parent background, or (4) a CSS specificity issue where dark mode styles are not being applied to the hero widget.\n\n- Edge cases to handle: Ensure fix works across all supported screen sizes/breakpoints. Check that the fix does not break light mode appearance. Verify the hero widget looks correct in both themes when toggling.\n\n- Acceptance criteria: No visible background bleed on the hero widget in dark mode. Light mode appearance remains unchanged. Visual consistency with surrounding dark mode elements.\n\n- Testing: Add a unit/snapshot test verifying the hero widget renders with correct dark-mode CSS classes. If a dark mode toggle utility exists, test that toggling applies the expected styles to the hero widget container.",
+    "stale_recovery": "Reset from in_progress \u2014 previous run likely crashed"
   }
 ]

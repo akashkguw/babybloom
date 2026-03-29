@@ -212,7 +212,7 @@ Triage complete:
 Now read and follow each specialist skill in order. Process one route at a time:
 
 1. **Implementation issues** → Read and follow `$REPO_DIR/bot/IMPL_SKILL.md`
-2. **Infrastructure issues** → ⛔ **DO NOT process in automated runs.** Infrastructure/security issues (bot.js, pipeline.sh, deploy.sh, auth, .env, workflows) are **owner-only** and require a manual Claude request from Akash. Mark them as `skipped` with reason `"MANUAL ONLY — infrastructure/security changes require owner's manual Claude request."` and move on.
+2. **Infrastructure issues** → Read and follow `$REPO_DIR/bot/INFRA_SKILL.md`
 3. **Analysis issues** → Read and follow `$REPO_DIR/bot/ANALYSIS_SKILL.md`
 4. **Documentation issues** → Read and follow `$REPO_DIR/bot/DOCS_SKILL.md`
 

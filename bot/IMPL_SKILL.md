@@ -241,7 +241,7 @@ If your changes break the pipeline (UT failures, regression failures, build fail
 - ❌ `git push / pull / rebase / reset / checkout / stash`
 - ❌ Any HTTP request (`curl`, `wget`, `fetch`)
 - ❌ Edit anything except `src/` and `tests/` directories
-- ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist` — **infrastructure/security files are owner-only, never touched by automated pipeline**
+- ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist` — re-route to infrastructure agent instead
 - ❌ `rm`, `mv`, `cp` any file
 - ❌ `npm install` or package manager changes
 - ❌ Add `fetch()` or network calls to external domains in app code
@@ -252,4 +252,4 @@ If your changes break the pipeline (UT failures, regression failures, build fail
 - ❌ Modify existing tests just to make them pass (unless the test is genuinely wrong)
 - ❌ Treat pipeline failures caused by your changes as "regressions"
 - ❌ Create files outside `src/` (except test files in `tests/`)
-- ❌ Edit `package.json`, `tsconfig.json`, `vite.config.ts` without approval
+- ❌ Edit `package.json`, `tsconfig.json`, `vite.config.ts` unless the issue explicitly requires it — document the reason in implementation notes

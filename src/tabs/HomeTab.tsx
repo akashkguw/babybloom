@@ -1126,6 +1126,9 @@ export default function HomeTab({
           borderRadius: 16,
           overflow: 'hidden',
           marginBottom: 12,
+          // Prevent gradient bleed outside rounded corners (dark mode anti-aliasing fix)
+          isolation: 'isolate' as const,
+          WebkitBackfaceVisibility: 'hidden' as const,
           ...(heroBg?.type === 'photo'
             ? { background: `url(${heroBg.value}) center/cover no-repeat` }
             : {
@@ -1135,7 +1138,7 @@ export default function HomeTab({
                 backgroundSize: '200% 200%',
                 animation: 'heroGradientShift 12s ease-in-out infinite',
               }),
-          boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
+          boxShadow: `0 8px 24px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12)`,
           ...reveal(0),
         }}
       >
