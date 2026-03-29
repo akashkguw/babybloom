@@ -273,6 +273,7 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
   // SecBody moved outside component to fix keyboard dismiss bug (#70)
 
   return (
+    <>
     <div className="ca" style={{ padding: "16px 16px 120px" }}>
       <SH icon="star" title="Milestones" color={C.p} sub="Tap any section to explore" />
 
@@ -588,112 +589,6 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
                 ))}
             </div>
 
-            {showFirst && (
-              <div
-                className="mo"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) {
-                    setShowFirst(false);
-                    setEditFirstId(null);
-                    setFF({});
-                  }
-                }}
-              >
-                <div className="ms">
-                  <h3
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: C.t,
-                      marginBottom: 16,
-                    }}
-                  >
-                    {editFirstId ? "Edit Memory" : "Record a First"}
-                  </h3>
-
-                  <div style={{ marginBottom: 12 }}>
-                    <label
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: C.tl,
-                        display: "block",
-                        marginBottom: 4,
-                      }}
-                    >
-                      What happened?
-                    </label>
-                    <Input
-                      value={ff.title || ""}
-                      onChange={(v) => setFF({ ...ff, title: v })}
-                      placeholder="e.g. First Laugh"
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: 12 }}>
-                    <label
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: C.tl,
-                        display: "block",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Date
-                    </label>
-                    <Input
-                      type="date"
-                      value={ff.date || today()}
-                      onChange={(v) => setFF({ ...ff, date: v })}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: 16 }}>
-                    <label
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: C.tl,
-                        display: "block",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Notes
-                    </label>
-                    <Input
-                      value={ff.notes || ""}
-                      onChange={(v) => setFF({ ...ff, notes: v })}
-                      placeholder="How it happened..."
-                    />
-                  </div>
-
-                  <Btn
-                    label={editFirstId ? "Update Memory" : "Save Memory"}
-                    onClick={editFirstId ? updateFirst : addFirst}
-                    color={C.s}
-                    full
-                  />
-
-                  {editFirstId && (
-                    <div
-                      onClick={() => deleteFirst(editFirstId)}
-                      style={{
-                        textAlign: "center",
-                        padding: "12px 0",
-                        marginTop: 8,
-                        color: C.p,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete this memory
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </>
         </SecBody>
       )}
@@ -768,6 +663,115 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
         </SecBody>
       )}
     </div>
+
+      {/* First memory modal — rendered outside .ca scroll container for iOS fixed-position support */}
+      {showFirst && (
+        <div
+          className="mo"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFirst(false);
+              setEditFirstId(null);
+              setFF({});
+            }
+          }}
+        >
+          <div className="ms">
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: C.t,
+                marginBottom: 16,
+              }}
+            >
+              {editFirstId ? "Edit Memory" : "Record a First"}
+            </h3>
+
+            <div style={{ marginBottom: 12 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.tl,
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                What happened?
+              </label>
+              <Input
+                value={ff.title || ""}
+                onChange={(v) => setFF({ ...ff, title: v })}
+                placeholder="e.g. First Laugh"
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.tl,
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Date
+              </label>
+              <Input
+                type="date"
+                value={ff.date || today()}
+                onChange={(v) => setFF({ ...ff, date: v })}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.tl,
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Notes
+              </label>
+              <Input
+                value={ff.notes || ""}
+                onChange={(v) => setFF({ ...ff, notes: v })}
+                placeholder="How it happened..."
+              />
+            </div>
+
+            <Btn
+              label={editFirstId ? "Update Memory" : "Save Memory"}
+              onClick={editFirstId ? updateFirst : addFirst}
+              color={C.s}
+              full
+            />
+
+            {editFirstId && (
+              <div
+                onClick={() => deleteFirst(editFirstId)}
+                style={{
+                  textAlign: "center",
+                  padding: "12px 0",
+                  marginTop: 8,
+                  color: C.p,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Delete this memory
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

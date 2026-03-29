@@ -385,6 +385,7 @@ const LogTab: React.FC<LogTabProps> = ({
   }
 
   return (
+    <>
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
       <SH
         icon="edit"
@@ -688,7 +689,8 @@ const LogTab: React.FC<LogTabProps> = ({
         </>
       ) : null}
 
-      {/* Add Modal */}
+    </div>
+      {/* Add/Edit Modal — rendered outside .ca scroll container for iOS fixed-position support */}
       {showAdd ? (
         <div
           className="mo"
@@ -1876,7 +1878,7 @@ const LogTab: React.FC<LogTabProps> = ({
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 };
 

@@ -77,7 +77,6 @@ body {
   animation: fadeIn 0.25s ease-out;
   flex: 1;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Subtle tap feedback for interactive elements */
