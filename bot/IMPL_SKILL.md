@@ -40,7 +40,66 @@ If none, stop — you're done.
 
 ## Step 2 — Read before editing
 
-Never edit blindly. First understand the relevant code:
+Never edit blindly. Use this codebase map to find the right files, then read them before changing anything.
+
+### Codebase quick-reference map
+
+**Where to find things:**
+
+| Need | Files to read |
+|------|--------------|
+| Add/edit a log type | `lib/db/schema.ts` (interface), `tabs/LogTab.tsx` (form + list) |
+| Feed timer logic | `features/feeding/useFeedingTimer.ts`, `features/feeding/TimerView.tsx` |
+| Red flag / health alerts | `features/insights/useDynamicRedFlags.ts` |
+| Mom wellness tracking | `features/wellness/MomCare.tsx` (saves to `momcare_today` key) |
+| Profile switching | `App.tsx` (`switchProfile`, `spd()`), `features/profiles/useProfileData.ts` |
+| Dark/light theme | `lib/constants/colors.ts` (`C_LIGHT` / `C_DARK`, `applyTheme()`) |
+| Country-specific config | `lib/constants/countries/{us,in}.ts`, `countries/index.ts` |
+| Add new country | Create `lib/constants/countries/xx.ts`, register in `countries/index.ts` |
+| Vaccine schedule | `countries/{us,in}.ts` → `vaccines` array |
+| Sync / partner share | `features/sync/PartnerSync.tsx`, `lib/utils/qr.ts` |
+| Voice input | `features/voice/parseVoice.ts` (NLP), `useVoiceRecognition.ts` (mic) |
+| Shortcuts / Siri | `features/shortcuts/handleShortcutAction.ts` (`QUICK_MAP`) |
+| Data persistence | `lib/db/indexeddb.ts` (`dg` = get, `ds` = set, `dga` = get all) |
+| Charts / stats | `features/stats/StatsView.tsx`, `lib/utils/chart.ts`, `components/charts/` |
+| Pediatric report | `features/reports/PediatrReport.tsx` |
+| Shared UI components | `components/shared/` (Icon, Card, Button, Pill, Toast, TabBar, etc.) |
+| Modals | `components/modals/SearchModal.tsx`, `AddContactForm.tsx` |
+| Onboarding | `components/onboarding/WelcomeCarousel.tsx` |
+| Settings panel | `features/settings/Settings.tsx` (50+ controls) |
+
+**Feature modules** (`src/features/`):
+
+| Module | Lines | Key exports |
+|--------|-------|-------------|
+| `feeding/` | 609 | `useFeedingTimer()`, `TimerView`, `QuickFeedSheet`, `mergeFeedSession` |
+| `insights/` | 1105 | `SmartStatus`, `useDynamicRedFlags()`, `useMomAlerts()`, `PredictiveNudges` |
+| `settings/` | 775 | `Settings` modal, `MedCalc`, `HeroBackgroundPicker` |
+| `sync/` | 705 | `PartnerSync`, `QRCode`, `QRScanner` |
+| `voice/` | 553 | `useVoiceRecognition()`, `parseVoice()`, `VoiceButton` |
+| `stats/` | 537 | `StatsView`, `StatsSummary` |
+| `wellness/` | 428 | `MomCare` |
+| `reports/` | 394 | `PediatrReport` |
+| `profiles/` | 309 | `ProfileManager`, `useProfileData` (`spd()`, `switchProfile()`) |
+| `shortcuts/` | 254 | `handleShortcutAction()`, `SiriShortcutsSetup` |
+
+**Tabs** (`src/tabs/`):
+
+| Tab | Lines | What it does |
+|-----|-------|-------------|
+| `HomeTab.tsx` | 2090 | Dashboard, quick-add, feed timer, alerts, vaccines |
+| `LogTab.tsx` | 1885 | All log forms, sub-tabs per category, stats, timer |
+| `GuideTab.tsx` | 1583 | Feeding/sleep guides, vaccine schedule, topic articles |
+| `MilestonesTab.tsx` | 778 | Development tracker, teeth tracker, baby firsts |
+| `SafetyTab.tsx` | 539 | CPR guide, choking, fever guide, emergency contacts |
+
+**Key data patterns:**
+- **Storage:** IndexedDB via `dg(key)` / `ds(key, val)` from `@/lib/db`
+- **Profile scoping:** `spd(field, val)` in App.tsx saves to both global and `profileData_${activeProfile}`
+- **Shared UI:** Import from `@/components/shared` — Icon uses `n`/`s`/`c` props (not `name`/`size`/`color`)
+- **Volume:** `'ml' | 'oz'` literal type, convert with `ozToMl()`/`mlToOz()` from `@/lib/utils/volume`
+- **Country:** `getCountryConfig(code)` returns all localized content (vaccines, safety, emergency numbers)
+- **Log categories:** feed, diaper, sleep, growth, temp, bath, massage, meds, allergy, tummy
 
 ```bash
 # Find relevant functions/components in src/
