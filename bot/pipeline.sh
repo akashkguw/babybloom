@@ -124,7 +124,11 @@ if added:
 print(added, end="")
 EOF
 )
-echo "GitHub sync: $GH_ADDED new issue(s)"
+if [ "$GH_ADDED" -gt 0 ] 2>/dev/null; then
+  echo "📥 Synced $GH_ADDED issue(s) into queue"
+else
+  echo "Queue already up to date"
+fi
 
 # ─── Sync unresolved Sentry issues → GitHub Issues → pending queue ───
 if [ -n "$SENTRY_AUTH_TOKEN" ] && [ -n "$SENTRY_ORG" ] && [ -n "$SENTRY_PROJECT" ]; then

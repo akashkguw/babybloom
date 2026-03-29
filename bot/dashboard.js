@@ -269,6 +269,7 @@ function dot(healthy, size=8) {
 const STAGE_DEFS = [
   { id:'queue',   label:'Queue Sync',    icon:'📋', desc:'' },
   { id:'sentry',  label:'Sentry',        icon:'🛡️', desc:'' },
+  { id:'claude',  label:'Claude AI',     icon:'🤖', desc:'' },
   { id:'changes', label:'Changes',       icon:'🔍', desc:'' },
   { id:'scan',    label:'Secret Scan',   icon:'🔒', desc:'' },
   { id:'ci',      label:'Local CI',      icon:'🧪', desc:'' },
@@ -306,6 +307,40 @@ function parseStages(run) {
                   : e.includes('Sentry error') ? 'fail' : 'skip';
         st.desc = st.status === 'pass' ? 'No new errors' : st.status === 'fail' ? 'Errors found' : '';
         break;
+      case 'claude': {
+        // Claude CLI processes issues one-by-one via pipeline.sh
+        const claudeFound   = e.includes('Claude CLI found');
+        const claudeSkip    = e.includes('claude CLI not found');
+        const nothingToDo   = e.includes('Nothing to do');
+        const noMore        = e.includes('No more pending');
+        const summaryMatch  = e.match(/Claude Run Summary: (\d+) issue/);
+        const issueResults  = [...e.matchAll(/Result: #(\d+) → (\w+)/g)];
+        const hasTimeout    = e.includes('Claude timed out');
+        const hasFailed     = issueResults.some(m => m[2] === 'failed');
+
+        if (nothingToDo) {
+          st.status = 'skip';
+          st.desc   = 'No issues';
+        } else if (summaryMatch) {
+          const count = parseInt(summaryMatch[1]);
+          const implemented = issueResults.filter(m => ['implemented','infra_implemented','documented','analyzed'].includes(m[2])).length;
+          const failed = issueResults.filter(m => m[2] === 'failed').length;
+          st.status = failed > 0 ? 'warn' : count > 0 ? 'pass' : 'skip';
+          st.desc   = `${implemented}/${count} done` + (failed ? ` · ${failed} failed` : '');
+        } else if (claudeFound) {
+          st.status = 'running';
+          // Show which issue is being processed
+          const currentIssue = [...e.matchAll(/Issue (\d+)\/\d+: #(\d+)/g)].pop();
+          st.desc = currentIssue ? `Processing #${currentIssue[2]}` : 'Processing…';
+        } else if (claudeSkip || noMore) {
+          st.status = 'skip';
+          st.desc   = claudeSkip ? 'CLI not found' : 'No issues';
+        } else {
+          st.status = 'skip';
+          st.desc   = '';
+        }
+        break;
+      }
       case 'changes':
         st.status = nothingToPush ? 'skip' : hasChanges ? 'pass' : 'skip';
         st.label  = nothingToPush ? 'No Changes' : hasChanges ? 'Changes' : 'Changes';
