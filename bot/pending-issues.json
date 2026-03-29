@@ -31,7 +31,7 @@
   {
     "number": 30,
     "title": "issues resolved is not coming in telegram message",
-    "body": "## 🐛 Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -45,7 +45,7 @@
   {
     "number": 31,
     "title": "Chicken is little hard",
-    "body": "## 💬 Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "feedback",
       "telegram"
@@ -59,7 +59,7 @@
   {
     "number": 34,
     "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## ✨ Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -73,7 +73,7 @@
   {
     "number": 59,
     "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## 🐛 Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -82,12 +82,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/59",
     "created_at": "2026-03-24T08:45:33.058Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels — created 1 second apart). Will be addressed via #58."
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
   },
   {
     "number": 61,
     "title": "- I want dark mode as default",
-    "body": "## ✨ Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -96,7 +96,7 @@
     "url": "https://github.com/akashkguw/babybloom/issues/61",
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels — created at the same second). Will be addressed via #60."
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
   },
   {
     "number": 80,
@@ -114,7 +114,7 @@
   {
     "number": 87,
     "title": "test do not do anything",
-    "body": "## 🐛 Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -123,12 +123,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:57.058Z",
     "status": "skipped",
-    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" — no feature, bug, or change to implement."
+    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" \u2014 no feature, bug, or change to implement."
   },
   {
     "number": 89,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -136,12 +136,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/89",
     "created_at": "2026-03-25T23:44:30Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale — no action needed."
+    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale \u2014 no action needed."
   },
   {
     "number": 90,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -149,12 +149,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/90",
     "created_at": "2026-03-25T23:50:36Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale — the failing tests have been fixed."
+    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale \u2014 the failing tests have been fixed."
   },
   {
     "number": 91,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -166,8 +166,8 @@
   },
   {
     "number": 92,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -180,7 +180,7 @@
   {
     "number": 93,
     "title": "GitHub issue not getting created from anshimitt telegram",
-    "body": "## 🐛 Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram"
@@ -189,13 +189,13 @@
     "created_at": "2026-03-26T02:02:33Z",
     "status": "skipped",
     "route": "infrastructure",
-    "skip_reason": "MANUAL ONLY — Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
+    "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
     "number": 129,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -203,12 +203,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/129",
     "created_at": "2026-03-29T05:31:33Z",
     "status": "skipped",
-    "skip_reason": "MANUAL ONLY — infrastructure/security changes require owner's manual Claude request."
+    "skip_reason": "MANUAL ONLY \u2014 infrastructure/security changes require owner's manual Claude request."
   },
   {
     "number": 132,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -216,12 +216,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/132",
     "created_at": "2026-03-29T05:45:34Z",
     "status": "skipped",
-    "skip_reason": "Deploy blocker already resolved — latest CI run (23:22 PDT) shows all 249 unit tests passing, TypeScript build OK, and smoke test OK. No action needed."
+    "skip_reason": "Deploy blocker already resolved \u2014 latest CI run (23:22 PDT) shows all 249 unit tests passing, TypeScript build OK, and smoke test OK. No action needed."
   },
   {
     "number": 133,
-    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
-    "body": "## Deploy Blocker — 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -229,39 +229,22 @@
     "url": "https://github.com/akashkguw/babybloom/issues/133",
     "created_at": "2026-03-29T05:58:12Z",
     "status": "skipped",
-    "skip_reason": "Duplicate of #132, and deploy blocker already resolved — latest CI run shows all stages passing."
+    "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
   },
   {
-    "number": 152,
-    "title": "when I add old feed in old/previous date which I forgot to add, the i get ale...",
-    "body": "## 🐛 Bug Report\n\nwhen I add old feed in old/previous date which I forgot to add, the i get alerts that no feed in xx hours. check similar errors and fix it\n\n---\n\n**Category:** `bug` `enhancement` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 153,
+    "title": "I cannot bath the baby while feeding, but the quick log shows it",
+    "body": "## \ud83d\udc1b Bug Report\n\nI cannot bath the baby while feeding, but the quick log shows it. similarly there can be many other issues. Fix it.\n\n---\n\n**Category:** `bug` `health`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
-      "enhancement",
-      "feeding"
+      "health"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/152",
-    "created_at": "2026-03-29T21:26:28.145Z",
+    "url": "https://github.com/akashkguw/babybloom/issues/153",
+    "created_at": "2026-03-29T21:41:01.820Z",
     "status": "implemented",
     "route": "implementation",
-    "enhanced_description": "Bug: Adding feeds for past dates triggers false \"no feed in XX hours\" alerts.\n\nWhat the user reported: When logging a feed entry for a previous date (e.g., one they forgot to record), the app fires alerts saying no feed in XX hours, as if the baby hasn't been fed recently.\n\nAffected components:\n- src/features/insights/SmartStatus.tsx (lines 48-99): calculates hoursAgo from last feed vs Date.now()\n- src/features/insights/useDynamicRedFlags.ts (lines 92-123): P0 alert for extended feeding gaps\n- src/lib/utils/feedNotification.ts (lines 33-67): native/browser notification for feed gaps\n- src/features/insights/PredictiveNudges.tsx (lines 104-135): past-window feeding nudges\n\nRoot cause: All alert systems determine the \"last feed\" by scanning feed entries and comparing timestamps to Date.now(). When a user adds a feed for a past date, the system treats that past-dated entry as the most recent feed, making it appear the baby hasn't been fed for many hours.\n\nExpected behavior: Alerts should calculate gap based on the chronologically most recent feed timestamp, regardless of when the entry was added. If feeds exist for today, adding an older feed to yesterday should not change the alert state.\n\nEdge cases to handle:\n- User adds the only feed of the day to a past date (alert should still fire for today if no today feeds exist)\n- User edits an existing feed to change its date to the past\n- Multiple feeds across dates - ensure sorting is by actual feed date+time, not array insertion order\n\nAcceptance criteria:\n- Adding a feed for a past date does not trigger false positive alerts\n- Alerts still fire correctly when there genuinely is no recent feed\n- All four alert systems (SmartStatus, DynamicRedFlags, feedNotification, PredictiveNudges) handle past-date feeds correctly\n\nTesting: Add unit tests for each alert component verifying:\n1. Past-date feed insertion does not trigger alert when recent feeds exist\n2. Alerts still fire when no recent feeds exist (only old entries)\n3. Feed sorting by actual timestamp works correctly across date boundaries",
-    "implementation_notes": "Fixed false alerts when adding feeds for past dates, plus same fix for all similar patterns.\n\nFiles changed:\n- src/features/insights/SmartStatus.tsx: Added latestEntry() helper. Changed feed, diaper, and sleep status to use chronologically latest entry instead of array[0].\n- src/features/insights/useDynamicRedFlags.ts: Added latestEntryMs() and latestEntryOf() helpers. Fixed feed gap, dirty diaper gap, and tummy time gap to find chronologically latest entries.\n- src/lib/utils/feedNotification.ts: Changed to scan all feeds for chronologically latest instead of using feeds[0].\n- src/features/insights/PredictiveNudges.tsx: Added latestMs() helper. Fixed feed, diaper, and sleep predictions to use chronologically latest entries.\n\nTests updated:\n- tests/unit/dynamicRedFlags.test.ts: Updated local computeRedFlags copy to match source. Added 3 tests for past-date ordering (feed, dirty diaper, mixed order).\n- tests/unit/feedNotification.test.ts: Updated existing test to verify chronological ordering. Added test for past-date feed prepended before recent feed.\n\nRoot cause: All alert systems assumed array[0] was the chronologically most recent entry. But when users add entries for past dates, they get prepended to the array, making a past-dated entry appear at index 0. The fix scans all entries to find the one with the latest actual date+time."
-  },
-  {
-    "number": 151,
-    "title": "if something needs attention / risk in quick log, it should continue to remai...",
-    "body": "## 🐛 Bug Report\n\nif something needs attention / risk in quick log, it should continue to remain in top 8.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/151",
-    "created_at": "2026-03-29T18:07:53Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "Bug: Quick log items with attention/risk warnings can be hidden when not in the top 8 visible slots.\n\nWhat the user reported: If a quick log item needs attention (has a warning or danger indicator), it should always remain visible in the collapsed top-8 view, not get pushed off-screen by non-warning items.\n\nComponent affected: src/tabs/HomeTab.tsx — the quick log grid (lines ~1663-1673)\n\nCurrent behaviour: The topItems logic (line 1669) adds warning/active items past position 8, but then visibleItems = topItems.slice(0, 8) on line 1673 cuts them off. Warning items that appear after the 8th position in the array get hidden.\n\nExpected behaviour: Items with quickLogWarnings (attention/risk) should always be prioritized in the top 8 slots. Non-warning items should yield their position to make room for warning items.\n\nRoot cause: The loop builds topItems by appending items in order — first 8 regardless of status, then only warning/active items. But the final slice(0, 8) doesn't account for warning items that were appended after position 8.\n\nFix approach: Sort/partition items so warning/active items come first, then fill remaining slots (up to 8) with non-warning items. This ensures warnings are always visible in the collapsed view.\n\nEdge cases:\n- More than 8 items have warnings — show all 8 as warnings, rest in expanded view\n- Active timers (nursing, tummy time, sleep) should also be prioritized\n- Expanded view (qlExpanded) should continue to show all items unchanged\n- Order within priority groups should remain stable (preserve original qlItems order)\n\nAcceptance criteria:\n- Items with quickLogWarnings always appear in the collapsed top-8 grid\n- Active/highlighted items also remain visible in top 8\n- When collapsed view has room after placing all warning/active items, fill with non-warning items in original order\n- Expanded view is unaffected\n- No regression in warning threshold logic\n\nTesting: Add unit tests for the top-8 partitioning logic — test that warning items always appear in the visible set even when they would otherwise be in position 9+. Test edge case where >8 items have warnings.",
-    "implementation_notes": "Files changed:\n- src/tabs/HomeTab.tsx: Refactored quick log top-8 partitioning logic (lines ~1663-1673)\n\nTests added:\n- tests/unit/quickLogPriority.test.ts: 9 tests covering priority partitioning — warning items promoted, active/highlight items promoted, >8 priority items, expanded view, fewer than 8 items, ordering\n\nApproach: Changed from a single-pass append (which added warning items past position 8 then sliced them off) to a two-pass partition: first separate priority items (warning/active) from normal items, then build visible list as priority items first + remaining slots filled with normal items. This guarantees warning items always appear in the collapsed top-8 grid.\n\nCommit: c6a88e2"
+    "enhanced_description": "User reported that the Quick Log feature shows \"Bath\" as an available option even when a feeding session is currently active (in progress). This is logically incorrect \u2014 you cannot bathe a baby while feeding. The user also mentions there may be other similar cases (e.g. cannot bathe while sleeping, cannot feed while bathing, etc.).\n\n**Component affected:** Quick Log UI (the shortcut panel that suggests common next activities)\n\n**Expected behaviour:** The Quick Log should not show activities that are mutually exclusive with the currently active/in-progress session. For example:\n- If a feeding session is active \u2192 Bath should NOT appear in quick log options\n- If a bath is in progress \u2192 Feeding should NOT appear\n- Similar mutual exclusions should be applied for other conflicting activity pairs\n\n**Current behaviour:** The Quick Log shows all common activities regardless of what is currently happening, leading to logically impossible suggestions (e.g. bath while feeding).\n\n**Edge cases to handle:**\n- Multiple simultaneous active sessions (unlikely but possible in data)\n- No active session \u2192 all quick log options should show as normal\n- Activities that ARE compatible (e.g. can play while awake) should still appear\n- Define the full set of mutually exclusive pairs: feeding\u2194bath, sleeping\u2194bath, sleeping\u2194feeding, etc.\n\n**Acceptance criteria:**\n- Quick Log filters out activities that conflict with any currently active session\n- At minimum: bath is hidden when feeding is active (and vice versa)\n- Ideally: a configurable or hardcoded list of mutual exclusions is applied\n- Existing quick log behavior for non-conflicting activities is unchanged\n\n**Testing:** \n- Unit test: given an active feeding session, quick log options should not include bath\n- Unit test: given an active bath session, quick log options should not include feeding\n- Unit test: given an active sleep session, quick log options should not include bath or feeding\n- Unit test: given no active session, all normal quick log options appear\n- Regression test: verify existing quick log tests still pass after filtering logic is added",
+    "implementation_notes": "Files changed:\n- src/tabs/HomeTab.tsx: Added two helper booleans (isTimerActive, isFeedingTimerActive) before the quick log item definitions. Updated `dis` fields for qlBath, qlMassage, qlSolids, qlSleepItem, and qlTummy.\n\nTests added:\n- tests/unit/quickLogMutualExclusion.test.ts: 26 tests covering all mutual exclusion rules \u2014 Bath, Massage, Solids, Sleep/Wake Up, Tummy (tap-only and timer modes), and no-false-positive checks for Pee/Poop.\n\nApproach:\n- Bath: dis = isTimerActive || isSleeping (any active timer OR sleeping)\n- Massage: dis = isTimerActive (any active timer)\n- Solids: dis = isFeedingTimerActive || isSleeping (breastfeeding timer OR sleeping)\n- Sleep (not Wake Up): dis = !isSleeping && isTimerActive (only disable Sleep when timer running; Wake Up always enabled)\n- Tummy (tap-only): dis = isFeedingTimerActive || isSleeping\n- Tummy (timer mode): dis = (feedTimer && feedTimer.type !== Tummy Time) || isSleeping\n\nThe feedTimer object only exists for timed activities: Breast L, Breast R, Tummy Time.\nFormula/Bottle feeds do not start a timer, so they aren't caught by isTimerActive."
   }
 ]
