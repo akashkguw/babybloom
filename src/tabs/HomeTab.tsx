@@ -322,7 +322,9 @@ export default function HomeTab({
 
   // "See more" expansion state for quick log grid
   const [qlExpanded, setQlExpanded] = useState(false);
-
+  const [timerCollapsed, setTimerCollapsed] = useState(false);
+  // Auto-reset collapsed state when feed timer ends
+  useEffect(() => { if (!feedTimerApp) setTimerCollapsed(false); }, [feedTimerApp]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
@@ -1487,6 +1489,8 @@ export default function HomeTab({
 
           // Whether there's an active timer context (feed timer or sleeping)
           const hasActiveTimer = !!feedTimer || !!isSleeping;
+          // Auto-reset collapsed state when timer ends
+          const showTimerView = hasActiveTimer && !timerCollapsed;
           // Timer display info
           const timerEmoji = feedTimer
             ? (feedTimer.type === 'Tummy Time' ? '🧒' : '🤱')
@@ -1692,7 +1696,7 @@ export default function HomeTab({
           }
 
           // ─── Active timer view (feed timer or sleeping) ───
-          if (hasActiveTimer) {
+          if (showTimerView) {
             return (
               <div style={{ animation: 'qlFadeScale 0.3s cubic-bezier(0.22,1,0.36,1)' }}>
                 {/* Timer header: emoji + label + elapsed + actions */}
@@ -1772,6 +1776,19 @@ export default function HomeTab({
                     </div>
                   </div>
                 )}
+
+                {/* Back to quick log grid */}
+                <div
+                  data-testid="timer-back-btn"
+                  onClick={() => setTimerCollapsed(true)}
+                  style={{
+                    textAlign: 'center', marginTop: 8, cursor: 'pointer',
+                    fontSize: 11, fontWeight: 600, color: C.tl,
+                    padding: '6px 0',
+                  }}
+                >
+                  ← All actions
+                </div>
               </div>
             );
           }
@@ -1786,6 +1803,43 @@ export default function HomeTab({
           // ─── Normal 4-column grid OR inline info panel ───
           return (
             <>
+              {/* Compact timer indicator when collapsed — tap to re-expand */}
+              {hasActiveTimer && timerCollapsed && (
+                <div
+                  data-testid="timer-collapsed-banner"
+                  onClick={() => setTimerCollapsed(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '7px 10px', marginBottom: 8, borderRadius: 10,
+                    background: timerBgColor, border: '1px solid ' + timerColor + '33',
+                    cursor: 'pointer', animation: 'fadeIn 0.2s ease',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{timerEmoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: timerColor }}>
+                    {timerLabel}
+                  </span>
+                  {feedTimer && (
+                    <span style={{ fontSize: 11, fontWeight: 800, color: C.a, fontVariantNumeric: 'tabular-nums' }}>
+                      {Math.floor(feedElapsed / 60)}:{String(feedElapsed % 60).padStart(2, '0')}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 10, color: C.tl }}>since {timerSince}</span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+                    <div
+                      onClick={(e) => { e.stopPropagation(); if (feedTimer) stopFeedTimer(); else quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); }}
+                      style={{
+                        padding: '4px 10px', borderRadius: 8,
+                        background: timerColor, color: '#fff',
+                        fontSize: 10, fontWeight: 700,
+                      }}
+                    >
+                      {feedTimer ? 'Done' : 'Wake'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {!qlInfoPanel && showResume && resumeFeed && (
                 <div
                   style={{
