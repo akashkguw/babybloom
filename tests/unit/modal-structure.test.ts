@@ -96,9 +96,9 @@ describe('Modal-outside-scroll invariant — MilestonesTab', () => {
   });
 
   it('MilestonesTab uses React Fragment to separate .ca and .mo', () => {
-    const returnIdx = src.lastIndexOf('return (');
-    const returnBlock = src.slice(returnIdx);
-    expect(returnBlock).toMatch(/return\s*\(\s*<>/);
+    // Use multiline match to find the component-level return (followed by Fragment on next line),
+    // not an inner JSX return from a nested function.
+    expect(src).toMatch(/return\s*\(\s*\n\s*<>/);
   });
 
   it('modal (.mo) is NOT nested inside .ca scroll container', () => {

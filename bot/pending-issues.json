@@ -218,7 +218,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/130",
     "created_at": "2026-03-29T05:33:51.857Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the undo feature is not working in the app.\n- Affected area: Undo functionality (likely in feed/diaper/sleep logging)\n- Expected behavior: After logging an entry, user should be able to undo it\n- Current behavior: Undo action does not revert the logged entry\n- Edge cases: Check all log types (feed, diaper, sleep, growth) for undo support\n- Acceptance criteria: Tapping undo successfully reverts the most recent log entry",
+    "implementation_notes": "Fixed undo mechanism with two changes:\n- Files changed: src/tabs/HomeTab.tsx\n- Bug 1: undoLog used id-based filtering which failed for merged timer feeds (the undo entry had a new id that didn't match any real log entry). Fix: store a prevLogs snapshot in the undo entry and restore it directly on undo.\n- Bug 2: undo banner was inside .ca scroll container where position:fixed can be unreliable on mobile browsers. Fix: moved banner outside .ca using React Fragment.\n- Both changes make undo work reliably for all log types (quick-log, timer feeds, merged feeds)."
   },
   {
     "number": 131,
@@ -231,7 +234,10 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/131",
     "created_at": "2026-03-29T05:34:03.738Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that the undo experience/UI is not appearing at all after logging.\n- Affected area: Undo toast/snackbar notification after logging an entry\n- Expected behavior: After logging, a toast/snackbar should appear offering an undo option\n- Current behavior: No undo prompt or notification appears after logging\n- Edge cases: Check if this affects all log types or specific ones; check timing/animation\n- Acceptance criteria: After any log action, an undo toast/snackbar appears and remains visible long enough to interact with. Note: #130 and #131 are closely related \u2014 both about undo being broken.",
+    "implementation_notes": "Same fix as #130 \u2014 closely related issue.\n- Files changed: src/tabs/HomeTab.tsx\n- Moved undo banner outside the .ca scroll container to a React Fragment wrapper, ensuring the position:fixed banner renders correctly on all devices.\n- The prevLogs snapshot approach ensures undo always restores the exact previous state."
   },
   {
     "number": 129,
@@ -243,6 +249,31 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/129",
     "created_at": "2026-03-29T05:31:33Z",
+    "status": "skipped",
+    "skip_reason": "MANUAL ONLY \u2014 infrastructure/security changes require owner's manual Claude request."
+  },
+  {
+    "number": 132,
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/132",
+    "created_at": "2026-03-29T05:45:34Z",
+    "status": "pending"
+  },
+  {
+    "number": 133,
+    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
+    "body": "## Deploy Blocker \u2014 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/133",
+    "created_at": "2026-03-29T05:58:12Z",
     "status": "pending"
   }
 ]
