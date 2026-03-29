@@ -236,7 +236,7 @@ button {
 
 /* Header spacer — pushes content below the fixed header */
 .header-spacer {
-  height: 54px; /* fallback: 8px top pad + 34px content + 8px bottom pad + 4px buffer */
+  height: 54px; /* must match header: 8px top pad + 34px content + 12px bottom pad */
   padding-top: env(safe-area-inset-top, 0px);
   box-sizing: content-box !important; /* padding ADDS to height, not inside */
   flex-shrink: 0;
@@ -256,7 +256,7 @@ button {
   right: 0;
   width: 100%;
   z-index: 50;
-  padding: 8px 12px 8px;
+  padding: 8px 12px 12px;
   padding-top: calc(8px + env(safe-area-inset-top, 0px));
   padding-left: max(12px, env(safe-area-inset-left, 12px));
   padding-right: max(12px, env(safe-area-inset-right, 12px));
