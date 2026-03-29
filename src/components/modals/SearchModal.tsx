@@ -3,6 +3,7 @@ import { C } from '@/lib/constants/colors';
 import Icon from '@/components/shared/Icon';
 import Card from '@/components/shared/Card';
 import { fmtDate, fmtTime } from '@/lib/utils/date';
+import { MILESTONES } from '@/lib/constants/milestones';
 
 interface SearchResult {
   cat: string;
@@ -18,12 +19,6 @@ interface SearchModalProps {
   firsts: any[];
   checked: any;
   onNav: (tab: string, sub: string) => void;
-  MILESTONES?: any;
-  VACCINES?: any[];
-  SAFETY?: any[];
-  FEEDING?: any[];
-  SLEEP?: any[];
-  ACTIVITIES?: any;
 }
 
 export default function SearchModal({
@@ -32,12 +27,6 @@ export default function SearchModal({
   firsts,
   checked,
   onNav,
-  MILESTONES = {},
-  VACCINES = [],
-  SAFETY = [],
-  FEEDING = [],
-  SLEEP = [],
-  ACTIVITIES = {},
 }: SearchModalProps) {
   const [query, setQuery] = useState('');
 
@@ -46,16 +35,16 @@ export default function SearchModal({
     const q = query.toLowerCase();
     const res: SearchResult[] = [];
 
-    // Search logs
-    const logTypes = ['feed', 'pump', 'diaper', 'sleep', 'bath', 'growth', 'temp', 'meds', 'allergy'];
+    // Search logs — all log categories that exist in the data
+    const logTypes = ['feed', 'diaper', 'sleep', 'tummy', 'growth', 'temp', 'bath', 'massage', 'meds', 'allergy'];
     logTypes.forEach((type) => {
       (logs[type] || []).forEach((e: any) => {
-        const text = [e.type, e.amount, e.notes, e.food, e.reaction, e.med, e.dose, e.weight, e.height, e.temp, e.duration, e.waterTemp, e.color, e.consistency, e.peeAmount]
+        const text = [e.type, e.subType, e.amount, e.notes, e.food, e.reaction, e.med, e.dose, e.weight, e.height, e.head, e.temp, e.duration, e.waterTemp, e.color, e.consistency, e.peeAmount, e.side]
           .filter(Boolean)
           .join(' ');
         if (text.toLowerCase().indexOf(q) >= 0) {
           res.push({
-            cat: 'Log: ' + type,
+            cat: 'Log: ' + type.charAt(0).toUpperCase() + type.slice(1),
             text: text,
             date: e.date,
             time: e.time,
@@ -76,6 +65,30 @@ export default function SearchModal({
           nav: { tab: 'miles', sub: 'firsts' },
         });
       }
+    });
+
+    // Search milestones
+    Object.entries(MILESTONES).forEach(([monthKey, m]: [string, any]) => {
+      const allItems = [...(m.motor || []), ...(m.cog || []), ...(m.soc || []), ...(m.lang || [])];
+      allItems.forEach((item: string) => {
+        if (item.toLowerCase().indexOf(q) >= 0) {
+          res.push({
+            cat: 'Milestone: ' + (m.l || monthKey + ' mo'),
+            text: item,
+            nav: { tab: 'miles', sub: 'milestones' },
+          });
+        }
+      });
+      // Also search red flags
+      (m.red || []).forEach((flag: string) => {
+        if (flag.toLowerCase().indexOf(q) >= 0) {
+          res.push({
+            cat: 'Red Flag: ' + (m.l || monthKey + ' mo'),
+            text: flag,
+            nav: { tab: 'miles', sub: 'milestones' },
+          });
+        }
+      });
     });
 
     return res.slice(0, 50);
