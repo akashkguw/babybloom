@@ -6,6 +6,7 @@ import {
   Pill,
   Input,
   Icon as Ic,
+  TabHeader,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
 import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
@@ -387,11 +388,12 @@ const LogTab: React.FC<LogTabProps> = ({
   return (
     <>
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      <SH
+      <TabHeader
         icon="edit"
         title="Daily Log"
+        subtitle="Track feeding, diapers, sleep & more"
         color={C.s}
-        sub="Track feeding, diapers, sleep & more"
+        gradientEnd={C.a}
       />
 
       {/* Sub tabs */}
@@ -460,6 +462,11 @@ const LogTab: React.FC<LogTabProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              background: C.cd,
+              borderRadius: 14,
+              border: `1px solid ${C.b}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              padding: '4px 0',
             }}
           >
             <button
@@ -536,7 +543,7 @@ const LogTab: React.FC<LogTabProps> = ({
             items.map((entry) => (
               <Cd
                 key={entry.id}
-                style={{ marginBottom: 8, padding: 14 }}
+                style={{ marginBottom: 8, padding: 14, borderLeft: `3px solid ${logColors[sub] || C.s}` }}
               >
                 <div
                   style={{

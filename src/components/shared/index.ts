@@ -9,3 +9,4 @@ export { Input, default as InputDefault } from './Input';
 export { Button, default as ButtonDefault } from './Button';
 export { Toast, toast, default as ToastDefault } from './Toast';
 export { TabBar, default as TabBarDefault } from './TabBar';
+export { TabHeader, default as TabHeaderDefault } from './TabHeader';

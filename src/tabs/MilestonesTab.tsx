@@ -8,6 +8,7 @@ import {
   Icon as Ic,
   Checkbox as CB,
   Dot,
+  TabHeader,
 } from '@/components/shared';
 import { today, fmtDate } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
@@ -233,6 +234,8 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
             borderRadius: expanded[id] ? "16px 16px 0 0" : "16px",
             border: "1px solid " + C.b,
             marginBottom: expanded[id] ? 0 : 8,
+            boxShadow: expanded[id] ? "none" : "0 2px 8px rgba(0,0,0,0.04)",
+            transition: "border-radius 0.2s ease, box-shadow 0.2s ease",
           }}
         >
           <span style={{ fontSize: 24, flexShrink: 0 }}>{emoji}</span>
@@ -275,7 +278,13 @@ const MilestonesTab: React.FC<MilestonesTabProps> = ({
   return (
     <>
     <div className="ca" style={{ padding: "16px 16px 120px" }}>
-      <SH icon="star" title="Milestones" color={C.p} sub="Tap any section to explore" />
+      <TabHeader
+        icon="star"
+        title="Milestones"
+        subtitle="Tap any section to explore"
+        color={C.p}
+        gradientEnd={C.w}
+      />
 
       {/* ═══ DEVELOPMENT ═══ */}
       {Sec("dev", "⭐", "Development", doneAll + "/" + totalAll + " milestones checked", C.p)}

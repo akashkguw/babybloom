@@ -24,6 +24,7 @@ import {
   Checkbox,
   Dot,
   Pill,
+  TabHeader,
 } from '@/components/shared';
 import GrowthChart from '@/components/charts/GrowthChart';
 import MedCalc from '@/features/settings/MedCalc';
@@ -172,6 +173,8 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth,
           border: '1px solid ' + C.b,
           borderBottom: expanded[id] ? '1px solid ' + C.b : '1px solid ' + C.b,
           marginBottom: expanded[id] ? 0 : 8,
+          boxShadow: expanded[id] ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+          transition: 'border-radius 0.2s ease, box-shadow 0.2s ease',
         }}
       >
         <span style={{ fontSize: 24, flexShrink: 0 }}>{emoji}</span>
@@ -239,7 +242,13 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth,
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      <SectionHeader icon="book" title="Guide" color={C.a} sub="Tap any section to explore" />
+      <TabHeader
+        icon="book"
+        title="Guide"
+        subtitle="Tap any section to explore"
+        color={C.a}
+        gradientEnd={C.bl}
+      />
 
       {/* Vaccines */}
       {Sec('vaccines', '🩺', 'Vaccines', doneC + '/' + totalV + ' recorded', C.bl, false)}

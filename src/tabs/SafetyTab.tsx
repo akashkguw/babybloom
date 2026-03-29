@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { C } from '@/lib/constants/colors';
-import { Card as Cd, SectionHeader as SH, Icon as Ic, Dot } from '@/components/shared';
+import { Card as Cd, SectionHeader as SH, Icon as Ic, Dot, TabHeader } from '@/components/shared';
 import AddContactForm from '@/components/modals/AddContactForm';
 import type { CountryConfig } from '@/lib/constants/countries';
 
@@ -90,6 +90,8 @@ export default function SafetyTab({
             borderRadius: expanded[id] ? '16px 16px 0 0' : 16,
             border: `1px solid ${C.b}`,
             marginBottom: expanded[id] ? 0 : 8,
+            boxShadow: expanded[id] ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'border-radius 0.2s ease, box-shadow 0.2s ease',
           }}
         >
           <span style={{ fontSize: 24, flexShrink: 0 }}>{emoji}</span>
@@ -147,7 +149,13 @@ export default function SafetyTab({
 
   return (
     <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      <SH icon="shield" title="Safety" color={C.p} sub="Tap any section to explore" />
+      <TabHeader
+        icon="shield"
+        title="Safety"
+        subtitle="Tap any section to explore"
+        color="#FF5252"
+        gradientEnd={C.p}
+      />
 
       {/* Emergency banner (always visible) */}
       <Cd
