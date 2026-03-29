@@ -303,10 +303,10 @@ const LogTab: React.FC<LogTabProps> = ({
     if (form.notes) form.notes = cleanStr(form.notes, LIMITS.noteLen);
 
     const entry: LogEntry = {
+      ...form,
       date: form.date || selectedDate,
       time: form.time || now(),
       id: editId || Date.now(),
-      ...form,
       ...(sub === 'tummy' ? { type: 'Tummy Time' } : {}),
     };
 
@@ -741,7 +741,7 @@ const LogTab: React.FC<LogTabProps> = ({
               <input
                 type="date"
                 value={form.date || td}
-                min={daysAgo(1)}
+                {...(editId ? {} : { min: daysAgo(1) })}
                 max={td}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
                 style={{
