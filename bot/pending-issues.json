@@ -241,6 +241,41 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/139",
     "created_at": "2026-03-29T08:05:20Z",
-    "status": "pending"
+    "status": "infra_implemented",
+    "route": "infrastructure",
+    "enhanced_description": "Deploy pipeline (deploy.sh) ran local CI and unit tests failed, blocking deployment.\n\n- What the user reported: The automated deploy pipeline detected unit test failures and blocked the deploy. All other checks passed (HTML structure, JS bundle, manifest, service worker, server smoke test, TypeScript build).\n- What component/area is affected: CI pipeline (bot/ci.log), unit tests, and potentially app source code if tests are failing due to recent changes.\n- Expected behaviour: All unit tests pass and deploy proceeds.\n- Current behaviour: Unit tests fail, deploy is blocked.\n- Edge cases: The test failures may be flaky tests, missing test fixtures, or genuine regressions from recent code changes.\n- Acceptance criteria: Identify the failing test(s) from bot/ci.log, fix the root cause (test or source code), and verify all tests pass.\n- Investigation steps: Read bot/ci.log to identify which tests fail and why, then apply the appropriate fix.",
+    "implementation_notes": "## Investigation Results\n\nThe CI failure that triggered this auto-filed issue has already been resolved.\n\n- **ci.log analysis:** The current bot/ci.log shows ALL 291 unit tests passing, TypeScript + Build passing, and Server Smoke Test passing. Final verdict: \"All CI stages passed \u2014 safe to deploy.\"\n- **Root cause:** The deploy failure was transient \u2014 a previous CI run failed (unit tests), but a subsequent successful deploy (commit 908f3f3) overwrote the ci.log with passing results.\n- **Action taken:** No code changes needed. The issue is stale \u2014 the blocker no longer exists.\n- **Verification:** git log confirms successful auto-deploys after this issue was filed (908f3f3).\n- **Files changed:** None \u2014 the issue resolved itself via subsequent successful CI runs."
+  },
+  {
+    "number": 140,
+    "title": "readme is not updated",
+    "body": "## \ud83d\udc1b Bug Report\n\nreadme is not updated\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/140",
+    "created_at": "2026-03-29T08:36:48.356Z",
+    "status": "documented",
+    "route": "documentation",
+    "enhanced_description": "The project README needs to be updated to reflect the current state of the application.\n\n- What the user reported: The README is not updated \u2014 it likely does not reflect recent features, setup instructions, or architecture changes.\n- What component/area is affected: README.md at the project root.\n- Expected behaviour: README accurately describes the app features, setup instructions, tech stack, and current capabilities.\n- Current behaviour: README is outdated or incomplete.\n- Edge cases: Ensure no private data or secrets are included in the README.\n- Acceptance criteria: README.md is updated to reflect the current app features, architecture, setup instructions, and any recent changes. It should be clear and helpful for new contributors or users.",
+    "implementation_notes": "## Changes Made\n- Files changed: README.md\n- Added Mom Wellness section (tracks hydration, meals, vitamins, sleep quality, mood)\n- Added Hero Widget section (customizable backgrounds, last activity times, age-based reminders)\n- Added Welcome Experience section (auto-animated onboarding carousel)\n- Updated diaper tracking from \"wet/dirty\" to \"pee/poop\" terminology\n- Updated partner sync to mention QR code support alongside copy/paste\n- Added Capacitor 6 to tech stack table (iOS & Android native builds)\n- Added wellness/ to project structure under features/\n- Added mobile build scripts (build:mobile, mobile:ios, mobile:android) to available scripts\n- Fixed pipeline timing from \"every 30 minutes\" to \"every hour\"\n- Updated privacy section to mention QR codes for sync"
+  },
+  {
+    "number": 141,
+    "title": "the log and other tabs other than home doesn\u2019t follow the UX experience as of...",
+    "body": "## \u2728 Feature Request\n\nthe log and other tabs other than home doesn\u2019t follow the UX experience as of home. It\u2019s little out dated\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/141",
+    "created_at": "2026-03-29T08:41:42.657Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The user reports that the Log tab and other non-Home tabs (likely Growth, Settings, etc.) have an outdated or inconsistent UX compared to the Home tab. The Home tab has been updated with a modern look and feel, but the other tabs have not been brought in line.\n\nWhat needs to happen:\n- Audit all non-Home tabs (Log, Growth, Settings, etc.) and identify UX/styling differences vs Home\n- Update layout, spacing, typography, card styles, color usage, and interaction patterns to match Home\n- Ensure consistent header/navigation styling across all tabs\n- Maintain each tab's unique functionality while harmonizing the visual design language\n\nComponents likely affected:\n- Log/Feed tracking views\n- Growth chart views\n- Settings/profile views\n- Any other tab-based views\n\nAcceptance criteria:\n- All tabs share the same design language as the Home tab (consistent spacing, typography, card styles, colors)\n- No regression in functionality on any tab\n- Responsive layout remains intact\n\nTesting:\n- Add unit tests verifying that key UI components render correctly after styling updates\n- Add snapshot or visual regression tests if the project supports them\n- Manual verification that all tabs look consistent with Home",
+    "implementation_notes": "UX consistency update \u2014 align non-Home tabs with Home tab design language.\n\nFiles changed:\n- NEW: src/components/shared/TabHeader.tsx \u2014 gradient banner header component matching Home hero style (gradient bg, decorative orbs, glassmorphic icon, white text)\n- src/components/shared/index.ts \u2014 export new TabHeader component\n- src/tabs/LogTab.tsx \u2014 replaced plain SectionHeader with TabHeader, added card-styled date navigator, colored left-border accent on log entries\n- src/tabs/GuideTab.tsx \u2014 replaced SectionHeader with TabHeader, added box-shadow and transitions to accordion headers\n- src/tabs/MilestonesTab.tsx \u2014 replaced SectionHeader with TabHeader, added box-shadow and transitions to accordion headers\n- src/tabs/SafetyTab.tsx \u2014 replaced SectionHeader with TabHeader, added box-shadow and transitions to accordion headers\n\nTests added:\n- tests/unit/tabHeader.test.ts \u2014 17 test cases covering TabHeader component, shared exports, all tabs using TabHeader, accordion styling, and LogTab improvements\n\nApproach:\n- Created a shared TabHeader component that mimics the Home tab hero section (gradient background, decorative orbs, glassmorphic elements, white text on gradient)\n- Each tab gets its own color scheme that matches its semantic purpose\n- Accordion sections across Guide/Milestones/Safety now have elevated card shadows and smooth transitions\n- LogTab entries get a colored left border accent for visual timeline effect\n- Date navigator in LogTab is now a proper card component\n\nNote: vitest could not run in the sandbox due to esbuild platform mismatch (Mac node_modules in Linux sandbox). Tests were verified by running assertions manually with Node. All 17 pass. Regression tests (node tests/regression.cjs) also pass 21/21."
   }
 ]
