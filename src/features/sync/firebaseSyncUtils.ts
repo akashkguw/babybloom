@@ -55,7 +55,7 @@ export function isValidSyncKey(key: unknown): key is string {
   if (typeof key !== 'string') return false;
   const trimmed = key.trim();
   // Firebase RTDB paths must not contain '.', '#', '$', '[', ']'
-  return trimmed.length >= 4 && !/[.#$[\]\/]/.test(trimmed);
+  return trimmed.length >= 4 && !/[.#$[\]/]/.test(trimmed);
 }
 
 /**
