@@ -42,12 +42,6 @@ interface Reminders {
   enabled: boolean;
 }
 
-interface TimerState {
-  running: boolean;
-  type: string | null;
-  startTime: number | null;
-}
-
 interface FeedTimerApp {
   type: string;
   startTime: number;
@@ -86,7 +80,6 @@ function App() {
   const [showGuideFromSettings, setShowGuideFromSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [darkMode, setDarkModeR] = useState<boolean>(true);
-  const [timerState, setTSR] = useState<TimerState>({ running: false, type: null, startTime: null });
   const [reminders, setRemR] = useState<Reminders>({ feedInterval: 0, enabled: true });
   const [volumeUnit, setVUR] = useState<'ml' | 'oz'>('ml');
   const [feedTimerApp, _setFTA] = useState<FeedTimerApp | null>(null);
@@ -147,11 +140,6 @@ function App() {
     if (isNative) setStatusBarStyle(v);
     // Remove transition class after animation completes
     setTimeout(() => document.documentElement.classList.remove('theme-transition'), 500);
-  };
-
-  const setTimerState = (v: TimerState) => {
-    setTSR(v);
-    ds('timerState', v);
   };
 
   const setReminders = (v: Reminders) => {
@@ -357,7 +345,6 @@ function App() {
       dg('teeth'),
       dg('firsts'),
       dg('darkMode'),
-      dg('timerState'),
       dg('emergencyContacts'),
       dg('profiles'),
       dg('activeProfile'),
@@ -367,7 +354,7 @@ function App() {
       dg('country'),
     ]).then((r: any) => {
       // Load saved country or detect from browser
-      const savedCountry = r[14] as CountryCode | null;
+      const savedCountry = r[13] as CountryCode | null;
       if (savedCountry) {
         setCountryR(savedCountry);
       } else {
@@ -384,16 +371,15 @@ function App() {
         applyTheme(true);
         setDarkModeR(true);
       }
-      if (r[7] != null) setTSR(r[7]);
-      if (r[8] != null) setECR(r[8]);
+      if (r[7] != null) setECR(r[7]);
       else setECR(cfg.emergency.defaultContacts);
-      if (r[11] != null) setRemR(r[11]);
-      if (r[12] != null) _setFTA(r[12]);
-      if (r[13]) setVUR(r[13]);
+      if (r[10] != null) setRemR(r[10]);
+      if (r[11] != null) _setFTA(r[11]);
+      if (r[12]) setVUR(r[12]);
       else setVUR(cfg.defaults.volumeUnit);
 
-      const loadedProfiles = r[9];
-      const loadedActiveProfile = r[10];
+      const loadedProfiles = r[8];
+      const loadedActiveProfile = r[9];
       let activeId: number;
 
       if (!loadedProfiles || loadedProfiles.length === 0) {
@@ -548,7 +534,7 @@ function App() {
   }, [reminders, logs.feed, smartFeedInterval]);
 
   // Active timer elapsed time for the persistent banners
-  const activeTimerSource = feedTimerApp ? feedTimerApp.startTime : (timerState.running && timerState.startTime ? timerState.startTime : null);
+  const activeTimerSource = feedTimerApp ? feedTimerApp.startTime : null;
   useEffect(() => {
     if (!activeTimerSource) {
       setAppTimerElapsed(0);
@@ -562,8 +548,7 @@ function App() {
   }, [activeTimerSource]);
 
   const showFeedBanner = feedTimerApp && tab !== 'home';
-  const showTimerBanner = !feedTimerApp && timerState.running && timerState.startTime && tab !== 'log';
-  const showAnyBanner = showFeedBanner || showTimerBanner;
+  const showAnyBanner = showFeedBanner;
 
   if (loading) {
     return (
@@ -591,10 +576,10 @@ function App() {
       <div className="header-spacer" />
       {showAnyBanner && <div className="banner-spacer" />}
 
-      {/* ═══ PERSISTENT RESUME BANNER — visible when a timer is active on a different tab ═══ */}
+      {/* ═══ PERSISTENT RESUME BANNER — visible when feed timer is active on a different tab ═══ */}
       {showAnyBanner && (
         <div
-          onClick={() => navTo(showFeedBanner ? 'home' : 'log')}
+          onClick={() => navTo('home')}
           style={{
             position: 'fixed',
             top: 0,
@@ -612,10 +597,10 @@ function App() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 16 }}>{showFeedBanner ? (feedTimerApp!.type === 'Tummy Time' ? '🧒' : '🤱') : '⏱️'}</div>
+            <div style={{ fontSize: 16 }}>{feedTimerApp!.type === 'Tummy Time' ? '🧒' : '🤱'}</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>
-                {showFeedBanner ? displayName(feedTimerApp!.type) : displayName(timerState.type || '')} in progress
+                {displayName(feedTimerApp!.type)} in progress
               </div>
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>
                 Tap to resume
@@ -766,8 +751,6 @@ function App() {
               age={age}
               subNavRef={subNavRef}
               quickFormRef={quickFormRef}
-              timerState={timerState}
-              setTimerState={setTimerState}
               volumeUnit={volumeUnit}
             />
           ) : null}

@@ -9,7 +9,7 @@ const SENSITIVE_KEYS = new Set([
   'emergencyContacts', 'meds', 'allergies', 'vaccines',
   'temperature', 'weight', 'height', 'headCirc',
   'firsts', 'teeth', 'profiles', 'activeProfile',
-  'feedTimerApp', 'timerState', 'notes',
+  'feedTimerApp', 'notes',
 ]);
 
 /** Recursively strip sensitive keys from any object */

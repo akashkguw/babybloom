@@ -103,8 +103,6 @@ interface LogTabProps {
   age: number;
   subNavRef?: React.MutableRefObject<string | null>;
   quickFormRef?: React.MutableRefObject<FormData | null>;
-  timerState?: { running: boolean; type: string | null; startTime: number | null };
-  setTimerState?: (state: { running: boolean; type: string | null; startTime: number | null }) => void;
   volumeUnit: 'oz' | 'ml';
 }
 

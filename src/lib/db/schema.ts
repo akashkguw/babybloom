@@ -101,14 +101,6 @@ export interface Profile {
   notifications?: boolean;
 }
 
-// ═══ TIMER STATE ═══
-
-export interface TimerState {
-  running?: boolean;
-  type?: string;
-  startTime?: number;
-}
-
 // ═══ REMINDERS & ALERTS ═══
 
 export interface Reminder {
@@ -151,7 +143,6 @@ export interface EmergencyContact {
 export interface AppData {
   logs?: Logs;
   profile?: Profile;
-  timerState?: TimerState;
   reminders?: Reminders;
   firsts?: FirstEntry[];
   emergencyContacts?: EmergencyContact[];
