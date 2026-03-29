@@ -4,7 +4,7 @@
  * Selection is persisted in IndexedDB under the key 'hero_bg'.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { C } from '@/lib/constants/colors';
 import { ds, dg } from '@/lib/db';
 import Icon from '@/components/shared/Icon';
@@ -14,6 +14,7 @@ export interface HeroBgSetting {
   type: 'gradient' | 'photo';
   value: string; // gradient CSS string or base64 data URL
   id: string;    // preset id or 'custom'
+  position?: { x: number; y: number }; // background-position as percentages (0-100), default 50/50
 }
 
 export const HERO_BG_KEY = 'hero_bg';
@@ -63,20 +64,67 @@ interface Props {
   onChange?: (bg: HeroBgSetting | null) => void;
 }
 
+/** Clamp a value between min and max */
+export function clampPosition(v: number): number {
+  return Math.max(0, Math.min(100, v));
+}
+
 export default function HeroBackgroundPicker({ onChange }: Props) {
   const [selected, setSelected] = useState<string>('default');
   const [customThumb, setCustomThumb] = useState<string | null>(null);
+  const [photoPos, setPhotoPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   // Load saved setting
   useEffect(() => {
     dg(HERO_BG_KEY).then((saved: HeroBgSetting | null) => {
       if (saved) {
         setSelected(saved.id);
-        if (saved.type === 'photo') setCustomThumb(saved.value);
+        if (saved.type === 'photo') {
+          setCustomThumb(saved.value);
+          if (saved.position) setPhotoPos(saved.position);
+        }
       }
     });
   }, []);
+
+  const savePosition = useCallback(async (pos: { x: number; y: number }) => {
+    const saved = await dg(HERO_BG_KEY) as HeroBgSetting | null;
+    if (saved?.type === 'photo') {
+      const updated: HeroBgSetting = { ...saved, position: pos };
+      await ds(HERO_BG_KEY, updated);
+      if (onChange) onChange(updated);
+    }
+  }, [onChange]);
+
+  const handleDragStart = useCallback((clientX: number, clientY: number) => {
+    dragState.current = {
+      startX: clientX,
+      startY: clientY,
+      startPosX: photoPos.x,
+      startPosY: photoPos.y,
+    };
+  }, [photoPos]);
+
+  const handleDragMove = useCallback((clientX: number, clientY: number) => {
+    if (!dragState.current || !dragRef.current) return;
+    const rect = dragRef.current.getBoundingClientRect();
+    // Convert pixel delta to percentage of container
+    const dx = ((clientX - dragState.current.startX) / rect.width) * 100;
+    const dy = ((clientY - dragState.current.startY) / rect.height) * 100;
+    // Invert: dragging right moves the visible window right = decrease background-position x
+    const newX = clampPosition(dragState.current.startPosX - dx);
+    const newY = clampPosition(dragState.current.startPosY - dy);
+    setPhotoPos({ x: newX, y: newY });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (!dragState.current) return;
+    dragState.current = null;
+    savePosition(photoPos);
+  }, [photoPos, savePosition]);
 
   const pick = (id: string) => {
     if (id === 'custom') {
@@ -102,10 +150,12 @@ export default function HeroBackgroundPicker({ onChange }: Props) {
     }
     try {
       const dataUrl = await resizeImage(file);
-      const bg: HeroBgSetting = { type: 'photo', value: dataUrl, id: 'custom' };
+      const defaultPos = { x: 50, y: 50 };
+      const bg: HeroBgSetting = { type: 'photo', value: dataUrl, id: 'custom', position: defaultPos };
       await ds(HERO_BG_KEY, bg);
       setSelected('custom');
       setCustomThumb(dataUrl);
+      setPhotoPos(defaultPos);
       if (onChange) onChange(bg);
       toast('Background updated!');
     } catch {
@@ -210,6 +260,38 @@ export default function HeroBackgroundPicker({ onChange }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Drag-to-reposition preview for custom photo */}
+      {selected === 'custom' && customThumb && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.tl, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Icon n="move" s={12} c={C.tl} />
+            Drag to reposition
+          </div>
+          <div
+            ref={dragRef}
+            onTouchStart={e => { e.preventDefault(); handleDragStart(e.touches[0].clientX, e.touches[0].clientY); }}
+            onTouchMove={e => { e.preventDefault(); handleDragMove(e.touches[0].clientX, e.touches[0].clientY); }}
+            onTouchEnd={handleDragEnd}
+            onMouseDown={e => { e.preventDefault(); handleDragStart(e.clientX, e.clientY); }}
+            onMouseMove={e => { if (dragState.current) handleDragMove(e.clientX, e.clientY); }}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={() => { if (dragState.current) handleDragEnd(); }}
+            style={{
+              width: '100%',
+              height: 120,
+              borderRadius: 14,
+              overflow: 'hidden',
+              cursor: 'grab',
+              background: `url(${customThumb}) no-repeat`,
+              backgroundSize: 'cover',
+              backgroundPosition: `${photoPos.x}% ${photoPos.y}%`,
+              border: `2px solid ${C.b}`,
+              touchAction: 'none',
+            }}
+          />
+        </div>
+      )}
 
       <input
         ref={fileRef}

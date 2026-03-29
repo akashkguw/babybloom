@@ -1134,7 +1134,14 @@ export default function HomeTab({
           isolation: 'isolate' as const,
           WebkitBackfaceVisibility: 'hidden' as const,
           ...(heroBg?.type === 'photo'
-            ? { background: `url(${heroBg.value}) center/cover no-repeat` }
+            ? {
+                backgroundImage: `url(${heroBg.value})`,
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: heroBg.position
+                  ? `${heroBg.position.x}% ${heroBg.position.y}%`
+                  : 'center',
+              }
             : {
                 background: heroBg?.type === 'gradient'
                   ? heroBg.value

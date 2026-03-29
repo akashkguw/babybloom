@@ -17,7 +17,7 @@ const homeTab = fs.readFileSync(path.join(srcDir, 'tabs/HomeTab.tsx'), 'utf8');
 // Extract the hero widget region (from the "Hero — baby dashboard" comment
 // to the closing of the outer div's style block)
 const heroStart = homeTab.indexOf('Hero — baby dashboard');
-const heroRegion = homeTab.slice(heroStart, heroStart + 1000);
+const heroRegion = homeTab.slice(heroStart, heroStart + 1200);
 
 describe('Hero widget — dark mode background bleed fix (#138)', () => {
   it('hero container uses isolation: isolate to prevent gradient bleed', () => {
