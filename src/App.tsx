@@ -632,7 +632,6 @@ function App() {
           className="app-header"
           style={{
             background: darkMode ? `linear-gradient(135deg, ${C.sl}, ${C.pl})` : `linear-gradient(135deg, #FF6B8A, #FF8FA0, #FFA5B4)`,
-            borderBottom: `1px solid ${darkMode ? C.b : 'transparent'}`,
             boxShadow: darkMode ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.1)',
           }}
         >
