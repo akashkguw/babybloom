@@ -1595,15 +1595,19 @@ export default function HomeTab({
           };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Formula'], qType: 'Formula' };
           const qlPumped  = { e: '🍶', l: 'Bottle', fn: () => { if (!feedTimer) { const def = qlDefaults['Bottle']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Bottle'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Bottle'], qType: 'Pumped Milk' };
+          // Mutual exclusion helpers: some activities are impossible while feeding or sleeping
+          const isTimerActive = !!feedTimer; // any timed activity in progress (breast L/R or tummy time)
+          const isFeedingTimerActive = !!(feedTimer && (feedTimer.type === 'Breast L' || feedTimer.type === 'Breast R'));
           const qlTummy   = qlTapOnly['Tummy']
-            ? { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: false, needsQty: false }
-            : { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: feedTimer && feedTimer.type !== 'Tummy Time', needsQty: false };
+            ? { e: '🧒', l: 'Tummy', fn: () => quickLog('tummy', { type: 'Tummy Time' }, 'Tummy'), active: false, dis: isFeedingTimerActive || isSleeping, needsQty: false }
+            : { e: '🧒', l: 'Tummy', fn: () => startFeedTimer('Tummy Time'), active: feedTimer && feedTimer.type === 'Tummy Time', dis: (feedTimer && feedTimer.type !== 'Tummy Time') || isSleeping, needsQty: false };
           const qlWet     = { e: '💧', l: 'Pee', fn: () => quickLog('diaper', { type: 'Wet' }, 'Pee'), active: false, dis: false, needsQty: false };
           const qlDirty   = { e: '💩', l: 'Poop', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Poop'), active: false, dis: false, needsQty: false };
-          const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: false, highlight: isSleeping, needsQty: false };
-          const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: false, needsQty: false };
-          const qlBath    = { e: '🛁', l: 'Bath', fn: () => quickLog('bath', { type: 'Full Bath' }, 'Bath'), active: false, dis: false, needsQty: false };
-          const qlMassage = { e: '💆', l: 'Massage', fn: () => quickLog('massage', { type: 'Full Body' }, 'Massage'), active: false, dis: false, needsQty: false };
+          // "Wake Up" is always tappable; "Sleep" is blocked while any timed activity runs
+          const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: !isSleeping && isTimerActive, highlight: isSleeping, needsQty: false };
+          const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: isFeedingTimerActive || isSleeping, needsQty: false };
+          const qlBath    = { e: '🛁', l: 'Bath', fn: () => quickLog('bath', { type: 'Full Bath' }, 'Bath'), active: false, dis: isTimerActive || isSleeping, needsQty: false };
+          const qlMassage = { e: '💆', l: 'Massage', fn: () => quickLog('massage', { type: 'Full Body' }, 'Massage'), active: false, dis: isTimerActive, needsQty: false };
           const qlPump    = { e: '🫙', l: 'Express', fn: () => quickLog('pump', { type: 'Both' }, 'Express'), active: false, dis: false, needsQty: false };
           const qlMeds    = { e: '💊', l: 'Meds', fn: () => quickLog('meds', { type: 'Medicine' }, 'Meds'), active: false, dis: false, needsQty: false };
           const qlTemp    = { e: '🌡️', l: 'Temp', fn: () => quickLog('temp', { type: 'Temperature' }, 'Temp'), active: false, dis: false, needsQty: false };
