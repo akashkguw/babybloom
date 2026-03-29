@@ -150,7 +150,7 @@ export default function HomeTab({
       if (onGuideShown) onGuideShown();
     }
   }, [showGuideFromSettings]);
-  const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; emoji: string; msg: string; encouragement: string } | null>(null);
+  const [undoEntry, setUndoEntry] = useState<{ cat: string; entry: LogEntry; emoji: string; msg: string; encouragement: string; prevLogs: Logs } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerFlash = useCallback((label: string) => {
@@ -728,6 +728,8 @@ export default function HomeTab({
       }
     }
 
+    // Snapshot logs before mutation for reliable undo
+    const prevLogs = logs;
     const next = Object.assign({}, logs);
     next[cat] = [e].concat((logs[cat] || []) as LogEntry[]);
     setLogs(next);
@@ -746,7 +748,7 @@ export default function HomeTab({
       tummy: '🤸',
     };
     const emoji = emojis[cat] || '✓';
-    setUndoEntry({ cat, entry: e, emoji, msg, encouragement });
+    setUndoEntry({ cat, entry: e, emoji, msg, encouragement, prevLogs });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
   }
@@ -754,12 +756,8 @@ export default function HomeTab({
   // ═══ Undo log helper ═══
   function undoLog() {
     if (!undoEntry) return;
-    const { cat, entry } = undoEntry;
-    const updated = Object.assign({}, logs);
-    const entries = (updated[cat] || []) as LogEntry[];
-    // Remove the entry that matches the id
-    updated[cat] = entries.filter((e) => e.id !== entry.id);
-    setLogs(updated);
+    // Restore the exact logs snapshot from before the action
+    setLogs(undoEntry.prevLogs);
     setUndoEntry(null);
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   }
@@ -848,10 +846,12 @@ export default function HomeTab({
     if (!isTummy) {
       const recent = getRecentFeed(feedTimer.type);
       if (recent) {
+        // Snapshot logs before merge for reliable undo
+        const prevLogs = logs;
         // Auto-merge into previous feed (only merges same-type or breast L↔R)
         mergeIntoLastFeed(minsInt, feedTimer.type);
         const enc = getEncouragement('feed', feedTimer.type);
-        setUndoEntry({ cat: 'feed', entry: { id: Date.now(), date: today(), time: feedTimer.startTimeStr, type: feedTimer.type, mins: minsInt } as LogEntry, emoji: '🍼', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min added', encouragement: enc });
+        setUndoEntry({ cat: 'feed', entry: { id: Date.now(), date: today(), time: feedTimer.startTimeStr, type: feedTimer.type, mins: minsInt } as LogEntry, emoji: '🍼', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min added', encouragement: enc, prevLogs });
         if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
         undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
         setFeedTimerApp(null);
@@ -859,6 +859,8 @@ export default function HomeTab({
       }
     }
 
+    // Snapshot logs before mutation for reliable undo
+    const prevLogs = logs;
     const entry: LogEntry = {
       date: today(),
       time: feedTimer.startTimeStr,
@@ -875,7 +877,7 @@ export default function HomeTab({
     const timerCat = isTummy ? 'tummy' : 'feed';
     const enc = getEncouragement(timerCat, feedTimer.type);
     const timerEmojis: Record<string, string> = { feed: '🍼', tummy: '🤸' };
-    setUndoEntry({ cat: timerCat, entry, emoji: timerEmojis[timerCat] || '✓', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min logged', encouragement: enc });
+    setUndoEntry({ cat: timerCat, entry, emoji: timerEmojis[timerCat] || '✓', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min logged', encouragement: enc, prevLogs });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
     setFeedTimerApp(null);
@@ -1059,62 +1061,63 @@ export default function HomeTab({
       : {};
 
   return (
-    <div className="ca" style={{ padding: '16px 16px 120px' }}>
-      {/* Combined undo + message banner */}
-      {undoEntry && (
+    <>
+    {/* Combined undo + message banner — rendered outside .ca scroll container so position:fixed works reliably on all devices */}
+    {undoEntry && (
+      <div
+        className="undo-banner"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: C.bg === '#1A1A2E' ? '#2A2654' : '#5C4D8A',
+          zIndex: 1000,
+          animation: 'ql-undo-slide 0.3s ease-out',
+        }}
+      >
         <div
-          className="undo-banner"
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            background: C.bg === '#1A1A2E' ? '#2A2654' : '#5C4D8A',
-            zIndex: 1000,
-            animation: 'ql-undo-slide 0.3s ease-out',
+            padding: '10px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            maxWidth: 500,
+            margin: '0 auto',
           }}
         >
-          <div
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>
+              {undoEntry.emoji} {undoEntry.msg}
+            </div>
+            {undoEntry.encouragement && (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>
+                {undoEntry.encouragement}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={undoLog}
             style={{
-              padding: '10px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              maxWidth: 500,
-              margin: '0 auto',
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: 20,
+              padding: '6px 16px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              minWidth: 56,
+              marginLeft: 12,
+              flexShrink: 0,
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>
-                {undoEntry.emoji} {undoEntry.msg}
-              </div>
-              {undoEntry.encouragement && (
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>
-                  {undoEntry.encouragement}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={undoLog}
-              style={{
-                background: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: 20,
-                padding: '6px 16px',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                minWidth: 56,
-                marginLeft: 12,
-                flexShrink: 0,
-              }}
-            >
-              Undo
-            </button>
-          </div>
+            Undo
+          </button>
         </div>
-      )}
+      </div>
+    )}
+    <div className="ca" style={{ padding: '16px 16px 120px' }}>
 
       {/* Hero — baby dashboard */}
       <div
@@ -2079,5 +2082,6 @@ export default function HomeTab({
 
 
     </div>
+    </>
   );
 }
