@@ -13,6 +13,8 @@ import { isValidBirthDate } from '@/lib/utils/validate';
 import WelcomeCarousel from '@/components/onboarding/WelcomeCarousel';
 import MilestoneCarousel from '@/components/onboarding/MilestoneCarousel';
 import { getEncouragement } from '@/lib/constants/encouragements';
+import { HERO_BG_KEY } from '@/features/settings/HeroBackgroundPicker';
+import type { HeroBgSetting } from '@/features/settings/HeroBackgroundPicker';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
@@ -123,6 +125,14 @@ export default function HomeTab({
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
+  const [heroBg, setHeroBg] = useState<HeroBgSetting | null>(null);
+
+  // Load hero background setting
+  useEffect(() => {
+    dg(HERO_BG_KEY).then((saved: HeroBgSetting | null) => {
+      if (saved) setHeroBg(saved);
+    });
+  }, []);
 
   // Check if baby turned 2 and milestone carousel hasn't been shown yet
   useEffect(() => {
@@ -1106,13 +1116,23 @@ export default function HomeTab({
           borderRadius: 16,
           overflow: 'hidden',
           marginBottom: 12,
-          background: `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
-          backgroundSize: '200% 200%',
-          animation: 'heroGradientShift 12s ease-in-out infinite',
+          ...(heroBg?.type === 'photo'
+            ? { background: `url(${heroBg.value}) center/cover no-repeat` }
+            : {
+                background: heroBg?.type === 'gradient'
+                  ? heroBg.value
+                  : `linear-gradient(145deg, ${C.p}, ${C.s} 40%, ${C.pu} 70%, ${C.p} 100%)`,
+                backgroundSize: '200% 200%',
+                animation: 'heroGradientShift 12s ease-in-out infinite',
+              }),
           boxShadow: `0 8px 32px ${C.p}33, 0 2px 8px rgba(0,0,0,0.1)`,
           ...reveal(0),
         }}
       >
+        {/* Scrim overlay for photo backgrounds — ensures white text is readable */}
+        {heroBg?.type === 'photo' && (
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.4) 100%)', zIndex: 0 }} />
+        )}
         {/* Decorative background elements */}
         <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', animation: 'heroOrbFloat 8s ease-in-out infinite' }} />
         <div style={{ position: 'absolute', bottom: -40, left: -25, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'heroOrbFloat 10s ease-in-out infinite 2s' }} />

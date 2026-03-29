@@ -5,6 +5,7 @@ import Pill from '@/components/shared/Pill';
 import Icon from '@/components/shared/Icon';
 import ProfileManager from '@/features/profiles/ProfileManager';
 import SiriShortcutsSetup from '@/features/shortcuts/SiriShortcutsSetup';
+import HeroBackgroundPicker from '@/features/settings/HeroBackgroundPicker';
 import { today } from '@/lib/utils/date';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
@@ -35,6 +36,7 @@ interface SettingsProps {
   country: CountryCode;
   setCountry: (code: CountryCode) => void;
   countryConfig: CountryConfig;
+  onHeroBgChange?: (bg: any) => void;
 }
 
 const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
@@ -72,6 +74,7 @@ export default function Settings({
   country,
   setCountry,
   countryConfig,
+  onHeroBgChange,
 }: SettingsProps) {
   const countries = getAvailableCountries();
 
@@ -227,6 +230,11 @@ export default function Settings({
               ))}
             </div>
           </div>
+        </Section>
+
+        {/* Hero Background */}
+        <Section title="Hero Background" icon="🎨">
+          <HeroBackgroundPicker onChange={onHeroBgChange} />
         </Section>
 
         {/* Feeding Reminders */}
