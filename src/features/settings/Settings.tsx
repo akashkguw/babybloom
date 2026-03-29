@@ -39,15 +39,37 @@ interface SettingsProps {
   onHeroBgChange?: (bg: any) => void;
 }
 
-const Section = ({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) => (
-  <div style={{ marginBottom: 20 }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-      <span style={{ fontSize: 16 }}>{icon}</span>
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>{title}</div>
+/* Section with Icon-based header — professional, consistent iconography */
+const Section = ({ title, iconName, iconColor, children }: {
+  title: string;
+  iconName: string;
+  iconColor?: string;
+  children: React.ReactNode;
+}) => (
+  <div style={{ marginBottom: 16 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <Icon n={iconName} s={16} c={iconColor || C.tl} />
+      <div style={{ fontSize: 14, fontWeight: 700, color: C.t }}>{title}</div>
     </div>
-    <div style={{ background: C.cd, borderRadius: 16, padding: 16, border: '1px solid ' + C.b }}>
+    <div style={{ background: C.cd, borderRadius: 14, padding: 14, border: '1px solid ' + C.b }}>
       {children}
     </div>
+  </div>
+);
+
+/* Group label for visual hierarchy */
+const GroupLabel = ({ label }: { label: string }) => (
+  <div style={{
+    fontSize: 11,
+    fontWeight: 700,
+    color: C.tl,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    marginBottom: 10,
+    marginTop: 8,
+    paddingLeft: 2,
+  }}>
+    {label}
   </div>
 );
 
@@ -87,14 +109,17 @@ export default function Settings({
     >
       {/* Header */}
       <div
-        className="app-header"
         style={{
           position: 'sticky',
           top: 0,
           background: C.bg,
           borderBottom: '1px solid ' + C.b,
-          gap: 12,
           zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
         }}
       >
         <button
@@ -113,35 +138,39 @@ export default function Settings({
         >
           <Icon n="arrow-left" s={18} c={C.t} />
         </button>
+        <Icon n="settings" s={20} c={C.p} />
         <h1 style={{ fontSize: 20, fontWeight: 800, color: C.t, margin: 0 }}>Settings</h1>
       </div>
 
       <div style={{ padding: '16px 16px 100px' }}>
         {/* Privacy notice */}
-        <div style={{ background: C.al, borderRadius: 14, padding: '12px 14px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon n="shield" s={18} c={C.a} />
+        <div style={{ background: C.al, borderRadius: 14, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon n="shield" s={16} c={C.a} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.a }}>Your Data is Local</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.a }}>Your Data is Local</div>
             <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.4 }}>Stored on your device. Nothing sent to servers.</div>
           </div>
         </div>
 
-        {/* Profiles */}
+        {/* ─── Group: Profile & Region ─── */}
         {profiles && profiles.length > 0 && (
-          <Section title="Profiles" icon="👶">
-            <ProfileManager
-              profiles={profiles}
-              activeProfile={activeProfile}
-              onSwitch={onSwitchProfile}
-              onAdd={onAddProfile}
-              onDelete={onDeleteProfile}
-              onRename={onRenameProfile}
-            />
-          </Section>
+          <>
+            <GroupLabel label="Profile & Region" />
+
+            <Section title="Profiles" iconName="users" iconColor={C.p}>
+              <ProfileManager
+                profiles={profiles}
+                activeProfile={activeProfile}
+                onSwitch={onSwitchProfile}
+                onAdd={onAddProfile}
+                onDelete={onDeleteProfile}
+                onRename={onRenameProfile}
+              />
+            </Section>
+          </>
         )}
 
-        {/* Country / Region */}
-        <Section title="Country" icon="🌍">
+        <Section title="Country" iconName="home" iconColor={C.a}>
           <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 8 }}>
             Select your country for localized guidelines, vaccines & emergency numbers
           </div>
@@ -152,7 +181,7 @@ export default function Settings({
                 onClick={() => setCountry(c.code)}
                 style={{
                   flex: '1 1 45%',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   borderRadius: 12,
                   border: `2px solid ${country === c.code ? C.a : C.b}`,
                   background: country === c.code ? C.al : C.bg,
@@ -163,7 +192,7 @@ export default function Settings({
                   transition: 'all 0.2s',
                 }}
               >
-                <span style={{ fontSize: 24 }}>{c.flag}</span>
+                <span style={{ fontSize: 22 }}>{c.flag}</span>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.t }}>{c.name}</div>
                   <div style={{ fontSize: 10, color: C.tl }}>
@@ -177,7 +206,7 @@ export default function Settings({
             ))}
           </div>
           {countryConfig && (
-            <div style={{ marginTop: 10, fontSize: 11, color: C.tl, lineHeight: 1.4 }}>
+            <div style={{ marginTop: 8, fontSize: 11, color: C.tl, lineHeight: 1.4 }}>
               Using {countryConfig.medical.authorityFull} ({countryConfig.medical.authority}) guidelines
               {' \u00B7 '}Emergency: {countryConfig.emergency.primaryNumber}
               {' \u00B7 '}Vaccines: {countryConfig.vaccineSource}
@@ -185,8 +214,10 @@ export default function Settings({
           )}
         </Section>
 
-        {/* General */}
-        <Section title="General" icon="⚙️">
+        {/* ─── Group: Preferences ─── */}
+        <GroupLabel label="Preferences" />
+
+        <Section title="General" iconName="settings" iconColor={C.s}>
           {birth && (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: C.tl, marginBottom: 4 }}>Birth Date</div>
@@ -231,13 +262,11 @@ export default function Settings({
           </div>
         </Section>
 
-        {/* Hero Background */}
-        <Section title="Hero Background" icon="🎨">
+        <Section title="Hero Background" iconName="palette" iconColor={C.pu}>
           <HeroBackgroundPicker onChange={onHeroBgChange} />
         </Section>
 
-        {/* Feeding Reminders */}
-        <Section title="Feeding Reminders" icon="🔔">
+        <Section title="Feeding Reminders" iconName="bell" iconColor={C.w}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 13, color: C.t }}>Enable smart reminders</div>
             <button
@@ -280,13 +309,14 @@ export default function Settings({
           </div>
         </Section>
 
-        {/* Siri Shortcuts */}
-        <Section title="Shortcuts" icon="🎙️">
+        <Section title="Shortcuts" iconName="mic" iconColor={C.bl}>
           <SiriShortcutsSetup volumeUnit={volumeUnit} />
         </Section>
 
-        {/* App Guide */}
-        <Section title="Guide" icon="📖">
+        {/* ─── Group: Data & Support ─── */}
+        <GroupLabel label="Data & Support" />
+
+        <Section title="Guide" iconName="book" iconColor={C.s}>
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
             Revisit the app walkthrough — learn about quick logging, smart alerts, wellness tracking, and more.
           </div>
@@ -298,8 +328,7 @@ export default function Settings({
           />
         </Section>
 
-        {/* Data Management */}
-        <Section title="Data" icon="💾">
+        <Section title="Data" iconName="database" iconColor={C.a}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Button
               label="Sync / Share Data"
@@ -320,8 +349,7 @@ export default function Settings({
           </div>
         </Section>
 
-        {/* Danger Zone */}
-        <Section title="Reset" icon="⚠️">
+        <Section title="Reset" iconName="alert-triangle" iconColor="#FF5252">
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
             This will permanently delete all profiles, logs, milestones, and vaccine records from this device.
           </div>

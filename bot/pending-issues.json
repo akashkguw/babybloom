@@ -230,5 +230,66 @@
     "created_at": "2026-03-29T05:58:12Z",
     "status": "skipped",
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
+  },
+  {
+    "number": 134,
+    "title": "setting UX page has a lot of white space on top",
+    "body": "## \ud83d\udc1b Bug Report\n\nsetting UX page has a lot of white space on top.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/134",
+    "created_at": "2026-03-29T06:43:06.932Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The Settings page has excessive white/blank space at the top, between the header and the first content section.\n\n**Root cause:** The header uses the `.app-header` CSS class which has `position: fixed` by default (with safe-area-inset padding), but the component overrides it to `position: sticky`. The content area below starts at `padding: 16px` which may not account for the header height correctly, or the safe-area-inset-top adds large padding that creates visible white space on certain devices.\n\n**Component affected:** `src/features/settings/Settings.tsx` \u2014 the header div (lines 89-117) and content wrapper (line 119).\n\n**Expected behaviour:** The content should start immediately below the header with minimal spacing \u2014 no large blank gap.\n\n**Current behaviour:** A significant white/blank area appears between the top of the page and the first visible content (the privacy notice banner).\n\n**Edge cases:**\n- Devices with notch/dynamic island may have larger safe-area-inset-top\n- Test on both notched and non-notched devices/viewports\n\n**Acceptance criteria:**\n- No excessive white space visible between the header and the privacy notice\n- Header still properly accounts for safe-area-inset on notched devices\n- Page scrolling behaviour remains smooth\n\n**Testing:** Add unit test verifying the Settings header renders without excessive top margin. Add visual regression test for the Settings page layout.",
+    "implementation_notes": "Fixed excessive white space on Settings page header.\n\n- Files changed:\n  - src/features/settings/Settings.tsx: Removed app-header CSS class from Settings header. The app-header class applies position:fixed with large safe-area-inset padding that created a visible white gap when overridden to position:sticky. Replaced with inline styles that directly control padding with a minimal safe-area-inset-top calculation.\n- Approach: The header now uses its own flex layout with controlled padding (12px + safe-area-inset-top) instead of inheriting the global app-header class meant for the fixed main header.\n- Trade-offs: Settings header no longer shares styles with the main app header, but this is correct since they serve different purposes (sticky vs fixed)."
+  },
+  {
+    "number": 135,
+    "title": "setting UX page as an icon before \u201cSettings\u201d which is white",
+    "body": "## \ud83d\udc1b Bug Report\n\nsetting UX page as an icon before \u201cSettings\u201d which is white\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/135",
+    "created_at": "2026-03-29T06:43:36.163Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The Settings page header has a back-arrow icon (arrow-left) before the \"Settings\" title text. This icon appears white or very light, making it invisible or hard to see against the header background.\n\n**Component affected:** `src/features/settings/Settings.tsx` \u2014 the header back button (lines 100-115) uses `<Icon n=\"arrow-left\" s={18} c={C.t} />` where `C.t` is the text color from the color constants.\n\n**Expected behaviour:** The back-arrow icon should be clearly visible with good contrast against the header background (`C.bg`).\n\n**Current behaviour:** The icon color (`C.t`) appears white or too light, blending into the background and being hard to see or invisible.\n\n**Possible fix:** Ensure the icon color has sufficient contrast against the header background. Check if `C.t` resolves to a very light color. Consider using a darker/more contrasting color, or add a visible background container around the icon.\n\n**Edge cases:**\n- Dark mode vs light mode if applicable\n- Different screen brightness settings\n\n**Acceptance criteria:**\n- The back-arrow icon is clearly visible with good contrast\n- The icon remains visually consistent with the app's design language\n- Icon is accessible (meets WCAG contrast ratios)\n\n**Testing:** Add unit test verifying the Settings header back button renders with the correct icon color. Add test that the Icon component receives a color prop with sufficient contrast.",
+    "implementation_notes": "Fixed invisible back-arrow icon in Settings header.\n\n- Files changed:\n  - src/lib/constants/icons.ts: Added missing 'arrow-left' SVG path to the icon constants. The Icon component renders empty SVGs for unknown icon names, so the missing path made the back button invisible.\n  - src/features/settings/Settings.tsx: Added a visible settings gear icon (using C.p primary pink color) next to the 'Settings' title text for better header identity.\n- Root cause: The arrow-left icon was being used in Settings.tsx but its SVG path was never defined in icons.ts, resulting in an empty/invisible SVG.\n- Also added: bell, mic, palette, database, info icon paths for the section header redesign."
+  },
+  {
+    "number": 136,
+    "title": "Settings page is not professional and intuitive",
+    "body": "## \ud83d\udc1b Bug Report\n\nSettings page is not professional and intuitive.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/136",
+    "created_at": "2026-03-29T06:43:53.076Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "The Settings page overall layout and UX does not feel professional or intuitive. This is a general UX improvement request covering the entire Settings page.\n\n**Component affected:** `src/features/settings/Settings.tsx` \u2014 the entire page layout and section organization.\n\n**Current issues observed:**\n- Excessive white space at the top (related to #134)\n- Icon visibility issues in the header (related to #135)\n- Many sections stacked vertically with no visual hierarchy or grouping\n- Section cards all look the same \u2014 no visual differentiation between important settings (profiles, country) vs secondary ones (guide, data, reset)\n- The page has 9 sections which may feel overwhelming: Profiles, Country, General, Hero Background, Feeding Reminders, Shortcuts, Guide, Data, Reset\n- No search or quick-navigation for settings\n- Emoji-based section icons (emoji before section titles) may look informal/unprofessional\n\n**Expected behaviour:** The Settings page should feel polished, well-organized, and easy to navigate. Important settings should be visually prominent, and the page should have clear visual hierarchy.\n\n**Suggested improvements:**\n- Group related settings (e.g., \"Personalization\" group for Country + Volume + Hero Background)\n- Add visual hierarchy \u2014 primary settings more prominent than secondary\n- Consider collapsible sections or a grouped card approach\n- Use consistent, professional iconography instead of emojis for section headers\n- Reduce total visible sections by grouping related items\n- Ensure proper spacing and padding throughout\n\n**Edge cases:**\n- Settings page with no profiles (new user)\n- Small screen devices \u2014 ensure sections don't overflow\n- Long country lists\n\n**Acceptance criteria:**\n- Settings page feels organized and professional\n- Clear visual hierarchy between primary and secondary settings\n- Sections are logically grouped\n- All interactive elements are easy to find and use\n- No regression in existing functionality\n\n**Testing:** Add unit tests for the reorganized Settings component. Test that all settings sections render correctly. Test that grouping/collapsing works if implemented. Verify no functional regression in settings changes (birth date, volume unit, country, reminders, etc.).",
+    "implementation_notes": "Redesigned Settings page for professional, intuitive UX.\n\n- Files changed:\n  - src/features/settings/Settings.tsx: Complete Section component redesign.\n    - Replaced emoji-based section icons with Icon components using iconName/iconColor props\n    - Added GroupLabel component for visual hierarchy: 'Profile & Region', 'Preferences', 'Data & Support'\n    - Reduced spacing and padding for a tighter, more professional layout\n    - Each section now has a color-coded icon matching its purpose (users=pink, bell=warning, database=accent, etc.)\n  - src/lib/constants/icons.ts: Added 6 new icons (arrow-left, bell, mic, palette, database, info) to support icon-based section headers\n  - tests/unit/settings-ui.test.ts: New test file covering all three issues (header layout, icon visibility, professional design)\n- Approach: Maintained all existing functionality while improving visual hierarchy through grouped sections and consistent iconography.\n- Trade-offs: Section component signature changed from icon (emoji string) to iconName/iconColor (Icon component props). Country flags still use emoji since they are actual flag characters, not design icons."
+  },
+  {
+    "number": 137,
+    "title": "same notification comes multiple times- example if feed is due everytime I op...",
+    "body": "## \ud83d\udc1b Bug Report\n\nsame notification comes multiple times- example if feed is due everytime I open the app it shows as notification\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/137",
+    "created_at": "2026-03-29T06:44:40.715Z",
+    "status": "pending"
   }
 ]
