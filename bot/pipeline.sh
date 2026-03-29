@@ -448,21 +448,25 @@ except:
       run_claude_phase "triage" "You are the BabyBloom triage agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
+GITHUB_TOKEN=$GITHUB_TOKEN
+REPO=$REPO
 
 ## Instructions
 1. Read $REPO_DIR/bot/TRIAGE_SKILL.md
 2. SKIP the run-lock step — pipeline.sh handles serialization
 3. SKIP stale recovery — pipeline.sh already handled it
 4. Triage ONLY issue #$ISSUE_NUM: classify it, enrich the description, assign a route
-5. Update pending-issues.json with status=triaged and the route
-6. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
-7. STOP after triaging
+5. If route=implementation AND the issue is large (needs 3+ new files, external service integration, etc.), follow Step 3.5 to auto-split it into smaller sub-issues
+6. Update pending-issues.json with status=triaged (or split) and the route
+7. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
+8. STOP after triaging
 
 ## Environment
 - Running natively on macOS (not in a sandbox)
 - All filesystem operations work normally
 - Use REPO_DIR=$REPO_DIR for all file paths
-" 120
+- GITHUB_TOKEN and REPO are available for creating sub-issues if needed
+" 180
 
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  Triage failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
@@ -487,17 +491,32 @@ json.dump(q, open(path, 'w'), indent=2)
         continue
       fi
 
-      # Re-read route after triage
-      ISSUE_ROUTE=$(python3 -c "
+      # Re-read status and route after triage
+      ISSUE_AFTER=$(python3 -c "
 import json
 q = json.load(open('$QUEUE_FILE'))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
-        print(i.get('route', '-'))
+        print(i.get('status', '-') + '|' + i.get('route', '-'))
         break
-" 2>/dev/null || echo "-")
-      ISSUE_STATUS="triaged"
-      echo "  📋 Triaged → route: $ISSUE_ROUTE"
+" 2>/dev/null || echo "-|-")
+      ISSUE_STATUS=$(echo "$ISSUE_AFTER" | cut -d'|' -f1)
+      ISSUE_ROUTE=$(echo "$ISSUE_AFTER" | cut -d'|' -f2)
+      echo "  📋 Triaged → status: $ISSUE_STATUS, route: $ISSUE_ROUTE"
+
+      # If triage auto-split the issue, skip specialist phase
+      if [ "$ISSUE_STATUS" = "split" ] || [ "$ISSUE_STATUS" = "skipped" ] || [ "$ISSUE_STATUS" = "rejected" ]; then
+        echo "  ℹ️  Issue #$ISSUE_NUM was $ISSUE_STATUS by triage — skipping specialist"
+        CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "" >> "$CLAUDE_HISTORY_LOG"
+        echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+        echo "Route: $ISSUE_ROUTE | Result: $ISSUE_STATUS (by triage)" >> "$CLAUDE_HISTORY_LOG"
+        echo "Token breakdown:" >> "$CLAUDE_HISTORY_LOG"
+        echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+        echo "Total cost: \$$TOTAL_ISSUE_COST" >> "$CLAUDE_HISTORY_LOG"
+        echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+        continue
+      fi
     fi
 
     # ═══ PHASE 2: SPECIALIST (route-dependent) ═══
@@ -838,6 +857,49 @@ try:
   remaining=[i for i in q if i.get('status')!='rejected']
   json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
 except: pass
+" 2>/dev/null || true
+fi
+
+# ─── Notify split issues (comment on parent, then remove from queue) ───
+if [ -f "$QUEUE_FILE" ]; then
+  python3 -c "
+import urllib.request, json, ssl
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('status') != 'split': continue
+    num = i['number']
+    subs = i.get('split_into', [])
+    if not subs: continue
+
+    sub_list = '\n'.join(f'- #{s}' for s in subs)
+    body = json.dumps({'body': f'🔀 **Auto-split by pipeline**\n\nThis issue was too large for a single implementation pass. It has been split into smaller sub-issues:\n\n{sub_list}\n\nThis parent issue will be closed. Track progress via the sub-issues above.'})
+    try:
+        req = urllib.request.Request(
+            f'https://api.github.com/repos/$REPO/issues/{num}/comments',
+            data=body.encode(), method='POST',
+            headers={'Authorization': 'Bearer $GITHUB_TOKEN', 'Content-Type': 'application/json'}
+        )
+        urllib.request.urlopen(req, timeout=10, context=ctx)
+        # Close the parent issue
+        close_body = json.dumps({'state': 'closed', 'state_reason': 'completed'})
+        req2 = urllib.request.Request(
+            f'https://api.github.com/repos/$REPO/issues/{num}',
+            data=close_body.encode(), method='PATCH',
+            headers={'Authorization': 'Bearer $GITHUB_TOKEN', 'Content-Type': 'application/json'}
+        )
+        urllib.request.urlopen(req2, timeout=10, context=ctx)
+        print(f'🔀 Split & closed: #{num} → {subs}')
+    except Exception as e:
+        print(f'⚠️ Could not notify split for #{num}: {e}')
+
+# Remove split issues from queue
+remaining = [i for i in q if i.get('status') != 'split']
+json.dump(remaining, open('$QUEUE_FILE', 'w'), indent=2)
 " 2>/dev/null || true
 fi
 

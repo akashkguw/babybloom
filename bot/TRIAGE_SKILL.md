@@ -187,6 +187,100 @@ Examples: "Chicken is little hard", "nice app", "thanks"
 
 ---
 
+## Step 3.5 — Scope check: auto-split large implementation issues
+
+After classifying an issue as `implementation`, estimate its **scope** before proceeding. A single Claude CLI phase has ~5 minutes for core implementation. Issues that require more than that should be split.
+
+**An issue is "large" if it needs 2+ of these:**
+- A new npm dependency or external service integration (Firebase, Supabase, Auth0, etc.)
+- 3+ new files (components, hooks, utils)
+- Changes to 4+ existing files
+- A new data model / storage schema
+- Both UI + business logic + tests for a complex feature
+
+**If the issue is large**, split it into 2–4 focused sub-issues that can each be implemented independently within the timeout. Create the sub-issues on GitHub and add them to the queue:
+
+```bash
+python3 -c "
+import urllib.request, json, ssl
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+token = '$GITHUB_TOKEN'
+repo = '$REPO'
+queue_path = '$REPO_DIR/bot/pending-issues.json'
+parent_num = NUMBER  # The original large issue number
+
+# Define sub-issues (CUSTOMIZE THESE for each split)
+sub_issues = [
+    {
+        'title': 'SUB_TITLE_1',
+        'body': 'Part of #' + str(parent_num) + '\n\nSCOPE: what this sub-issue covers\nFILES: which files to create/edit\nDEPENDENCIES: what to install if any',
+        'labels': ['sub-issue']
+    },
+    {
+        'title': 'SUB_TITLE_2',
+        'body': 'Part of #' + str(parent_num) + '\n\nSCOPE: ...\nFILES: ...',
+        'labels': ['sub-issue']
+    }
+]
+
+q = json.load(open(queue_path))
+created = []
+for si in sub_issues:
+    data = json.dumps(si).encode()
+    req = urllib.request.Request(
+        f'https://api.github.com/repos/{repo}/issues',
+        data=data, method='POST',
+        headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+    )
+    resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
+    gh_num = resp['number']
+    created.append(gh_num)
+    print(f'Created sub-issue #{gh_num}: {si[\"title\"]}')
+
+    # Add to queue as pending (will be triaged next cycle)
+    existing_nums = {i['number'] for i in q}
+    if gh_num not in existing_nums:
+        q.append({
+            'number': gh_num,
+            'title': si['title'],
+            'body': si['body'],
+            'labels': si['labels'],
+            'url': resp.get('html_url', ''),
+            'created_at': resp.get('created_at', ''),
+            'status': 'pending',
+            'source': 'split',
+            'parent_issue': parent_num
+        })
+
+json.dump(q, open(queue_path, 'w'), indent=2)
+
+# Mark original issue as split (not pending, not triaged — it's been decomposed)
+for i in q:
+    if i.get('number') == parent_num:
+        i['status'] = 'split'
+        i['split_into'] = created
+        i['skip_reason'] = f'Auto-split into {len(created)} sub-issues: ' + ', '.join(f'#{n}' for n in created)
+        break
+json.dump(q, open(queue_path, 'w'), indent=2)
+print(f'Marked #{parent_num} as split → {created}')
+"
+```
+
+**Guidelines for splitting:**
+- Each sub-issue should be completable in one impl-core phase (~5 min)
+- Order matters: if sub-issue B depends on A's files, note it in the body ("Depends on sub-issue for utilities")
+- First sub-issue often creates the data model / utilities
+- Last sub-issue often handles integration + wiring into existing app
+- Keep tests with each sub-issue (not a separate "write tests" issue)
+
+**If the issue is small enough** (1–2 files, straightforward change), skip this step and proceed to Step 4.
+
+---
+
 ## Step 4 — Enrich description and save routing
 
 For each triaged issue, update `pending-issues.json`:
