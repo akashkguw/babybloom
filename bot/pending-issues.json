@@ -191,36 +191,5 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
-  },
-  {
-    "number": 126,
-    "title": "vertical scroll coming in the app",
-    "body": "## \ud83d\udc1b Bug Report\n\nvertical scroll coming in the app\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/126",
-    "created_at": "2026-03-29T02:45:12.111Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports unwanted vertical scrolling appearing in the app. This is a CSS/layout bug where the page or a container is overflowing its bounds, causing a visible scrollbar or scroll behavior that should not be there.\n- Affected area: App-level layout or a specific page/component allowing vertical overflow\n- Expected behaviour: The app content should fit within the viewport without triggering an unnecessary vertical scrollbar\n- Current behaviour: A vertical scrollbar appears or the page scrolls beyond intended bounds\n- Edge cases: Check all major views/pages; overflow may be caused by a single element with incorrect height/margin/padding\n- Acceptance criteria: No unwanted vertical scroll on any primary app view; layout stays within viewport bounds",
-    "implementation_notes": "Fixed unwanted vertical scroll by converting the app layout from a scrolling body to a contained flex column:\n- Files changed: src/styles/base.css (html/body/#root: height instead of min-height, overflow: hidden; .ca: added flex:1, overflow-y:auto, touch scrolling), src/App.tsx (main container: height 100dvh, flex column, overflow hidden; loading screen: same), src/features/settings/Settings.tsx (removed redundant minHeight: 100vh)\n- Approach: Changed root elements from min-height to fixed height with overflow:hidden, making the body unscrollable. Tab content areas (.ca class) now handle their own scrolling via flex:1 + overflow-y:auto. This prevents any unwanted body-level vertical scroll while preserving scroll within tab content.\n- Trade-offs: Content scrolling now happens inside the .ca container instead of the body. This is the standard approach for mobile PWA/Capacitor apps."
-  },
-  {
-    "number": 127,
-    "title": "search not working",
-    "body": "## \ud83d\udc1b Bug Report\n\nsearch not working\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/127",
-    "created_at": "2026-03-29T02:46:19.186Z",
-    "status": "triaged",
-    "route": "implementation",
-    "enhanced_description": "User reports that the search functionality is not working. When using the search feature, it either returns no results, fails to filter correctly, or does not respond to input.\n- Affected area: Search component/functionality in the app (likely a search bar or filter feature)\n- Expected behaviour: Typing in the search field should filter/find relevant entries (feeds, growth records, activities, etc.)\n- Current behaviour: Search does not produce results or does not function at all\n- Edge cases: Empty search, special characters, search across different data types, case sensitivity\n- Acceptance criteria: Search correctly filters and displays matching results for valid queries; graceful handling of empty/no-match states",
-    "implementation_notes": "Fixed search by correcting the log types array and expanding search coverage:\n- Files changed: src/components/modals/SearchModal.tsx\n- Bugs fixed: (1) logTypes array was missing tummy and massage categories, and included nonexistent pump category \u2014 corrected to match actual log data model. (2) Added more log entry fields to text extraction (subType, head, side). (3) Added milestone search using MILESTONES constant data \u2014 searches motor, cognitive, social, language items and red flags. (4) Cleaned up unused interface props (MILESTONES, VACCINES, SAFETY, FEEDING, SLEEP, ACTIVITIES that were never passed). (5) Capitalized log category names in results for better readability.\n- Approach: The root cause was that search could not find results for several log categories because they were missing from the search array. Additionally, milestone data was never searched despite being a key feature. Now search covers all log types and milestones."
   }
 ]
