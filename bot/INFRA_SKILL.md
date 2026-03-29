@@ -228,6 +228,27 @@ If your infrastructure changes break the pipeline (CI failures, build failures, 
 
 ---
 
+## Sandbox environment constraints (MUST read before running any commands)
+
+Every scheduled run executes inside an isolated Linux sandbox container. The repo is accessed via a mounted folder from the user's Mac. These constraints apply:
+
+### 1. NEVER use `rm` to delete files on the mounted repo
+Deleting files on the mounted folder triggers a **sandbox permission prompt** that blocks autonomous execution.
+- **Instead of `rm file`** → use `> file` or `echo "" > file`
+- `mv` and `cp` are fine — only `rm`/`unlink`/delete triggers the prompt
+
+### 2. esbuild / native binary platform mismatch
+The repo's `node_modules/` was installed on **macOS**, but the sandbox runs **Linux**. Run this before any vitest/vite/build command:
+```bash
+cd "$REPO_DIR" && npm install --no-save @esbuild/linux-arm64 2>/dev/null || npm install --no-save esbuild-linux-arm64 2>/dev/null
+```
+**Do NOT debug or RCA the esbuild platform error** — just install the Linux binary and move on.
+
+### 3. PID namespaces are per-session
+Never trust a bare `kill -0 $PID` for cross-session lock checks.
+
+---
+
 ## Hard limits (no exceptions)
 
 - ❌ `git push / pull / rebase / reset / checkout / stash`
@@ -241,4 +262,3 @@ If your infrastructure changes break the pipeline (CI failures, build failures, 
 - ❌ Add force push (`--force`) to any script
 - ❌ Commit with failing app tests or broken build
 - ❌ Treat pipeline failures caused by your changes as "regressions"
-- ⚠️ **NEVER use `rm` or file-delete on mounted repo files** — triggers sandbox permission prompts. To clear a file, use `> file` or `echo "" > file` instead.

@@ -1,8 +1,10 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
 #  BabyBloom Native Pipeline
-#  Runs on Mac (full network access) every 4 hours via LaunchAgent
-#  Handles: push unpushed commits → close issues → Telegram notify
+#  Runs on Mac every 60s via LaunchAgent
+#  Handles: sync issues → Claude CLI process → deploy → notify
+#  Only proceeds if there are issues to work on or completed
+#  issues to deploy. Does NOT deploy unrelated uncommitted changes.
 # ═══════════════════════════════════════════════════════════════
 
 REPO_DIR="/Users/akashkg/saanvi/babybloom"
@@ -60,7 +62,7 @@ git remote set-url origin "https://akashkguw:${GITHUB_TOKEN}@github.com/${REPO}.
 
 # ─── Sync open GitHub issues → pending-issues.json (auto-backfill) ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"
-python3 - <<EOF
+GH_ADDED=$(python3 - <<EOF
 import urllib.request, json, os, ssl
 
 # Fix macOS Python SSL cert issue
@@ -83,8 +85,9 @@ try:
     )
     gh_issues = json.loads(urllib.request.urlopen(req, timeout=10, context=ssl_ctx).read())
 except Exception as e:
-    print(f"⚠️  GitHub sync skipped: {e}")
-    gh_issues = []
+    print(0, end="")  # Signal no new issues
+    import sys; print(f"⚠️  GitHub sync skipped: {e}", file=sys.stderr)
+    exit(0)
 
 # Load existing queue
 try:
@@ -109,10 +112,12 @@ for i in gh_issues:
 
 if added:
     json.dump(queue, open(queue_path, "w"), indent=2)
-    print(f"📥 Synced {added} new issue(s) into queue")
-else:
-    print("✅ Queue already up to date")
+    import sys; print(f"📥 Synced {added} new issue(s) into queue", file=sys.stderr)
+
+print(added, end="")
 EOF
+)
+echo "GitHub sync: $GH_ADDED new issue(s)"
 
 # ─── Sync unresolved Sentry issues → GitHub Issues → pending queue ───
 if [ -n "$SENTRY_AUTH_TOKEN" ] && [ -n "$SENTRY_ORG" ] && [ -n "$SENTRY_PROJECT" ]; then
@@ -231,25 +236,124 @@ else
   echo "ℹ️  Sentry sync skipped (SENTRY_AUTH_TOKEN/ORG/PROJECT not set)"
 fi
 
-# ─── Check for uncommitted changes — run deploy.sh if needed ───
-# Use grep -v '??' to exclude untracked files (like pending-issues.json, logs)
-DEPLOY_PUSHED_SHA=""
-rm -f "$BOT_DIR/.deploy_env"
-if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
-  echo "📝 Uncommitted changes found — running deploy.sh..."
-  bash "$BOT_DIR/deploy.sh"
-  # Read SHA from deploy.sh's env file
-  if [ -f "$BOT_DIR/.deploy_env" ]; then
-    source "$BOT_DIR/.deploy_env"
-    rm -f "$BOT_DIR/.deploy_env"
-  fi
-  # Only log if deploy.sh actually pushed something
-  if [ -n "$DEPLOY_PUSHED_SHA" ]; then
-    echo "📌 deploy.sh pushed: $DEPLOY_PUSHED_SHA"
-  else
-    echo "ℹ️  deploy.sh ran but did not push (nothing staged after filtering)"
-  fi
+# ─── Early exit if nothing to do ───
+# Check: any pending/triaged issues to process? Any completed issues to deploy?
+# If neither, exit immediately (this runs every 60s, so no need to waste cycles)
+HAS_WORK=$(python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  actionable = [i for i in q if i.get('status') in ('pending','triaged','implemented','infra_implemented','documented','analyzed','rejected','failed')]
+  print(len(actionable))
+except: print(0)
+" 2>/dev/null || echo 0)
+
+UNPUSHED_COUNT=$(git log origin/main..HEAD --oneline 2>/dev/null | wc -l | tr -d ' ')
+
+if [ "$HAS_WORK" -eq 0 ] && [ "$UNPUSHED_COUNT" -eq 0 ]; then
+  echo "😴 Nothing to do — no issues and no unpushed commits. Exiting."
+  exit 0
 fi
+
+echo "📋 Work found: $HAS_WORK actionable issue(s), $UNPUSHED_COUNT unpushed commit(s)"
+
+# ═══════════════════════════════════════════════════════════════
+#  Process pending issues with Claude CLI (one at a time)
+#  Replaces the separate Claude Desktop scheduled worker.
+#  Flow: triage one issue → implement → commit → deploy → repeat
+# ═══════════════════════════════════════════════════════════════
+
+MAX_ISSUES_PER_RUN=5
+CLAUDE_TIMEOUT=600  # 10 minutes per issue max
+DEPLOY_PUSHED_SHA=""
+ISSUES_PROCESSED=0
+
+# Check if claude CLI is available
+if command -v claude &>/dev/null; then
+  echo "🤖 Claude CLI found — processing pending issues..."
+
+  while [ $ISSUES_PROCESSED -lt $MAX_ISSUES_PER_RUN ]; do
+    # Count pending issues
+    PENDING_COUNT=$(python3 -c "
+import json
+try:
+  q=json.load(open('$QUEUE_FILE'))
+  pending=[i for i in q if i.get('status') in ('pending', 'triaged')]
+  print(len(pending))
+except: print(0)
+" 2>/dev/null || echo 0)
+
+    if [ "$PENDING_COUNT" -eq 0 ]; then
+      echo "✅ No more pending issues to process"
+      break
+    fi
+
+    ISSUES_PROCESSED=$((ISSUES_PROCESSED + 1))
+    echo ""
+    echo "━━━ Processing issue $ISSUES_PROCESSED/$MAX_ISSUES_PER_RUN ($PENDING_COUNT remaining) ━━━"
+
+    # Call Claude CLI to triage and implement ONE issue
+    # -p = non-interactive prompt mode (prints output and exits)
+    # timeout prevents runaway sessions
+    # Output goes to a log file so we can capture the real exit code
+    CLAUDE_LOG="$BOT_DIR/claude-issue.log"
+    timeout "$CLAUDE_TIMEOUT" claude -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
+
+REPO_DIR=$REPO_DIR
+
+## Instructions
+
+1. Read and follow $REPO_DIR/bot/TRIAGE_SKILL.md
+2. SKIP the run-lock step (Step 0b) — pipeline.sh handles serialization
+3. Process ONLY THE FIRST pending or triaged issue:
+   - If status=pending: triage it (classify, enrich), then dispatch to the appropriate specialist
+   - If status=triaged: dispatch directly to the appropriate specialist
+4. After the specialist agent completes ONE issue (committed, analyzed, or documented), STOP
+5. Do NOT process additional issues — pipeline.sh will call you again for the next one
+
+## Environment
+- You are running natively on macOS (not in a sandbox)
+- All filesystem operations work normally (rm, mv, cp are fine)
+- node_modules are macOS-native (no esbuild workaround needed)
+- Use REPO_DIR=$REPO_DIR for all file paths
+" > "$CLAUDE_LOG" 2>&1
+
+    CLAUDE_EXIT=$?
+    # Show last 20 lines of output
+    echo "  [claude] --- output (last 20 lines) ---"
+    tail -20 "$CLAUDE_LOG" 2>/dev/null | while IFS= read -r line; do echo "  [claude] $line"; done
+
+    if [ $CLAUDE_EXIT -ne 0 ]; then
+      echo "⚠️  Claude CLI exited with code $CLAUDE_EXIT (timeout=$CLAUDE_TIMEOUT)"
+      # Don't break — try to deploy whatever was committed, then continue
+    fi
+
+    # Deploy after each issue if there are committed changes
+    if [ -n "$(git status --porcelain | grep -v '^??')" ] || [ -n "$(git log origin/main..HEAD --oneline 2>/dev/null)" ]; then
+      echo "📦 Changes found after issue processing — running deploy..."
+      rm -f "$BOT_DIR/.deploy_env"
+      bash "$BOT_DIR/deploy.sh"
+      if [ -f "$BOT_DIR/.deploy_env" ]; then
+        source "$BOT_DIR/.deploy_env"
+        rm -f "$BOT_DIR/.deploy_env"
+      fi
+      if [ -n "$DEPLOY_PUSHED_SHA" ]; then
+        echo "📌 Deployed: $DEPLOY_PUSHED_SHA"
+      fi
+    else
+      echo "ℹ️  No changes after processing — moving on"
+    fi
+  done
+
+  [ $ISSUES_PROCESSED -gt 0 ] && echo "🤖 Claude processed $ISSUES_PROCESSED issue(s) this run"
+else
+  echo "⚠️  claude CLI not found — skipping issue processing (install with: npm install -g @anthropic-ai/claude-code)"
+fi
+
+# ─── NOTE: We deliberately do NOT deploy uncommitted changes here. ───
+# Only Claude-committed changes (from the loop above) get deployed.
+# Random uncommitted edits (manual, IDE auto-save, etc.) stay uncommitted
+# until a human or Claude explicitly commits them as part of an issue.
 
 # ─── Always: notify any rejected issues first ───
 QUEUE_FILE="$BOT_DIR/pending-issues.json"
@@ -432,6 +536,30 @@ if [ -n "$UNPUSHED" ]; then
     echo "ℹ️  No src/ changes — skipping CI for push-only commits"
   fi
 
+  # ─── Sync with remote before pushing (handle divergence) ───
+  echo "📥 Fetching remote..."
+  git fetch origin main 2>&1 || true
+
+  # Check if remote is ahead — rebase local commits on top
+  REMOTE_AHEAD=$(git log HEAD..origin/main --oneline 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$REMOTE_AHEAD" -gt 0 ]; then
+    echo "🔀 Remote is $REMOTE_AHEAD commit(s) ahead — rebasing local changes..."
+    if ! git rebase origin/main 2>&1; then
+      echo "⚠️  Rebase conflict — aborting rebase and notifying"
+      git rebase --abort 2>/dev/null
+      send_telegram "🚨 *BabyBloom Deploy BLOCKED*
+
+📦 Local commits could not be rebased onto remote.
+💥 Reason: merge conflict during rebase
+🔧 Action needed: manual conflict resolution
+
+🔗 [View repo](https://github.com/$REPO)"
+      exit 1
+    fi
+    echo "✅ Rebase successful"
+    COMMIT_SHA=$(git rev-parse --short HEAD)
+  fi
+
   # ─── Push ───
   echo "📤 Pushing $COMMIT_COUNT commit(s) to main..."
   if ! git push origin main 2>&1; then
@@ -452,7 +580,12 @@ elif [ -n "$DEPLOY_PUSHED_SHA" ]; then
   COMMIT_COUNT=1
   echo "ℹ️  deploy.sh already pushed $COMMIT_SHA — checking CI status..."
 else
-  echo "ℹ️  Nothing to push."
+  echo "ℹ️  Nothing to push — skipping CI wait and deploy notification."
+fi
+
+# ─── Everything below only runs if something was actually pushed ───
+if [ -z "$COMMIT_SHA" ]; then
+  echo "✅ Pipeline complete — nothing was pushed this run."
   exit 0
 fi
 

@@ -169,6 +169,16 @@ Then repeat Steps 1–7 for the next documentation issue. Stop when none remain.
 
 ---
 
+## Sandbox environment constraints
+
+Every scheduled run executes inside an isolated Linux sandbox. The repo is mounted from the user's Mac.
+
+- **NEVER use `rm`** on mounted files — triggers permission prompts. Use `> file` to blank instead.
+- **esbuild platform mismatch:** If you need to run vitest/build, first run: `cd "$REPO_DIR" && npm install --no-save @esbuild/linux-arm64 2>/dev/null`
+- **PID namespaces are per-session** — never trust `kill -0` for cross-session checks.
+
+---
+
 ## Hard limits (no exceptions)
 
 - ❌ Never change code logic — only comments and documentation

@@ -2,11 +2,21 @@
 
 You are the BabyBloom issue triage agent. Your job is to classify each pending issue, enrich its description, and route it to the correct specialist agent. You do NOT implement anything — you only triage.
 
+## Execution environments
+
+This skill runs in one of two ways:
+
+1. **Mac native (primary)** — Called by `pipeline.sh` via `claude -p`. You're running natively on macOS with full filesystem access. `rm`, `npm`, and all tools work normally. No esbuild workaround needed. Pipeline.sh handles serialization, so **skip the run lock (Step 0b)** when `$REPO_DIR` is already set by the caller.
+
+2. **Sandbox (fallback)** — Called by a Claude Desktop scheduled task. Runs in an isolated Linux container with a mounted repo folder. See "Sandbox environment constraints" section near the bottom for workarounds (no `rm`, esbuild fix, PID namespaces).
+
+**How to detect:** If `$REPO_DIR` is pre-set by the caller's prompt, you're in Mac-native mode (skip lock). If not, discover it in Step 0a and acquire the lock in Step 0b.
+
 ---
 
 ## Step 0 — Find the repo and acquire run lock
 
-### 0a — Find the repo (MUST run first — lock file path depends on this)
+### 0a — Find the repo
 
 ```bash
 REPO_DIR=$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)
