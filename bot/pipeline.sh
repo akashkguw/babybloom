@@ -600,15 +600,8 @@ The issue remains open on GitHub for manual review or retry.
     echo "⚠️ Failed & notified: #$num — $title"
   done <<< "$FAILED"
 
-  # Remove failed issues from queue
-  python3 -c "
-import json
-try:
-  q=json.load(open('$QUEUE_FILE'))
-  remaining=[i for i in q if i.get('status')!='failed']
-  json.dump(remaining,open('$QUEUE_FILE','w'),indent=2)
-except: pass
-" 2>/dev/null || true
+  # Keep failed issues in queue (status=failed) so GitHub sync doesn't re-add them.
+  # They stay as 'failed' until manually reopened or removed.
 fi
 
 # ─── Post analysis results as GitHub comments (leave issue open) ───

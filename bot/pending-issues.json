@@ -256,6 +256,9 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/150",
     "created_at": "2026-03-29T18:07:19Z",
-    "status": "pending"
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "User reports that feed volume in ml is no longer displayed since around March 26.\n\nRoot cause: Commit 8a8b6f9 (March 27) removed the daily total feed volume display from the hero widget in HomeTab.tsx as part of issue #114 (\"Remove overall feed volume from hero section\").\n\nFix applied in commit a753035: Restored feedOzToday calculation and display in the hero widget.\n- src/tabs/HomeTab.tsx: Re-added feedOzToday sum of oz values for today, and display via fmtVol()\n- tests/unit/feedVolume.test.ts: 12 tests covering summation, formatting, and volume conversions\n\nAll tests passing. Fix already deployed.",
+    "implementation_notes": "Fix was committed in a753035 (previous pipeline run). Code restores feedOzToday calculation at HomeTab.tsx:964-969 and display at line 1267. 12 unit tests all pass."
   }
 ]
