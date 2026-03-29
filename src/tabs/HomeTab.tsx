@@ -336,6 +336,8 @@ export default function HomeTab({
   const qlCategoryInfo: Record<string, { cat: string; types: string[]; tips: string[]; settingKey?: string; timerToggleKey?: string }> = {
     'Nurse Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Nurse Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
+    'Switch Left': { cat: 'feed', types: ['Breast L'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
+    'Switch Right': { cat: 'feed', types: ['Breast R'], tips: ['Alternate sides each feed for balanced supply', 'Aim for 8-12 feeds per day in the first month', 'Watch for hunger cues: rooting, lip smacking'] },
     'Formula': { cat: 'feed', types: ['Formula'], tips: ['Follow package instructions for mixing ratio', 'Prepared formula is good for 1 hour at room temp', 'Never microwave — warm in bowl of warm water'], settingKey: 'Formula' },
     'Pee': { cat: 'diaper', types: ['Wet'], tips: ['6+ pee diapers per day indicates good hydration', 'Pale or clear urine is normal', 'Fewer than 4 pee diapers may signal dehydration'] },
     'Poop': { cat: 'diaper', types: ['Dirty'], tips: ['Color and consistency vary — most are normal', 'Breastfed babies may go days without a stool', 'Call doctor for white, red, or black stools'] },
@@ -1552,8 +1554,30 @@ export default function HomeTab({
           }
 
           // ─── All quick log item definitions ───
-          const qlBreastL = { e: '🤱', l: 'Nurse Left', fn: () => startFeedTimer('Breast L'), active: feedTimer && feedTimer.type === 'Breast L', dis: feedTimer && feedTimer.type !== 'Breast L', needsQty: false };
-          const qlBreastR = { e: '🤱', l: 'Nurse Right', fn: () => startFeedTimer('Breast R'), active: feedTimer && feedTimer.type === 'Breast R', dis: feedTimer && feedTimer.type !== 'Breast R', needsQty: false };
+          const otherBreastActive = feedTimer && feedTimer.type === 'Breast R';
+          const thisBreastActive = feedTimer && feedTimer.type === 'Breast L';
+          const qlBreastL = {
+            e: otherBreastActive ? '🔄' : '🤱',
+            l: otherBreastActive ? 'Switch Left' : 'Nurse Left',
+            sortKey: 'Nurse Left',
+            fn: otherBreastActive ? () => switchFeedSide('Breast L') : () => startFeedTimer('Breast L'),
+            active: thisBreastActive,
+            dis: feedTimer && feedTimer.type !== 'Breast L' && feedTimer.type !== 'Breast R',
+            switchHint: otherBreastActive,
+            needsQty: false,
+          };
+          const otherBreastActiveR = feedTimer && feedTimer.type === 'Breast L';
+          const thisBreastActiveR = feedTimer && feedTimer.type === 'Breast R';
+          const qlBreastR = {
+            e: otherBreastActiveR ? '🔄' : '🤱',
+            l: otherBreastActiveR ? 'Switch Right' : 'Nurse Right',
+            sortKey: 'Nurse Right',
+            fn: otherBreastActiveR ? () => switchFeedSide('Breast R') : () => startFeedTimer('Breast R'),
+            active: thisBreastActiveR,
+            dis: feedTimer && feedTimer.type !== 'Breast L' && feedTimer.type !== 'Breast R',
+            switchHint: otherBreastActiveR,
+            needsQty: false,
+          };
           const qlFormula = { e: '🍼', l: 'Formula', fn: () => { if (!feedTimer) { const def = qlDefaults['Formula']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Formula', oz: ozVal, amount: def + ' ' + unit }, 'Formula'); } else { setQuickFeedType('Formula'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Formula'], qType: 'Formula' };
           const qlPumped  = { e: '🍶', l: 'Bottle', fn: () => { if (!feedTimer) { const def = qlDefaults['Bottle']; if (def) { const ozVal = isMl ? mlToOz(def) : def; quickLog('feed', { type: 'Pumped Milk', oz: ozVal, amount: def + ' ' + unit }, 'Bottle'); } else { setQuickFeedType('Pumped Milk'); setSliderVal(presets[0]); } } }, dis: !!feedTimer, needsQty: !qlDefaults['Bottle'], qType: 'Pumped Milk' };
           const qlTummy   = qlTapOnly['Tummy']
@@ -1592,24 +1616,26 @@ export default function HomeTab({
           // Sort: usage count (desc) as primary, age priority as tiebreaker
           const totalUsage = Object.values(qlUsage).reduce((a, b) => a + b, 0);
           const hasUsage = totalUsage >= 10; // need at least 10 taps before usage-based reordering
+          const sortLabel = (q: any) => q.sortKey || q.l;
           const sorted = [...allQlPool].sort((a, b) => {
             if (hasUsage) {
-              const ua = qlUsage[a.l] || 0;
-              const ub = qlUsage[b.l] || 0;
+              const ua = qlUsage[sortLabel(a)] || 0;
+              const ub = qlUsage[sortLabel(b)] || 0;
               if (ua !== ub) return ub - ua; // more used = first
             }
-            return (agePriority[a.l] || 99) - (agePriority[b.l] || 99);
+            return (agePriority[sortLabel(a)] || 99) - (agePriority[sortLabel(b)] || 99);
           });
 
           // Pin Nurse Left + Right together: Left in column 1 (left), Right in column 2 (right)
           // Snap to positions 0-1 of the row so Left is visually on the left side
-          const idxL = sorted.findIndex((q) => q.l === 'Nurse Left');
-          const idxR = sorted.findIndex((q) => q.l === 'Nurse Right');
+          const idxL = sorted.findIndex((q) => q.l === 'Nurse Left' || q.l === 'Switch Left');
+          const idxR = sorted.findIndex((q) => q.l === 'Nurse Right' || q.l === 'Switch Right');
           if (idxL >= 0 && idxR >= 0) {
             const itemL = sorted[idxL];
             const itemR = sorted[idxR];
             // Remove both from their current positions
-            const without = sorted.filter((q) => q.l !== 'Nurse Left' && q.l !== 'Nurse Right');
+            const isNurseBtn = (q: any) => q.l === 'Nurse Left' || q.l === 'Switch Left' || q.l === 'Nurse Right' || q.l === 'Switch Right';
+            const without = sorted.filter((q) => !isNurseBtn(q));
             // Snap to start of the row (multiple of 4) so Left sits in col 1, Right in col 2
             const insertAt = Math.min(idxL, idxR);
             const rowStart = insertAt - (insertAt % 4); // align to row boundary (0, 4, 8…)
@@ -2062,14 +2088,14 @@ export default function HomeTab({
                             textAlign: 'center',
                             padding: '8px 2px',
                             borderRadius: 12,
-                            background: q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
-                            border: '1px solid ' + (q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
+                            background: q.switchHint ? C.sl : q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
+                            border: '1px solid ' + (q.switchHint ? C.s + '55' : q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
                             cursor: q.dis ? 'default' : 'pointer',
                             opacity: q.dis ? 0.35 : 1,
                           }}
                         >
                           <div style={{ fontSize: 18 }}>{q.e}</div>
-                          <div style={{ fontSize: 9, color: q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
+                          <div style={{ fontSize: 9, color: q.switchHint ? C.s : q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
                             {q.l}
                           </div>
                         </div>
