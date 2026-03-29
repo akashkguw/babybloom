@@ -33,7 +33,7 @@ Built with Vite, React 18, and TypeScript, BabyBloom deploys to GitHub Pages and
 
 ### Daily Tracking
 - **Feeding** — Breast (L/R with real-time timer), bottle (ml/oz), solids, and pump sessions with smart session merging
-- **Diapers** — Wet, dirty, or both with color, consistency, and pee amount tracking
+- **Diapers** — Pee, poop, or both with color, consistency, and amount tracking
 - **Sleep** — Nap, night sleep, and wake-up with automatic duration calculation
 - **Growth** — Weight, height, and head circumference with WHO percentile charts
 - **Temperature** — Log readings with fever threshold alerts
@@ -69,8 +69,17 @@ Safe Sleep · Baby-Proofing · Infant CPR · Choking Response · Fever Guide · 
 ### Smart Features
 - **Glanceable Dashboard** — Traffic-light status cards (good/watch/action) for feeding, diapers, and sleep with age-based thresholds
 - **Predictive Nudges** — Learns your baby's patterns from the last 7 days and reminds you before the next feed, nap, or diaper change
-- **Partner Sync** — Share data with a co-parent via copy/paste codes — no accounts, no server, fully offline (base64 encoded)
+- **Partner Sync** — Share data with a co-parent via QR code or copy/paste codes — no accounts, no server, fully offline
 - **Pediatrician Report** — Generates a printable HTML summary covering feeding, diapers, sleep, growth, temperature, meds, allergies, and vaccines (7/14/30 day periods)
+
+### Mom Wellness
+Track your own health alongside your baby's — hydration, meals, vitamins, sleep quality, and mood. BabyBloom monitors your self-care and generates gentle reminders when you haven't eaten, hydrated, or taken your vitamins.
+
+### Hero Widget
+A customizable dashboard card at the top of the home screen showing your baby's age, last activity times, and smart age-based reminders. Personalize it with your own photo or choose from built-in background presets.
+
+### Welcome Experience
+An auto-animated onboarding carousel that walks new parents through key features with interactive demos — no manual swiping required.
 
 ### Additional Features
 - **Feeding Reminders** — Push notifications at configurable intervals
@@ -90,6 +99,7 @@ Safe Sleep · Baby-Proofing · Infant CPR · Choking Response · Fever Guide · 
 | Framework | React 18 + TypeScript (strict mode) |
 | Build | Vite 5 |
 | PWA | vite-plugin-pwa (auto-update service worker) |
+| Mobile | Capacitor 6 (iOS & Android native builds) |
 | Storage | IndexedDB (persistent, device-local) |
 | Styling | Inline styles with light/dark theme tokens |
 | Hosting | GitHub Pages via GitHub Actions CI/CD |
@@ -119,12 +129,13 @@ babybloom/
 │   │   ├── feeding/             # Feed timer, merge logic, quick sheet
 │   │   ├── insights/            # Smart status dashboard, predictive nudges
 │   │   ├── reports/             # Pediatrician report generator
-│   │   ├── sync/                # Partner sync (no-account, offline)
+│   │   ├── sync/                # Partner sync (QR code + copy/paste, offline)
 │   │   ├── profiles/            # Multi-profile management
 │   │   ├── settings/            # App settings & data export
 │   │   ├── shortcuts/           # Siri Shortcuts integration
 │   │   ├── stats/               # Charts and summaries
-│   │   └── voice/               # Voice recognition & NLP parser
+│   │   ├── voice/               # Voice recognition & NLP parser
+│   │   └── wellness/            # Mom self-care tracking
 │   ├── components/
 │   │   ├── shared/              # Button, Input, Card, Icon, Toast, etc.
 │   │   ├── charts/              # Bar charts, WHO growth curves
@@ -179,10 +190,13 @@ Open `http://localhost:5173/babybloom/` in your browser.
 |---------|-------------|
 | `npm run dev` | Start local dev server with HMR |
 | `npm run build` | Production build to `dist/` |
+| `npm run build:mobile` | Production build for Capacitor (iOS/Android) |
 | `npm run type-check` | TypeScript type check |
 | `npm run lint` | ESLint |
 | `npm run test` | Run Vitest unit tests |
 | `npm run preview` | Preview production build locally |
+| `npm run mobile:ios` | Build and open in Xcode for iOS |
+| `npm run mobile:android` | Build and open in Android Studio |
 
 ### Deploy your own
 
@@ -198,7 +212,7 @@ Open `http://localhost:5173/babybloom/` in your browser.
 BabyBloom uses a multi-agent automation pipeline that turns Telegram messages into shipped features:
 
 1. **Telegram Bot** (`bot/bot.js`) — Send feature requests or bug reports via Telegram; the bot creates labeled GitHub issues automatically.
-2. **Pipeline** (`bot/pipeline.sh`) — Runs every 30 minutes via Mac LaunchAgent. Syncs all open GitHub issues into the local queue.
+2. **Pipeline** (`bot/pipeline.sh`) — Runs every hour via Mac LaunchAgent. Syncs all open GitHub issues into the local queue.
 3. **Triage Agent** — Classifies each issue and routes it to the right specialist: implementation, infrastructure, analysis, or documentation.
 4. **Specialist Agents** — Each handles its domain with strict boundaries:
    - **Implementation** — Code changes in `src/` and `tests/` only
@@ -216,7 +230,7 @@ See [bot/README.md](bot/README.md) for setup instructions.
 - All data is stored in **IndexedDB on your device only**
 - **No analytics, no tracking, no cookies**
 - **No server, no database, no accounts**
-- **No data ever leaves your browser** (partner sync uses offline copy/paste codes)
+- **No data ever leaves your browser** (partner sync uses offline QR codes or copy/paste)
 - Works completely offline after first visit
 - Export your data anytime as a JSON file
 - Sentry error tracking is **privacy-hardened**: no PII, no IP collection, no session replay. Baby names, health data, medications, allergies, and contacts are scrubbed before any error report is sent. The app functions normally even if Sentry is unreachable.
