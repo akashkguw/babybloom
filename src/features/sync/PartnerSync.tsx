@@ -19,6 +19,8 @@ import { toast } from '@/lib/utils/toast';
 import { today } from '@/lib/utils/date';
 import QRCode from '@/features/sync/QRCode';
 import QRScanner from '@/features/sync/QRScanner';
+import FirebaseSyncSetup from '@/features/sync/FirebaseSyncSetup';
+import type { FirebaseSyncState } from '@/features/sync/useFirebaseSync';
 
 interface LogEntry {
   id: number;
@@ -50,6 +52,7 @@ interface PartnerSyncProps {
   babyName: string;
   birth: string | null;
   onClose: () => void;
+  syncState?: FirebaseSyncState;
 }
 
 interface SyncPayload {
@@ -132,8 +135,8 @@ function mergeLogs(existing: Logs, incoming: Logs): Logs {
 /** Max bytes that fit in QR version 20, byte mode, EC level L */
 const QR_MAX_BYTES = 858;
 
-export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }: PartnerSyncProps) {
-  const [mode, setMode] = useState<'menu' | 'share' | 'receive'>('menu');
+export default function PartnerSync({ logs, setLogs, babyName, birth, onClose, syncState }: PartnerSyncProps) {
+  const [mode, setMode] = useState<'menu' | 'share' | 'receive' | 'autosync'>('menu');
   const [shareCode, setShareCode] = useState<string>('');
   const [receiveCode, setReceiveCode] = useState<string>('');
   const [shareMode, setShareMode] = useState<'today' | 'full'>('today');
@@ -292,9 +295,58 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
               </div>
             </Cd>
 
+            <Cd
+              onClick={() => setMode('autosync')}
+              style={{ padding: 16, cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ fontSize: 28 }}>
+                  {syncState?.configured ? (syncState.status === 'synced' ? '☁️' : '🔄') : '⚡'}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Auto Sync</div>
+                    {syncState?.configured && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
+                        background: syncState.status === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
+                        color: syncState.status === 'error' ? C.w : C.ok,
+                      }}>
+                        {syncState.status === 'synced' ? 'ON' : syncState.status === 'error' ? 'ERR' : '...'}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.tl }}>
+                    {syncState?.configured
+                      ? `Firebase sync active · key: ${syncState.syncKey}`
+                      : 'Set up Firebase for real-time cross-device sync'}
+                  </div>
+                </div>
+              </div>
+            </Cd>
+
             <div style={{ padding: '12px 0', fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.5 }}>
               How it works: One device generates a share code, the other enters it.
               Entries are merged without duplicates. No internet required.
+            </div>
+          </div>
+        )}
+
+        {mode === 'autosync' && (
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.t, marginBottom: 14 }}>
+              Auto Sync via Firebase
+            </div>
+            {syncState
+              ? <FirebaseSyncSetup syncState={syncState} />
+              : (
+                <div style={{ fontSize: 13, color: C.tl }}>
+                  Auto sync is not available. Please reload the app and try again.
+                </div>
+              )
+            }
+            <div style={{ marginTop: 16 }}>
+              <Btn label="← Back" onClick={() => setMode('menu')} outline />
             </div>
           </div>
         )}

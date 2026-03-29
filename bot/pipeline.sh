@@ -363,58 +363,326 @@ except: pass
     echo "  Status: $ISSUE_STATUS | Route: $ISSUE_ROUTE"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    # Call Claude CLI to triage and implement ONE issue
-    CLAUDE_LOG="$BOT_DIR/claude-issue.log"
+    # ── Helper: run a Claude CLI phase and capture tokens ──
+    # Usage: run_claude_phase "phase_name" "prompt" timeout_secs
+    # Sets: PHASE_EXIT, PHASE_COST, PHASE_TOKENS_LINE
+    TOTAL_ISSUE_COST=0
+    PHASE_SUMMARY=""
+
+    run_claude_phase() {
+      local PHASE_NAME="$1"
+      local PHASE_PROMPT="$2"
+      local PHASE_TIMEOUT="${3:-$CLAUDE_TIMEOUT}"
+      local PHASE_JSON="$BOT_DIR/claude-phase-${PHASE_NAME}.json"
+      local PHASE_LOG="$BOT_DIR/claude-phase-${PHASE_NAME}.log"
+      local PHASE_START=$(date '+%Y-%m-%d %H:%M:%S')
+
+      echo "    ┌─ $PHASE_NAME"
+      echo "    │  Started: $PHASE_START"
+
+      "$CLAUDE_BIN" --dangerously-skip-permissions --output-format json --model sonnet \
+        -p "$PHASE_PROMPT" > "$PHASE_JSON" 2>"$PHASE_LOG" &
+      local PID=$!
+
+      local WAITED=0
+      while kill -0 "$PID" 2>/dev/null; do
+        sleep 5
+        WAITED=$((WAITED + 5))
+        if [ $WAITED -ge $PHASE_TIMEOUT ]; then
+          echo "    │  ⏰ Timed out after ${PHASE_TIMEOUT}s"
+          kill "$PID" 2>/dev/null; sleep 2; kill -9 "$PID" 2>/dev/null
+          break
+        fi
+      done
+      wait "$PID" 2>/dev/null
+      PHASE_EXIT=$?
+
+      local PHASE_END=$(date '+%Y-%m-%d %H:%M:%S')
+
+      # Parse tokens
+      local TOKENS=$(python3 -c "
+import json
+try:
+    d = json.load(open('$PHASE_JSON'))
+    u = d.get('usage', {})
+    inp = u.get('input_tokens',0)
+    cc = u.get('cache_creation_input_tokens',0)
+    cr = u.get('cache_read_input_tokens',0)
+    out = u.get('output_tokens',0)
+    cost = d.get('total_cost_usd',0.0)
+    turns = d.get('num_turns',0)
+    print(f'{inp+cc+cr}|{out}|{cr}|{cc}|{turns}|{cost:.4f}')
+except:
+    print('0|0|0|0|0|0.0000')
+" 2>/dev/null || echo "0|0|0|0|0|0.0000")
+
+      local T_IN=$(echo "$TOKENS" | cut -d'|' -f1)
+      local T_OUT=$(echo "$TOKENS" | cut -d'|' -f2)
+      local T_CR=$(echo "$TOKENS" | cut -d'|' -f3)
+      local T_CC=$(echo "$TOKENS" | cut -d'|' -f4)
+      local T_TURNS=$(echo "$TOKENS" | cut -d'|' -f5)
+      PHASE_COST=$(echo "$TOKENS" | cut -d'|' -f6)
+
+      echo "    │  Finished: $PHASE_END (exit $PHASE_EXIT)"
+      echo "    │  🪙 ${T_IN} in (${T_CR} cached) + ${T_OUT} out | ${T_TURNS} turns | \$$PHASE_COST"
+
+      # Show highlights
+      grep -iE "(commit|✅|❌|⚠️|test|passed|failed|error|implemented|analyzed|documented|triaged|rejected|skipped)" "$PHASE_LOG" 2>/dev/null | tail -8 | while IFS= read -r line; do echo "    │  $line"; done
+
+      echo "    └─ $PHASE_NAME done"
+
+      # Accumulate cost
+      TOTAL_ISSUE_COST=$(python3 -c "print(f'{$TOTAL_ISSUE_COST + $PHASE_COST:.4f}')" 2>/dev/null || echo "$TOTAL_ISSUE_COST")
+
+      # Build summary line for history
+      PHASE_SUMMARY="${PHASE_SUMMARY}  ${PHASE_NAME}: ${T_IN} in (${T_CR} cached) + ${T_OUT} out | ${T_TURNS} turns | \$${PHASE_COST}\n"
+
+      PHASE_TOKENS_LINE="${T_IN} in (${T_CR} cached) + ${T_OUT} out | ${T_TURNS} turns | \$$PHASE_COST"
+    }
+
     CLAUDE_START=$(date '+%Y-%m-%d %H:%M:%S')
     echo "  ⏱️  Started: $CLAUDE_START"
 
-    # Run claude with timeout (macOS doesn't have GNU timeout, use background + wait)
-    # --dangerously-skip-permissions: required for non-interactive mode to allow file edits
-    # --output-format json: captures token usage stats
-    CLAUDE_JSON_LOG="$BOT_DIR/claude-issue.json"
-    "$CLAUDE_BIN" --dangerously-skip-permissions --output-format json --model sonnet -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
+    # ═══ PHASE 1: TRIAGE (if pending) ═══
+    if [ "$ISSUE_STATUS" = "pending" ]; then
+      run_claude_phase "triage" "You are the BabyBloom triage agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
 ## Instructions
-
-1. Read and follow $REPO_DIR/bot/TRIAGE_SKILL.md
-2. SKIP the run-lock step (Step 0b) — pipeline.sh handles serialization
-3. SKIP stale recovery — pipeline.sh already reset any in_progress issues to triaged
-4. Process ONLY issue #$ISSUE_NUM (status=$ISSUE_STATUS):
-   - If status=pending: triage it (classify, enrich), then dispatch to the appropriate specialist
-   - If status=triaged: dispatch directly to the appropriate specialist
-5. After the specialist agent completes this ONE issue (committed, analyzed, or documented), STOP
-6. Do NOT process additional issues — pipeline.sh will call you again for the next one
+1. Read $REPO_DIR/bot/TRIAGE_SKILL.md
+2. SKIP the run-lock step — pipeline.sh handles serialization
+3. SKIP stale recovery — pipeline.sh already handled it
+4. Triage ONLY issue #$ISSUE_NUM: classify it, enrich the description, assign a route
+5. Update pending-issues.json with status=triaged and the route
+6. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
+7. STOP after triaging
 
 ## Environment
-- You are running natively on macOS (not in a sandbox)
+- Running natively on macOS (not in a sandbox)
+- All filesystem operations work normally
+- Use REPO_DIR=$REPO_DIR for all file paths
+" 120
+
+      if [ $PHASE_EXIT -ne 0 ]; then
+        echo "  ⚠️  Triage failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
+        python3 -c "
+import json
+path = '$QUEUE_FILE'
+q = json.load(open(path))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        i['status'] = 'failed'
+        i['failure_reason'] = 'Triage failed with exit code $PHASE_EXIT'
+        break
+json.dump(q, open(path, 'w'), indent=2)
+" 2>/dev/null
+        CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+        # Log and continue to next issue
+        echo "" >> "$CLAUDE_HISTORY_LOG"
+        echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+        echo "Phase: triage | Result: failed | Exit: $PHASE_EXIT" >> "$CLAUDE_HISTORY_LOG"
+        echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+        echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+        continue
+      fi
+
+      # Re-read route after triage
+      ISSUE_ROUTE=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(i.get('route', '-'))
+        break
+" 2>/dev/null || echo "-")
+      ISSUE_STATUS="triaged"
+      echo "  📋 Triaged → route: $ISSUE_ROUTE"
+    fi
+
+    # ═══ PHASE 2: SPECIALIST (route-dependent) ═══
+    if [ "$ISSUE_ROUTE" = "implementation" ]; then
+      # ── Implementation: split into 3 sub-phases for token visibility ──
+
+      # Phase 2a: IMPL-CORE — read code, implement changes, write unit tests
+      run_claude_phase "impl-core" "You are the BabyBloom implementation agent running natively on macOS.
+
+REPO_DIR=$REPO_DIR
+
+## Instructions — CORE IMPLEMENTATION ONLY
+1. Read $REPO_DIR/bot/IMPL_SKILL.md for codebase map and conventions
+2. Process ONLY issue #$ISSUE_NUM (already triaged, route=implementation)
+3. Read the relevant source files (Step 2 of IMPL_SKILL.md)
+4. Implement the code changes in src/ (Step 3 of IMPL_SKILL.md)
+5. Write unit tests in tests/unit/ for your changes
+6. Mark the issue as in_progress in pending-issues.json
+7. STOP here — do NOT run tests, do NOT commit. The next phase handles that.
+
+## Environment
+- Running natively on macOS (not in a sandbox)
 - All filesystem operations work normally (rm, mv, cp are fine)
 - node_modules are macOS-native (no esbuild workaround needed)
 - Use REPO_DIR=$REPO_DIR for all file paths
-" > "$CLAUDE_JSON_LOG" 2>"$CLAUDE_LOG" &
-    CLAUDE_PID=$!
+" 300
 
-    # Wait with timeout (macOS-compatible)
-    SECONDS_WAITED=0
-    while kill -0 "$CLAUDE_PID" 2>/dev/null; do
-      sleep 5
-      SECONDS_WAITED=$((SECONDS_WAITED + 5))
-      if [ $SECONDS_WAITED -ge $CLAUDE_TIMEOUT ]; then
-        echo "  ⏰ Claude timed out after ${CLAUDE_TIMEOUT}s — killing"
-        kill "$CLAUDE_PID" 2>/dev/null
-        sleep 2
-        kill -9 "$CLAUDE_PID" 2>/dev/null
+      if [ $PHASE_EXIT -ne 0 ]; then
+        echo "  ⚠️  impl-core failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
+        python3 -c "
+import json
+path = '$QUEUE_FILE'
+q = json.load(open(path))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        i['status'] = 'failed'
+        i['failure_reason'] = 'impl-core failed with exit code $PHASE_EXIT'
         break
+json.dump(q, open(path, 'w'), indent=2)
+" 2>/dev/null
+        CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "" >> "$CLAUDE_HISTORY_LOG"
+        echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+        echo "Route: implementation | Result: failed (impl-core)" >> "$CLAUDE_HISTORY_LOG"
+        echo "Token breakdown:" >> "$CLAUDE_HISTORY_LOG"
+        echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+        echo "Total cost: \$$TOTAL_ISSUE_COST" >> "$CLAUDE_HISTORY_LOG"
+        echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+        continue
       fi
-    done
-    wait "$CLAUDE_PID" 2>/dev/null
-    CLAUDE_EXIT=$?
+
+      # Phase 2b: IMPL-TEST — run all tests, type-check, CI; fix failures
+      run_claude_phase "impl-test" "You are the BabyBloom test runner agent running natively on macOS.
+
+REPO_DIR=$REPO_DIR
+
+## Instructions — TESTING ONLY
+Code changes for issue #$ISSUE_NUM have already been made. Your job is to verify them.
+
+1. Run unit tests: cd $REPO_DIR && npm run test
+2. Run regression tests: cd $REPO_DIR && node tests/regression.cjs
+3. Run type checking: cd $REPO_DIR && npm run type-check
+4. Run local CI: cd $REPO_DIR && bash bot/ci.sh $REPO_DIR
+
+If ANY test fails:
+- Read the error output carefully
+- Fix the code or tests (this is YOUR responsibility, not a regression)
+- Re-run the failing tests to confirm the fix
+- If you cannot fix after 2 attempts, mark issue #$ISSUE_NUM as failed in $REPO_DIR/bot/pending-issues.json
+
+Do NOT commit. Do NOT mark the issue as implemented. STOP after all tests pass (or marking as failed).
+
+## Environment
+- Running natively on macOS (not in a sandbox)
+- node_modules are macOS-native (no esbuild workaround needed)
+- Use REPO_DIR=$REPO_DIR for all file paths
+" $CLAUDE_TIMEOUT
+
+      if [ $PHASE_EXIT -ne 0 ]; then
+        echo "  ⚠️  impl-test failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
+        python3 -c "
+import json
+path = '$QUEUE_FILE'
+q = json.load(open(path))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        if i.get('status') != 'failed':
+            i['status'] = 'failed'
+            i['failure_reason'] = 'impl-test failed with exit code $PHASE_EXIT. Check bot/claude-phase-impl-test.log'
+        break
+json.dump(q, open(path, 'w'), indent=2)
+" 2>/dev/null
+        CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "" >> "$CLAUDE_HISTORY_LOG"
+        echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+        echo "Route: implementation | Result: failed (impl-test)" >> "$CLAUDE_HISTORY_LOG"
+        echo "Token breakdown:" >> "$CLAUDE_HISTORY_LOG"
+        echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+        echo "Total cost: \$$TOTAL_ISSUE_COST" >> "$CLAUDE_HISTORY_LOG"
+        echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+        continue
+      fi
+
+      # Check if impl-test marked the issue as failed (tests couldn't be fixed)
+      IMPL_STATUS=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(i.get('status', ''))
+        break
+" 2>/dev/null)
+
+      if [ "$IMPL_STATUS" = "failed" ]; then
+        echo "  ⚠️  Tests could not be fixed — issue marked as failed by impl-test"
+        CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "" >> "$CLAUDE_HISTORY_LOG"
+        echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
+        echo "Route: implementation | Result: failed (tests unfixable)" >> "$CLAUDE_HISTORY_LOG"
+        echo "Token breakdown:" >> "$CLAUDE_HISTORY_LOG"
+        echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+        echo "Total cost: \$$TOTAL_ISSUE_COST" >> "$CLAUDE_HISTORY_LOG"
+        echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
+        continue
+      fi
+
+      # Phase 2c: IMPL-COMMIT — write notes, commit, mark implemented
+      run_claude_phase "impl-commit" "You are the BabyBloom commit agent running natively on macOS.
+
+REPO_DIR=$REPO_DIR
+
+## Instructions — COMMIT ONLY
+Code changes and tests for issue #$ISSUE_NUM have been implemented and verified. Your job is to commit.
+
+1. Read $REPO_DIR/bot/pending-issues.json to get issue #$ISSUE_NUM details
+2. Write implementation notes to the issue in pending-issues.json (list files changed, tests added, approach)
+3. Stage and commit:
+   cd $REPO_DIR
+   git config user.email \"akashgupta5384@gmail.com\"
+   git config user.name \"Akash\"
+   git add src/ tests/
+   git commit -m \"Implement: ISSUE_TITLE (closes #$ISSUE_NUM)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\"
+4. Mark issue #$ISSUE_NUM as status=implemented in pending-issues.json
+5. STOP after committing.
+
+## Environment
+- Running natively on macOS (not in a sandbox)
+- Use REPO_DIR=$REPO_DIR for all file paths
+" 60
+
+    else
+      # ── Non-implementation routes: single specialist call ──
+      case "$ISSUE_ROUTE" in
+        infrastructure)  SKILL_FILE="INFRA_SKILL.md" ;;
+        analysis)        SKILL_FILE="ANALYSIS_SKILL.md" ;;
+        documentation)   SKILL_FILE="DOCS_SKILL.md" ;;
+        *)               SKILL_FILE="IMPL_SKILL.md" ;;
+      esac
+
+      run_claude_phase "$ISSUE_ROUTE" "You are the BabyBloom $ISSUE_ROUTE agent running natively on macOS.
+
+REPO_DIR=$REPO_DIR
+
+## Instructions
+1. Read and follow $REPO_DIR/bot/$SKILL_FILE
+2. Process ONLY issue #$ISSUE_NUM
+3. The issue has already been triaged (route=$ISSUE_ROUTE)
+4. Complete the work: implement, test, and commit (or analyze/document depending on route)
+5. STOP after completing this one issue
+
+## Environment
+- Running natively on macOS (not in a sandbox)
+- All filesystem operations work normally (rm, mv, cp are fine)
+- node_modules are macOS-native (no esbuild workaround needed)
+- Use REPO_DIR=$REPO_DIR for all file paths
+" $CLAUDE_TIMEOUT
+    fi
+
     CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
 
-    # If Claude failed (non-zero exit), mark the issue as failed to prevent infinite retry
-    if [ $CLAUDE_EXIT -ne 0 ]; then
-      echo "  ⚠️  Claude failed (exit $CLAUDE_EXIT) — marking #$ISSUE_NUM as failed to prevent retry loop"
+    # If specialist failed, mark issue
+    if [ $PHASE_EXIT -ne 0 ]; then
+      echo "  ⚠️  $ISSUE_ROUTE failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
       python3 -c "
 import json
 path = '$QUEUE_FILE'
@@ -422,14 +690,13 @@ q = json.load(open(path))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
         i['status'] = 'failed'
-        i['failure_reason'] = 'Claude CLI exited with code $CLAUDE_EXIT. Check $BOT_DIR/claude-issue.log for details.'
+        i['failure_reason'] = '$ISSUE_ROUTE failed with exit code $PHASE_EXIT. Check bot/claude-phase-${ISSUE_ROUTE}.log'
         break
 json.dump(q, open(path, 'w'), indent=2)
-print('Marked #$ISSUE_NUM as failed')
 " 2>/dev/null
     fi
 
-    # Check what status the issue ended up in after Claude processed it
+    # Check final issue status
     ISSUE_RESULT=$(python3 -c "
 import json
 try:
@@ -448,51 +715,20 @@ except: pass
     RESULT_ROUTE=$(echo "$ISSUE_RESULT" | cut -d'|' -f2)
     RESULT_NOTES=$(echo "$ISSUE_RESULT" | cut -d'|' -f3-)
 
-    # Check for new git commits
-    NEW_COMMIT=$(git log -1 --oneline 2>/dev/null | head -1)
-
-    # Parse token usage from JSON output
-    CLAUDE_TOKENS=$(python3 -c "
-import json, sys
-try:
-    data = json.load(open('$CLAUDE_JSON_LOG'))
-    u = data.get('usage', {})
-    inp = u.get('input_tokens', 0)
-    out = u.get('output_tokens', 0)
-    total = inp + out
-    cost_in = inp * 3.0 / 1000000   # Sonnet input: \$3/MTok
-    cost_out = out * 15.0 / 1000000  # Sonnet output: \$15/MTok
-    cost = cost_in + cost_out
-    print(f'{inp}|{out}|{total}|{cost:.4f}')
-except:
-    print('0|0|0|0.0000')
-" 2>/dev/null || echo "0|0|0|0.0000")
-
-    TOKEN_IN=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f1)
-    TOKEN_OUT=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f2)
-    TOKEN_TOTAL=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f3)
-    TOKEN_COST=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f4)
-
     # Log summary
-    echo "  ⏱️  Finished: $CLAUDE_END (exit code: $CLAUDE_EXIT)"
+    echo ""
+    echo "  ⏱️  Total: $CLAUDE_START → $CLAUDE_END"
     echo "  📋 Result: #$ISSUE_NUM → $RESULT_STATUS (route: $RESULT_ROUTE)"
-    echo "  🪙 Tokens: $TOKEN_IN in + $TOKEN_OUT out = $TOKEN_TOTAL total (~\$$TOKEN_COST)"
+    echo "  💰 Total cost: \$$TOTAL_ISSUE_COST"
     [ -n "$RESULT_NOTES" ] && echo "  📝 Notes: $RESULT_NOTES"
-
-    # Show key lines from Claude output (git commits, test results, errors)
-    echo "  ─── Claude highlights ───"
-    grep -iE "(commit|✅|❌|⚠️|test|passed|failed|error|implemented|analyzed|documented|triaged|rejected|skipped)" "$CLAUDE_LOG" 2>/dev/null | tail -15 | while IFS= read -r line; do echo "  $line"; done
-    echo "  ─── end highlights ───"
-
-    if [ $CLAUDE_EXIT -ne 0 ]; then
-      echo "  ⚠️  Claude CLI exited with code $CLAUDE_EXIT (timeout=$CLAUDE_TIMEOUT)"
-    fi
 
     # Append to history log
     echo "" >> "$CLAUDE_HISTORY_LOG"
     echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
-    echo "Route: $RESULT_ROUTE | Result: $RESULT_STATUS | Exit: $CLAUDE_EXIT" >> "$CLAUDE_HISTORY_LOG"
-    echo "Tokens: $TOKEN_IN in + $TOKEN_OUT out = $TOKEN_TOTAL (~\$$TOKEN_COST)" >> "$CLAUDE_HISTORY_LOG"
+    echo "Route: $RESULT_ROUTE | Result: $RESULT_STATUS" >> "$CLAUDE_HISTORY_LOG"
+    echo "Token breakdown:" >> "$CLAUDE_HISTORY_LOG"
+    echo -e "$PHASE_SUMMARY" >> "$CLAUDE_HISTORY_LOG"
+    echo "Total cost: \$$TOTAL_ISSUE_COST" >> "$CLAUDE_HISTORY_LOG"
     [ -n "$RESULT_NOTES" ] && echo "Notes: $RESULT_NOTES" >> "$CLAUDE_HISTORY_LOG"
     echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
 

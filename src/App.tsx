@@ -13,6 +13,7 @@ import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
+import { useFirebaseSync } from '@/features/sync/useFirebaseSync';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
@@ -230,6 +231,10 @@ function App() {
     setLgR(v);
     spd('logs', v);
   };
+
+  // Firebase autosync — runs in background, syncs logs across devices when configured
+  // Declared after setLogs since it receives setLogs as a callback
+  const firebaseSyncState = useFirebaseSync({ logs, setLogs, profileId: activeProfile });
 
   const setTeeth = (fn: any) => {
     if (typeof fn === 'function') {
@@ -796,6 +801,7 @@ function App() {
           babyName={babyName}
           birth={birth}
           onClose={() => setShowSync(false)}
+          syncState={firebaseSyncState}
         />
       ) : null}
 
