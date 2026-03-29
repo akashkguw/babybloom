@@ -193,53 +193,6 @@
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
-    "number": 128,
-    "title": "edit feed not working if time needs to be updated",
-    "body": "## \ud83d\udc1b Bug Report\n\nedit feed not working if time needs to be updated\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feeding"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/128",
-    "created_at": "2026-03-29T04:49:11.755Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "Bug: Editing an existing feed entry fails when the user tries to update the time field.\n- Component affected: Feed editing UI and/or the underlying save/update logic in the feeding module.\n- Current behaviour: When a user edits a feed entry and changes the time, the update does not persist or the edit operation fails silently.\n- Expected behaviour: Users should be able to edit any field of a feed entry including the time, and changes should save correctly.\n- Edge cases: Consider timezone handling, time format validation, entries that span midnight, and concurrent edits.\n- Acceptance criteria: Editing a feed entry with a new time value saves successfully and reflects the updated time in the feed list.",
-    "implementation_notes": "Fix: edit feed entry not preserving time updates.\n\n- Files changed: src/tabs/LogTab.tsx\n- Root cause: In addEntry(), the entry object was constructed with explicit defaults (date, time, id) BEFORE the ...form spread. Since JavaScript object spread overrides earlier properties, the defaults were always overwritten by form values \u2014 including empty strings from browser time/date picker resets. When the iOS time picker cleared the value on interaction, form.time became \"\" which overwrote the now() fallback.\n- Fix 1: Moved ...form spread BEFORE the explicit defaults so date/time/id fallbacks are properly applied when form values are empty/falsy.\n- Fix 2: Removed the overly restrictive min={daysAgo(1)} constraint on the date input when editing existing entries, which could cause browser coercion issues for entries older than yesterday.\n- Trade-offs: None \u2014 the fix preserves all existing behavior for non-edge cases while correctly handling empty form values."
-  },
-  {
-    "number": 130,
-    "title": "undo not working",
-    "body": "## \ud83d\udc1b Bug Report\n\nundo not working\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/130",
-    "created_at": "2026-03-29T05:33:51.857Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports that the undo feature is not working in the app.\n- Affected area: Undo functionality (likely in feed/diaper/sleep logging)\n- Expected behavior: After logging an entry, user should be able to undo it\n- Current behavior: Undo action does not revert the logged entry\n- Edge cases: Check all log types (feed, diaper, sleep, growth) for undo support\n- Acceptance criteria: Tapping undo successfully reverts the most recent log entry",
-    "implementation_notes": "Fixed undo mechanism with two changes:\n- Files changed: src/tabs/HomeTab.tsx\n- Bug 1: undoLog used id-based filtering which failed for merged timer feeds (the undo entry had a new id that didn't match any real log entry). Fix: store a prevLogs snapshot in the undo entry and restore it directly on undo.\n- Bug 2: undo banner was inside .ca scroll container where position:fixed can be unreliable on mobile browsers. Fix: moved banner outside .ca using React Fragment.\n- Both changes make undo work reliably for all log types (quick-log, timer feeds, merged feeds)."
-  },
-  {
-    "number": 131,
-    "title": "undo experience not coming at all",
-    "body": "## \ud83d\udc1b Bug Report\n\nundo experience not coming at all\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/131",
-    "created_at": "2026-03-29T05:34:03.738Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports that the undo experience/UI is not appearing at all after logging.\n- Affected area: Undo toast/snackbar notification after logging an entry\n- Expected behavior: After logging, a toast/snackbar should appear offering an undo option\n- Current behavior: No undo prompt or notification appears after logging\n- Edge cases: Check if this affects all log types or specific ones; check timing/animation\n- Acceptance criteria: After any log action, an undo toast/snackbar appears and remains visible long enough to interact with. Note: #130 and #131 are closely related \u2014 both about undo being broken.",
-    "implementation_notes": "Same fix as #130 \u2014 closely related issue.\n- Files changed: src/tabs/HomeTab.tsx\n- Moved undo banner outside the .ca scroll container to a React Fragment wrapper, ensuring the position:fixed banner renders correctly on all devices.\n- The prevLogs snapshot approach ensures undo always restores the exact previous state."
-  },
-  {
     "number": 129,
     "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
     "body": "## Deploy Blocker \u2014 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
