@@ -17,6 +17,7 @@ import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
+import { checkFeedNotification } from '@/lib/utils/feedNotification';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -497,34 +498,40 @@ function App() {
   })();
 
   // Feed reminder notifications — check immediately on mount, on visibility change, and on interval
+  // The dedup key is persisted to IndexedDB so the same overdue feed doesn't re-notify across app opens
   const lastNotifRef = useRef<string | null>(null);
+  const notifRefLoaded = useRef(false);
   useEffect(() => {
     if (!reminders.enabled) return;
     if (!isNative && 'Notification' in window && (Notification as any).permission === 'default')
       (Notification as any).requestPermission();
-    lastNotifRef.current = null;
 
     const interval = smartFeedInterval;
+    let cancelled = false;
 
     function checkAndNotify() {
+      if (!notifRefLoaded.current) return; // wait for persisted key to load
       if (!isNative && (!('Notification' in window) || (Notification as any).permission !== 'granted')) return;
       const feeds = logs.feed || [];
-      const lastFeed = feeds.length > 0 ? feeds[0] : null;
-      if (lastFeed && lastFeed.date && lastFeed.time) {
-        const dp = lastFeed.date.split('-');
-        const parts = lastFeed.time.split(':');
-        const lastTime = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
-        const feedKey = lastFeed.date + '_' + lastFeed.time;
-        const diff = (Date.now() - lastTime.getTime()) / 3600000;
-        if (diff >= interval && lastNotifRef.current !== feedKey) {
-          lastNotifRef.current = feedKey;
-          const body = `Time for a feeding! Last feed was ${Math.round(diff * 10) / 10} hours ago.`;
-          sendNotification('BabyBloom Reminder', body);
-        }
+      const result = checkFeedNotification(feeds, interval, lastNotifRef.current);
+      if (result.shouldNotify && result.feedKey && result.body) {
+        lastNotifRef.current = result.feedKey;
+        ds('lastFeedNotifKey', result.feedKey);
+        sendNotification('BabyBloom Reminder', result.body);
       }
     }
 
-    checkAndNotify();
+    // Load persisted dedup key, then run first check
+    if (!notifRefLoaded.current) {
+      dg('lastFeedNotifKey').then((v: any) => {
+        if (cancelled) return;
+        if (v && typeof v === 'string') lastNotifRef.current = v;
+        notifRefLoaded.current = true;
+        checkAndNotify();
+      });
+    } else {
+      checkAndNotify();
+    }
 
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') checkAndNotify();
@@ -534,6 +541,7 @@ function App() {
     const intv = setInterval(checkAndNotify, 300000);
 
     return () => {
+      cancelled = true;
       clearInterval(intv);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
