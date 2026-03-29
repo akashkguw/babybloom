@@ -107,6 +107,32 @@ describe('App.tsx — header has no bottom border', () => {
   });
 });
 
+describe('base.css — app-header vertical centering (#148)', () => {
+  const headerBlock = baseCss.slice(
+    baseCss.indexOf('.app-header'),
+    baseCss.indexOf('}', baseCss.indexOf('.app-header')) + 1
+  );
+
+  it('.app-header has symmetric vertical padding for vertical centering', () => {
+    // The shorthand padding should have equal top and bottom values
+    // e.g. "padding: 10px 12px" (2-value shorthand means top/bottom are equal)
+    // NOT "padding: 8px 12px 12px" (3-value with different top/bottom)
+    const paddingMatch = headerBlock.match(/padding:\s*(\d+)px\s+(\d+)px(?:\s+(\d+)px)?(?:\s+(\d+)px)?;/);
+    expect(paddingMatch).toBeTruthy();
+    if (paddingMatch) {
+      const topPad = parseInt(paddingMatch[1]);
+      // If 3-value shorthand: top right bottom (bottom differs from top)
+      // If 2-value shorthand: top/bottom are equal (paddingMatch[3] is undefined)
+      const bottomPad = paddingMatch[3] ? parseInt(paddingMatch[3]) : topPad;
+      expect(topPad).toBe(bottomPad);
+    }
+  });
+
+  it('.app-header uses align-items: center for flex vertical centering', () => {
+    expect(headerBlock).toMatch(/align-items:\s*center/);
+  });
+});
+
 describe('App.tsx — timer banner uses full width', () => {
   it('timer banner uses left: 0 and right: 0', () => {
     // The timer banner should not use left:'50%' + transform
