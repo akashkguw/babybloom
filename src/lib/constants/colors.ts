@@ -84,9 +84,11 @@ export function applyTheme(dark: boolean): void {
   document.documentElement.style.setProperty('--app-bg', C.bg);
 
   // Update theme color meta tag to match nav gradient start
+  // Light nav: linear-gradient(135deg, #FF6B8A, …)  → start = #FF6B8A
+  // Dark nav:  linear-gradient(135deg, C.sl, C.pl)   → start = C.sl
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) {
-    themeColorMeta.setAttribute('content', dark ? C.sl : C.a);
+    themeColorMeta.setAttribute('content', dark ? C.sl : '#FF6B8A');
   }
 
   // Make status bar transparent so the header gradient shows through
