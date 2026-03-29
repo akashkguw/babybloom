@@ -72,6 +72,8 @@ For each issue that passes safety review, determine its **type** based on the ti
 ### Route: `implementation`
 The issue asks for a code change in the app's `src/` directory — a new feature, UI fix, bug fix, data model change, or component update. This is the most common route.
 
+**Testing requirement:** All implementation issues MUST include relevant unit tests. When enriching the description, always include a "Testing" section in the `enhanced_description` noting what kinds of tests should be written (e.g., "Add unit test for the new timer reset logic" or "Add regression test reproducing the bug before fixing").
+
 Examples: "add dark mode toggle", "feed timer doesn't stop", "growth chart is wrong", "add pumping log"
 
 ### Route: `infrastructure`
@@ -109,12 +111,13 @@ for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'triaged'
         i['route'] = 'ROUTE_TYPE'  # implementation | infrastructure | analysis | documentation
-        i['enhanced_description'] = '''WRITE A CLEAR 3-5 LINE DESCRIPTION:
+        i['enhanced_description'] = '''WRITE A CLEAR DESCRIPTION:
 - What the user reported (in plain English)
 - What component/area is affected
 - Expected behaviour vs current behaviour
 - Edge cases to handle
-- Acceptance criteria'''
+- Acceptance criteria
+- Testing: what unit tests should be written for this change'''
         break
 json.dump(q, open(path, 'w'), indent=2)
 print('Triaged #NUMBER → ROUTE_TYPE')

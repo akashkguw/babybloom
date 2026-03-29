@@ -125,6 +125,16 @@ For workflow YAML, verify it's valid YAML:
 python3 -c "import yaml; yaml.safe_load(open('$REPO_DIR/.github/workflows/deploy.yml')); print('✅ YAML OK')"
 ```
 
+### ⚠️ MANDATORY: Also run full app CI to check for regressions
+
+Even though your changes are in `bot/` or `.github/`, they can affect the overall pipeline. Always verify the app still builds and tests pass:
+
+```bash
+cd $REPO_DIR && npm run test && node tests/regression.cjs && npm run type-check && npm run build
+```
+
+If any of these fail after your infra changes, **fix the root cause before committing.** Infrastructure changes that break the app pipeline are your responsibility.
+
 ---
 
 ## Step 6 — Write implementation notes
@@ -188,6 +198,29 @@ Then repeat Steps 1–8 for the next infrastructure issue. Stop when none remain
 
 ---
 
+## Pipeline Failure RCA Protocol
+
+If your infrastructure changes break the pipeline (CI failures, build failures, or test failures), you MUST:
+
+1. **Do NOT commit broken changes.** Fix them first.
+2. **Perform a Root Cause Analysis (RCA):**
+   - What exactly broke? (CI step, error message, log output)
+   - Why did it break? (what assumption was wrong, what dependency was missed)
+   - What was the fix?
+3. **Add learnings to implementation notes.** Include the RCA in the `implementation_notes` field:
+   ```
+   ## RCA — Pipeline Failure
+   - Broke: [CI step / test name / build step]
+   - Root cause: [what went wrong]
+   - Fix: [what you changed to resolve it]
+   - Learning: [what to watch out for in future]
+   ```
+4. **If this is a recurring pattern**, document it prominently so future agents avoid the same mistake.
+
+**Remember:** Pipeline failures caused by your changes are NOT regressions — they are bugs in your implementation. Own them and fix them.
+
+---
+
 ## Hard limits (no exceptions)
 
 - ❌ `git push / pull / rebase / reset / checkout / stash`
@@ -199,3 +232,5 @@ Then repeat Steps 1–8 for the next infrastructure issue. Stop when none remain
 - ❌ Remove the `isAllowed()` check from bot.js
 - ❌ Remove the `sanitize()` function from pipeline.sh
 - ❌ Add force push (`--force`) to any script
+- ❌ Commit with failing app tests or broken build
+- ❌ Treat pipeline failures caused by your changes as "regressions"

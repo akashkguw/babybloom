@@ -147,27 +147,57 @@ cat $REPO_DIR/src/path/to/file.tsx
 
 ---
 
-## Step 4 — Implement
+## Step 4 — Implement (code + tests together)
 
 Edit **only** files in `$REPO_DIR/src/` and `$REPO_DIR/tests/`.
+
+### ⚠️ MANDATORY: Every change MUST include relevant unit tests
+
+- **New features**: Write new unit tests covering the feature's core logic, edge cases, and error states. Place them in `$REPO_DIR/tests/unit/`.
+- **Bug fixes**: Write a test that reproduces the bug FIRST (it should fail), then fix the code so the test passes. This prevents regressions.
+- **Refactors**: Ensure existing tests still pass and add tests for any newly exposed interfaces.
+- **No code change is complete without its corresponding tests.** If you implement a feature/fix without tests, the issue is NOT done.
 
 If the issue is too vague or requires touching prohibited files — mark `skipped` with a `skip_reason` and stop.
 
 ---
 
-## Step 5 — Run tests and type checking (mandatory, never skip)
+## Step 5 — Run ALL tests and type checking (mandatory, never skip)
 
+### 5a — Unit tests (vitest)
 ```bash
 cd $REPO_DIR && npm run test
 ```
 
-All tests must pass.
+All tests must pass — both your NEW tests and ALL existing tests.
 
+### 5b — Regression tests
+```bash
+cd $REPO_DIR && node tests/regression.cjs
+```
+
+ALL regression tests must pass. This confirms your changes don't break existing functionality.
+
+### 5c — Type checking
 ```bash
 npm run type-check
 ```
 
 TypeScript must have no errors.
+
+### 5d — Local CI (full pipeline check)
+```bash
+cd $REPO_DIR && bash bot/ci.sh "$REPO_DIR"
+```
+
+The full local CI (unit tests → build → server smoke test) must pass.
+
+### ⚠️ CRITICAL: Pipeline failures are YOUR responsibility to fix
+
+- If unit tests fail after your changes — **this is YOUR bug, not a regression.** Fix your code or your tests until they pass.
+- If existing tests break after your changes — **this is a regression YOU introduced.** Fix your implementation so existing tests pass again. Do NOT modify existing tests to make them pass unless the test itself was genuinely wrong.
+- If the build or smoke test fails — **fix the root cause.** Do not skip, do not mark as regression.
+- **You own the green pipeline.** No code leaves your hands with a broken pipeline.
 
 ---
 
@@ -294,16 +324,43 @@ This writes only `bot/claude-tasks.json` — it is explicitly allowed (it is not
 
 ---
 
+## Pipeline Failure RCA Protocol
+
+If your changes break the pipeline (UT failures, regression failures, build failures, or smoke test failures), you MUST:
+
+1. **Do NOT push broken code.** Fix it before marking the issue as implemented.
+2. **Perform a Root Cause Analysis (RCA):**
+   - What exactly broke? (test name, error message, stack trace)
+   - Why did it break? (what assumption was wrong, what side-effect was missed)
+   - What was the fix?
+3. **Add learnings to implementation notes.** Include the RCA in the `implementation_notes` field:
+   ```
+   ## RCA — Pipeline Failure
+   - Broke: [test name / build step]
+   - Root cause: [what went wrong]
+   - Fix: [what you changed to resolve it]
+   - Learning: [what to watch out for in future]
+   ```
+4. **If the same type of failure has happened before**, check past issues' `implementation_notes` for patterns. If you see a recurring theme, add a note about it so the pattern can be addressed structurally.
+
+**Remember:** Pipeline failures caused by your changes are NOT regressions — they are bugs in your implementation. Own them and fix them.
+
+---
+
 ## Hard limits (no exceptions)
 
 - ❌ `git push / pull / rebase / reset / checkout / stash`
 - ❌ Any HTTP request (`curl`, `wget`, `fetch`)
 - ❌ Edit anything except `src/` and `tests/` directories
-- ❌ Modify test files without explicit approval
 - ❌ Touch `bot/.env`, `bot/bot.js`, `bot/deploy.sh`, `bot/pipeline.sh`, `*.plist`
 - ❌ `rm`, `mv`, `cp` any file
 - ❌ `npm install` or package manager changes
 - ❌ Add `fetch()` or network calls to external domains in app code
 - ❌ Skip the type-check between issues
+- ❌ Skip regression tests (`node tests/regression.cjs`)
+- ❌ Skip local CI (`bash bot/ci.sh`)
+- ❌ Mark an issue as `implemented` with failing tests
+- ❌ Modify existing tests just to make them pass (unless the test is genuinely wrong)
+- ❌ Treat pipeline failures caused by your changes as "regressions"
 - ❌ Create files outside `src/` (except config files for build/test)
 - ❌ Edit `package.json`, `tsconfig.json`, `vite.config.ts` without approval
