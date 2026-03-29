@@ -732,7 +732,20 @@ except: pass
     [ -n "$RESULT_NOTES" ] && echo "Notes: $RESULT_NOTES" >> "$CLAUDE_HISTORY_LOG"
     echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
 
-    # Deploy after each issue if there are committed changes
+    # Deploy after each issue — but ONLY if the issue succeeded
+    # Never deploy partial/broken changes from failed or timed-out issues
+    if [ "$RESULT_STATUS" = "failed" ]; then
+      # Revert any uncommitted changes from the failed issue
+      UNCOMMITTED_FAIL=$(git status --porcelain | grep -v '^??' 2>/dev/null)
+      if [ -n "$UNCOMMITTED_FAIL" ]; then
+        echo "  🔄 Reverting uncommitted changes from failed issue #$ISSUE_NUM"
+        git checkout -- . 2>/dev/null
+        git clean -fd -- src/ tests/ 2>/dev/null
+      fi
+      echo "  ⛔ Skipping deploy — issue #$ISSUE_NUM failed"
+      continue
+    fi
+
     UNPUSHED_NOW=$(git log origin/main..HEAD --oneline 2>/dev/null)
     UNCOMMITTED=$(git status --porcelain | grep -v '^??' 2>/dev/null)
     if [ -n "$UNCOMMITTED" ] || [ -n "$UNPUSHED_NOW" ]; then
