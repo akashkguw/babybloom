@@ -83,7 +83,6 @@ export default function Settings({
       className="ca"
       style={{
         background: C.bg,
-        minHeight: '100vh',
       }}
     >
       {/* Header */}
