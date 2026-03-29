@@ -297,11 +297,14 @@ function parseStages(run) {
   return STAGE_DEFS.map(s => {
     const st = Object.assign({}, s);
     switch (s.id) {
-      case 'queue':
+      case 'queue': {
         st.status = e.includes('Queue already up to date') ? 'pass'
-                  : e.includes('Synced') ? 'pass' : 'skip';
-        st.desc = e.match(/Synced (\d+ issues?)/)?.[1] || (st.status === 'pass' ? 'Up to date' : '');
+                  : e.includes('Synced') ? 'pass'
+                  : e.includes('GitHub sync') ? 'pass' : 'skip';
+        const syncMatch = e.match(/Synced (\d+) issue/);
+        st.desc = syncMatch ? syncMatch[1] + ' issues' : (st.status === 'pass' ? 'Up to date' : '');
         break;
+      }
       case 'sentry':
         st.status = e.includes('No new Sentry') ? 'pass'
                   : e.includes('Sentry error') ? 'fail' : 'skip';

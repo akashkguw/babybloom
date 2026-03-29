@@ -268,6 +268,30 @@ fi
 
 echo "📋 Work found: $HAS_WORK actionable issue(s), $UNPUSHED_COUNT unpushed commit(s)"
 
+# ─── Reset stale in_progress issues ───
+# Pipeline.sh is the sole orchestrator now. Any issues stuck at "in_progress" are stale
+# (from dead workers). Reset them to "triaged" so Claude processes new issues instead of
+# wasting every run on stale recovery.
+STALE_RESET=$(python3 -c "
+import json
+path = '$QUEUE_FILE'
+try:
+  q = json.load(open(path))
+  reset = 0
+  for i in q:
+    if i.get('status') == 'in_progress':
+      i['status'] = 'triaged'
+      reset += 1
+  if reset:
+    json.dump(q, open(path, 'w'), indent=2)
+  print(reset)
+except: print(0)
+" 2>/dev/null || echo 0)
+
+if [ "$STALE_RESET" -gt 0 ]; then
+  echo "🔧 Reset $STALE_RESET stale in_progress issue(s) → triaged"
+fi
+
 # ═══════════════════════════════════════════════════════════════
 #  Process pending issues with Claude CLI (one at a time)
 #  Replaces the separate Claude Desktop scheduled worker.
@@ -340,11 +364,12 @@ REPO_DIR=$REPO_DIR
 
 1. Read and follow $REPO_DIR/bot/TRIAGE_SKILL.md
 2. SKIP the run-lock step (Step 0b) — pipeline.sh handles serialization
-3. Process ONLY THE FIRST pending or triaged issue:
+3. SKIP stale recovery — pipeline.sh already reset any in_progress issues to triaged
+4. Process ONLY issue #$ISSUE_NUM (status=$ISSUE_STATUS):
    - If status=pending: triage it (classify, enrich), then dispatch to the appropriate specialist
    - If status=triaged: dispatch directly to the appropriate specialist
-4. After the specialist agent completes ONE issue (committed, analyzed, or documented), STOP
-5. Do NOT process additional issues — pipeline.sh will call you again for the next one
+5. After the specialist agent completes this ONE issue (committed, analyzed, or documented), STOP
+6. Do NOT process additional issues — pipeline.sh will call you again for the next one
 
 ## Environment
 - You are running natively on macOS (not in a sandbox)
