@@ -370,7 +370,9 @@ except: pass
 
     # Run claude with timeout (macOS doesn't have GNU timeout, use background + wait)
     # --dangerously-skip-permissions: required for non-interactive mode to allow file edits
-    "$CLAUDE_BIN" --dangerously-skip-permissions -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
+    # --output-format json: captures token usage stats
+    CLAUDE_JSON_LOG="$BOT_DIR/claude-issue.json"
+    "$CLAUDE_BIN" --dangerously-skip-permissions --output-format json --model sonnet -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
@@ -390,7 +392,7 @@ REPO_DIR=$REPO_DIR
 - All filesystem operations work normally (rm, mv, cp are fine)
 - node_modules are macOS-native (no esbuild workaround needed)
 - Use REPO_DIR=$REPO_DIR for all file paths
-" > "$CLAUDE_LOG" 2>&1 &
+" > "$CLAUDE_JSON_LOG" 2>"$CLAUDE_LOG" &
     CLAUDE_PID=$!
 
     # Wait with timeout (macOS-compatible)
@@ -449,9 +451,32 @@ except: pass
     # Check for new git commits
     NEW_COMMIT=$(git log -1 --oneline 2>/dev/null | head -1)
 
+    # Parse token usage from JSON output
+    CLAUDE_TOKENS=$(python3 -c "
+import json, sys
+try:
+    data = json.load(open('$CLAUDE_JSON_LOG'))
+    u = data.get('usage', {})
+    inp = u.get('input_tokens', 0)
+    out = u.get('output_tokens', 0)
+    total = inp + out
+    cost_in = inp * 3.0 / 1000000   # Sonnet input: \$3/MTok
+    cost_out = out * 15.0 / 1000000  # Sonnet output: \$15/MTok
+    cost = cost_in + cost_out
+    print(f'{inp}|{out}|{total}|{cost:.4f}')
+except:
+    print('0|0|0|0.0000')
+" 2>/dev/null || echo "0|0|0|0.0000")
+
+    TOKEN_IN=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f1)
+    TOKEN_OUT=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f2)
+    TOKEN_TOTAL=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f3)
+    TOKEN_COST=$(echo "$CLAUDE_TOKENS" | cut -d'|' -f4)
+
     # Log summary
     echo "  ⏱️  Finished: $CLAUDE_END (exit code: $CLAUDE_EXIT)"
     echo "  📋 Result: #$ISSUE_NUM → $RESULT_STATUS (route: $RESULT_ROUTE)"
+    echo "  🪙 Tokens: $TOKEN_IN in + $TOKEN_OUT out = $TOKEN_TOTAL total (~\$$TOKEN_COST)"
     [ -n "$RESULT_NOTES" ] && echo "  📝 Notes: $RESULT_NOTES"
 
     # Show key lines from Claude output (git commits, test results, errors)
@@ -467,6 +492,7 @@ except: pass
     echo "" >> "$CLAUDE_HISTORY_LOG"
     echo "═══ $(date) ═══ #$ISSUE_NUM: $ISSUE_TITLE" >> "$CLAUDE_HISTORY_LOG"
     echo "Route: $RESULT_ROUTE | Result: $RESULT_STATUS | Exit: $CLAUDE_EXIT" >> "$CLAUDE_HISTORY_LOG"
+    echo "Tokens: $TOKEN_IN in + $TOKEN_OUT out = $TOKEN_TOTAL (~\$$TOKEN_COST)" >> "$CLAUDE_HISTORY_LOG"
     [ -n "$RESULT_NOTES" ] && echo "Notes: $RESULT_NOTES" >> "$CLAUDE_HISTORY_LOG"
     echo "Duration: $CLAUDE_START → $CLAUDE_END" >> "$CLAUDE_HISTORY_LOG"
 
