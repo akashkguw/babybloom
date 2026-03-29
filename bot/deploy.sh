@@ -94,6 +94,7 @@ BOT_SAFE_FILES=(
   bot/DOCS_SKILL.md
   bot/pending-issues.json
   bot/pipeline.sh
+  bot/queue_lock.py
 )
 for f in "${BOT_SAFE_FILES[@]}"; do
   [ -f "$f" ] && git add "$f" 2>/dev/null || true

@@ -271,6 +271,28 @@ print(f'Dashboard refreshed — lastRunAt={now_iso}')
 
 ---
 
+## File locking for pending-issues.json
+
+A locking helper is available at `$REPO_DIR/bot/queue_lock.py`. When possible, prefer using it over raw `json.load`/`json.dump` to prevent concurrent writes from clobbering data:
+
+```python
+import sys; sys.path.insert(0, '$REPO_DIR/bot')
+from queue_lock import locked_update
+
+def updater(q):
+    for i in q:
+        if i['number'] == NUMBER:
+            i['status'] = 'triaged'
+            i['route'] = 'implementation'
+    return q
+
+locked_update('$REPO_DIR/bot/pending-issues.json', updater)
+```
+
+The inline Python snippets in this and other skill files use simple `json.load`/`json.dump` for readability, but if you observe data corruption (lost updates, overwritten fields), switch to the `locked_update` helper.
+
+---
+
 ## Hard limits (no exceptions)
 
 - This agent ONLY triages — it never edits source code
