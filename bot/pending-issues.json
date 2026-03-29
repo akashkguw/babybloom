@@ -232,6 +232,23 @@
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
   },
   {
+    "number": 152,
+    "title": "when I add old feed in old/previous date which I forgot to add, the i get ale...",
+    "body": "## \ud83d\udc1b Bug Report\n\nwhen I add old feed in old/previous date which I forgot to add, the i get alerts that no feed in xx hours. check similar errors and fix it\n\n---\n\n**Category:** `bug` `enhancement` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "enhancement",
+      "feeding"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/152",
+    "created_at": "2026-03-29T21:26:28.145Z",
+    "status": "implemented",
+    "route": "implementation",
+    "enhanced_description": "Bug: Adding feeds for past dates triggers false \"no feed in XX hours\" alerts.\n\nWhat the user reported: When logging a feed entry for a previous date (e.g., one they forgot to record), the app fires alerts saying no feed in XX hours, as if the baby hasn't been fed recently.\n\nAffected components:\n- src/features/insights/SmartStatus.tsx (lines 48-99): calculates hoursAgo from last feed vs Date.now()\n- src/features/insights/useDynamicRedFlags.ts (lines 92-123): P0 alert for extended feeding gaps\n- src/lib/utils/feedNotification.ts (lines 33-67): native/browser notification for feed gaps\n- src/features/insights/PredictiveNudges.tsx (lines 104-135): past-window feeding nudges\n\nRoot cause: All alert systems determine the \"last feed\" by scanning feed entries and comparing timestamps to Date.now(). When a user adds a feed for a past date, the system treats that past-dated entry as the most recent feed, making it appear the baby hasn't been fed for many hours.\n\nExpected behavior: Alerts should calculate gap based on the chronologically most recent feed timestamp, regardless of when the entry was added. If feeds exist for today, adding an older feed to yesterday should not change the alert state.\n\nEdge cases to handle:\n- User adds the only feed of the day to a past date (alert should still fire for today if no today feeds exist)\n- User edits an existing feed to change its date to the past\n- Multiple feeds across dates - ensure sorting is by actual feed date+time, not array insertion order\n\nAcceptance criteria:\n- Adding a feed for a past date does not trigger false positive alerts\n- Alerts still fire correctly when there genuinely is no recent feed\n- All four alert systems (SmartStatus, DynamicRedFlags, feedNotification, PredictiveNudges) handle past-date feeds correctly\n\nTesting: Add unit tests for each alert component verifying:\n1. Past-date feed insertion does not trigger alert when recent feeds exist\n2. Alerts still fire when no recent feeds exist (only old entries)\n3. Feed sorting by actual timestamp works correctly across date boundaries",
+    "implementation_notes": "Fixed false alerts when adding feeds for past dates, plus same fix for all similar patterns.\n\nFiles changed:\n- src/features/insights/SmartStatus.tsx: Added latestEntry() helper. Changed feed, diaper, and sleep status to use chronologically latest entry instead of array[0].\n- src/features/insights/useDynamicRedFlags.ts: Added latestEntryMs() and latestEntryOf() helpers. Fixed feed gap, dirty diaper gap, and tummy time gap to find chronologically latest entries.\n- src/lib/utils/feedNotification.ts: Changed to scan all feeds for chronologically latest instead of using feeds[0].\n- src/features/insights/PredictiveNudges.tsx: Added latestMs() helper. Fixed feed, diaper, and sleep predictions to use chronologically latest entries.\n\nTests updated:\n- tests/unit/dynamicRedFlags.test.ts: Updated local computeRedFlags copy to match source. Added 3 tests for past-date ordering (feed, dirty diaper, mixed order).\n- tests/unit/feedNotification.test.ts: Updated existing test to verify chronological ordering. Added test for past-date feed prepended before recent feed.\n\nRoot cause: All alert systems assumed array[0] was the chronologically most recent entry. But when users add entries for past dates, they get prepended to the array, making a past-dated entry appear at index 0. The fix scans all entries to find the one with the latest actual date+time."
+  },
+  {
     "number": 151,
     "title": "if something needs attention / risk in quick log, it should continue to remai...",
     "body": "## \ud83d\udc1b Bug Report\n\nif something needs attention / risk in quick log, it should continue to remain in top 8.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
@@ -242,23 +259,6 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/151",
     "created_at": "2026-03-29T18:07:53Z",
-    "status": "failed",
-    "failure_reason": "Claude CLI exited with code 1. Check /Users/akashkg/saanvi/babybloom/bot/claude-issue.log for details."
-  },
-  {
-    "number": 150,
-    "title": "feed in ml is not coming from 26th",
-    "body": "## \ud83d\udc1b Bug Report\n\nfeed in ml is not coming from 26th\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feeding"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/150",
-    "created_at": "2026-03-29T18:07:19Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User reports that feed volume in ml is no longer displayed since around March 26.\n\nRoot cause: Commit 8a8b6f9 (March 27) removed the daily total feed volume display from the hero widget in HomeTab.tsx as part of issue #114 (\"Remove overall feed volume from hero section\").\n\nFix applied in commit a753035: Restored feedOzToday calculation and display in the hero widget.\n- src/tabs/HomeTab.tsx: Re-added feedOzToday sum of oz values for today, and display via fmtVol()\n- tests/unit/feedVolume.test.ts: 12 tests covering summation, formatting, and volume conversions\n\nAll tests passing. Fix already deployed.",
-    "implementation_notes": "Fix was committed in a753035 (previous pipeline run). Code restores feedOzToday calculation at HomeTab.tsx:964-969 and display at line 1267. 12 unit tests all pass."
+    "status": "pending"
   }
 ]
