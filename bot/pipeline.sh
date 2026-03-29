@@ -10,6 +10,19 @@
 REPO_DIR="/Users/akashkg/saanvi/babybloom"
 BOT_DIR="$REPO_DIR/bot"
 REPO="akashkguw/babybloom"
+LOCK_FILE="$BOT_DIR/.pipeline.lock"
+
+# ─── Run lock: skip if another pipeline run is still active ───
+if [ -f "$LOCK_FILE" ]; then
+  LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null)
+  if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+    # Still running — exit silently (don't spam the log every 60s)
+    exit 0
+  fi
+  # Stale lock (process died) — clean up and continue
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 # ─── Ensure PATH includes common tool locations (LaunchAgents use minimal PATH) ───
 # NVM node (find latest installed version)
@@ -636,18 +649,81 @@ urllib.request.urlopen(req, timeout=10, context=ctx)
 print('Posted analysis for #$num')
 " 2>/dev/null || echo "⚠️ Could not post analysis for #$num"
 
+    # Create sub-issues from confirmed findings (auto-actionable items)
+    SUB_CREATED=$(python3 -c "
+import urllib.request, json, ssl
+try:
+    import certifi; ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context(); ctx.load_default_certs()
+
+path = '$QUEUE_FILE'
+q = json.load(open(path))
+issue = None
+for i in q:
+    if i.get('number') == $num:
+        issue = i
+        break
+
+findings = issue.get('confirmed_findings', []) if issue else []
+created = 0
+for f in findings:
+    title = f.get('title', '').strip()
+    body = f.get('body', '').strip()
+    labels = f.get('labels', ['analysis-finding'])
+    if not title:
+        continue
+
+    # Prefix with parent issue reference
+    full_body = f'**From analysis of #{$num}**\n\n{body}'
+    data = json.dumps({'title': title, 'body': full_body, 'labels': labels}).encode()
+    try:
+        req = urllib.request.Request(
+            'https://api.github.com/repos/$REPO/issues',
+            data=data, method='POST',
+            headers={'Authorization': 'Bearer $GITHUB_TOKEN', 'Content-Type': 'application/json'}
+        )
+        resp = json.loads(urllib.request.urlopen(req, timeout=10, context=ctx).read())
+        gh_num = resp['number']
+        created += 1
+        print(f'  📌 Created sub-issue #{gh_num}: {title}')
+
+        # Add to pending queue for immediate pickup
+        existing_nums = {i['number'] for i in q}
+        if gh_num not in existing_nums:
+            q.append({
+                'number': gh_num,
+                'title': title,
+                'body': full_body,
+                'labels': labels,
+                'url': resp.get('html_url', ''),
+                'created_at': resp.get('created_at', ''),
+                'status': 'pending',
+                'source': 'analysis',
+                'parent_issue': $num
+            })
+    except Exception as e:
+        print(f'  ⚠️ Failed to create sub-issue: {e}')
+
+if created:
+    json.dump(q, open(path, 'w'), indent=2)
+print(created)
+" 2>/dev/null)
+
     send_telegram "🔍 *BabyBloom: Analysis Complete*
 
 🔢 Issue: #$num
 📌 Title: $title
+$([ -n "$SUB_CREATED" ] && [ "$SUB_CREATED" -gt 0 ] 2>/dev/null && echo "🔧 Created $SUB_CREATED sub-issue(s) for confirmed findings")
 
 Claude has posted findings as a comment on the GitHub issue.
 🔗 [View analysis](https://github.com/$REPO/issues/$num)"
 
     echo "🔍 Analysis posted: #$num — $title"
+    [ -n "$SUB_CREATED" ] && [ "$SUB_CREATED" -gt 0 ] 2>/dev/null && echo "  🔧 Created $SUB_CREATED sub-issue(s) from confirmed findings"
   done <<< "$ANALYZED"
 
-  # Remove analyzed issues from queue
+  # Remove analyzed issues from queue (but keep any newly created sub-issues)
   python3 -c "
 import json
 try:

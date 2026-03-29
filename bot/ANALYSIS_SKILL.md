@@ -81,7 +81,18 @@ Bad finding: "Some features might not be needed."
 
 ---
 
-## Step 5 — Save the analysis
+## Step 5 — Classify each finding
+
+For each finding, classify its confidence level:
+
+- **confirmed** — Clear issue with objective evidence (dead code, unused imports, missing ARIA labels, broken flow, measurable performance issue). These will become auto-created GitHub sub-issues for the pipeline to implement.
+- **partial** — Subjective, debatable, or needs human judgment (UX taste, feature value, architectural tradeoffs). These get posted as analysis comments for human review only.
+
+Be conservative — only mark something `confirmed` if you're certain it's an improvement. When in doubt, use `partial`.
+
+---
+
+## Step 5a — Save the analysis with classified findings
 
 ```bash
 python3 -c "
@@ -91,39 +102,51 @@ q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'analyzed'
-        i['analysis_result'] = '''YOUR FULL ANALYSIS HERE.
-
-Structure it clearly with sections and specific file/component references.
-This will be posted as a GitHub comment by pipeline.sh, so format it to read well in Markdown.
+        i['analysis_result'] = '''YOUR FULL ANALYSIS HERE (posted as GitHub comment).
 
 ## Summary
 Brief overview of findings.
 
-## Detailed Findings
+## Confirmed Findings (auto-actionable)
+These will be auto-created as sub-issues.
 
 ### Finding 1: Title
 - File: path/to/file.tsx
-- Issue: what's wrong or could be improved
-- Recommendation: specific suggestion
+- Issue: what's wrong
+- Fix: specific action to take
 
-### Finding 2: Title
-...
+## Partial Findings (needs human review)
+These are posted for human judgment only.
 
-## Recommendations
-Prioritized list of suggested actions.'''
+### Finding A: Title
+- File: path/to/file.tsx
+- Observation: what you noticed
+- Question: why this needs human input
+'''
+        # Structured list of confirmed findings for auto sub-issue creation
+        i['confirmed_findings'] = [
+            {
+                'title': 'Short descriptive title for the sub-issue',
+                'body': 'Detailed description with file paths, line numbers, and specific fix instructions.',
+                'labels': ['analysis-finding']
+            },
+            # Add one entry per confirmed finding. Leave empty list [] if none are confirmed.
+        ]
         break
 json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Analysis saved for #NUMBER')
 "
 ```
 
-Replace the analysis_result with your actual findings. Be thorough but concise.
+Replace the analysis_result and confirmed_findings with your actual findings. Be thorough but concise.
+
+**Important:** `confirmed_findings` is a JSON list. Each entry becomes a real GitHub issue that the pipeline will auto-create and queue for implementation. Only include findings you are confident about. Partial/subjective findings go in `analysis_result` text only.
 
 ---
 
 ## Step 6 — Loop
 
-Print: issue number + title + brief summary of findings.
+Print: issue number + title + brief summary of findings + how many confirmed vs partial.
 
 Then repeat Steps 1–5 for the next analysis issue. Stop when none remain.
 
