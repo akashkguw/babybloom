@@ -4,27 +4,77 @@ You are the BabyBloom issue triage agent. Your job is to classify each pending i
 
 ---
 
-## Step 0 — Find the repo
+## Step 0 — Acquire run lock and find the repo
+
+### 0a — Run lock (prevent overlapping runs)
 
 ```bash
-REPO_DIR=$(find /sessions/*/mnt/saanvi/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)
+LOCK_FILE="$REPO_DIR/bot/worker.lock"
+if [ -f "$LOCK_FILE" ]; then
+  LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null)
+  if kill -0 "$LOCK_PID" 2>/dev/null; then
+    echo "⏭️ Another worker is running (PID $LOCK_PID). Skipping this run."
+    exit 0
+  else
+    echo "🔓 Removing stale lock (PID $LOCK_PID not running)"
+    rm -f "$LOCK_FILE"
+  fi
+fi
+echo $$ > "$LOCK_FILE"
+echo "🔒 Run lock acquired (PID $$)"
+trap 'rm -f "$LOCK_FILE"' EXIT
+```
+
+### 0b — Find the repo
+
+```bash
+REPO_DIR=$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)
+if [ -z "$REPO_DIR" ]; then
+  REPO_DIR=$(find /Users/*/saanvi/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)
+fi
 echo "Repo: $REPO_DIR"
 ```
 
 If not found, exit with error.
 
----
-
-## Step 1 — Load pending issues
+### 0c — Check for stale in_progress issues from previous runs
 
 ```bash
 python3 -c "
 import json
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
+stale = [i for i in q if i.get('status') == 'in_progress']
+if stale:
+    print(f'⚠️ Found {len(stale)} stale in_progress issue(s) from a previous run:')
+    for i in stale:
+        print(f'  #{i[\"number\"]} — {i[\"title\"]}')
+        i['status'] = 'triaged'  # Reset to triaged so they get re-attempted
+        i['stale_recovery'] = 'Reset from in_progress — previous run likely crashed'
+    json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
+    print('Reset to triaged for re-processing.')
+else:
+    print('✅ No stale in_progress issues.')
+"
+```
+
+---
+
+## Step 1 — Load pending issues (with batch limit)
+
+```bash
+python3 -c "
+import json
+MAX_ISSUES_PER_RUN = 5
 try:
-    q = json.load(open('$REPO_DIR/bot/pending-issues.json'))
+    q = json.load(open('$REPO_DIR/bot/pending-issues.json', encoding='utf-8'))
     pending = [i for i in q if i.get('status') == 'pending']
-    print(f'{len(pending)} pending issue(s)')
-    for i in pending:
+    batch = pending[:MAX_ISSUES_PER_RUN]
+    remaining = len(pending) - len(batch)
+    print(f'{len(pending)} pending issue(s), processing {len(batch)} this run')
+    if remaining > 0:
+        print(f'  ({remaining} deferred to next run)')
+    for i in batch:
         print(f'  #{i[\"number\"]} — {i[\"title\"]}')
 except Exception as e:
     print(f'0 pending ({e})')
@@ -33,9 +83,11 @@ except Exception as e:
 
 If 0 pending — print "No pending issues. Exiting." and stop.
 
+**Batch limit:** Process at most **5 issues per run** to avoid context exhaustion and excessive run times. Remaining issues will be picked up by the next scheduled run.
+
 ---
 
-## Step 2 — Safety review (for EACH pending issue)
+## Step 2 — Safety review (for EACH pending issue in the batch)
 
 Read each issue's `title` and `body`. Reject immediately if it contains:
 
@@ -53,12 +105,12 @@ To reject:
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'rejected'
         i['rejection_reason'] = 'REASON HERE'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Rejected #NUMBER')
 "
 ```
@@ -106,7 +158,7 @@ For each triaged issue, update `pending-issues.json`:
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'triaged'
@@ -119,7 +171,7 @@ for i in q:
 - Acceptance criteria
 - Testing: what unit tests should be written for this change'''
         break
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Triaged #NUMBER → ROUTE_TYPE')
 "
 ```
@@ -129,12 +181,12 @@ For `skip` routes:
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'skipped'
         i['skip_reason'] = 'REASON HERE'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Skipped #NUMBER')
 "
 ```
@@ -166,6 +218,57 @@ Now read and follow each specialist skill in order. Process one route at a time:
 
 For each skill, process ALL issues of that route type before moving to the next skill.
 
+**Context management:** If the run is getting long (many issues processed), prefer to stop after completing the current route type and let the next scheduled run pick up remaining routes. A clean partial run is better than a context-exhausted failed run.
+
+---
+
+## Step 7 — Refresh dashboard worker state
+
+After all issues are processed (or when stopping early), write the current task status to the internal dashboard's `claude-tasks.json`:
+
+```bash
+python3 -c "
+import json, datetime, os
+
+REPO_DIR = '$REPO_DIR'
+tasks_path = os.path.join(REPO_DIR, 'bot', 'claude-tasks.json')
+
+try:
+    tasks = json.load(open(tasks_path, encoding='utf-8'))
+except Exception:
+    tasks = []
+
+now_iso = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z')
+dt = datetime.datetime.utcnow().replace(second=0, microsecond=0)
+next_dt = dt.replace(minute=2) + datetime.timedelta(hours=1)
+next_iso = next_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+updated = False
+for t in tasks:
+    if t.get('taskId') == 'babybloom-issue-worker':
+        t['lastRunAt'] = now_iso
+        t['nextRunAt'] = next_iso
+        t['enabled'] = True
+        updated = True
+        break
+
+if not updated:
+    tasks.insert(0, {
+        'taskId': 'babybloom-issue-worker',
+        'description': 'BabyBloom multi-agent pipeline — triage then dispatch to specialist agents',
+        'schedule': 'At 2 minutes past the hour, every hour, every day',
+        'cronExpression': '0 * * * *',
+        'enabled': True,
+        'lastRunAt': now_iso,
+        'nextRunAt': next_iso,
+        'jitterSeconds': 123
+    })
+
+json.dump(tasks, open(tasks_path, 'w', encoding='utf-8'), indent=2)
+print(f'Dashboard refreshed — lastRunAt={now_iso}')
+"
+```
+
 ---
 
 ## Hard limits (no exceptions)
@@ -174,3 +277,4 @@ For each skill, process ALL issues of that route type before moving to the next 
 - Never fabricate issue details that aren't in the title/body
 - Never change an issue's status to `implemented` or `analyzed` — only specialist agents do that
 - Never touch `.env`, tokens, or secrets
+- Never process more than 5 issues per run (batch limit)

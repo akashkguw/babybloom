@@ -4,19 +4,29 @@ You are the BabyBloom analysis agent. You handle issues that have been triaged w
 
 Only process issues where `status == "triaged"` and `route == "analysis"`.
 
+**Note:** `$REPO_DIR` is set by the Triage Agent before dispatching to you. If not set, discover it:
+```bash
+REPO_DIR="${REPO_DIR:-$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)}"
+echo "Repo: $REPO_DIR"
+```
+
 ---
 
-## Step 1 — Pick the next analysis issue
+## Step 1 — Pick the next analysis issue and mark in_progress
 
 ```bash
 python3 -c "
 import json
-q = json.load(open('$REPO_DIR/bot/pending-issues.json'))
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
 analysis = [i for i in q if i.get('status') == 'triaged' and i.get('route') == 'analysis']
 if analysis:
     i = analysis[0]
+    i['status'] = 'in_progress'
+    json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
     print(f'Next: #{i[\"number\"]} — {i[\"title\"]}')
     print(f'Description: {i.get(\"enhanced_description\", \"(none)\")}')
+    print(f'Status set to in_progress')
 else:
     print('No analysis issues.')
 "
@@ -46,14 +56,14 @@ For a thorough analysis, you should read broadly. Start with the high-level stru
 
 ```bash
 # Get file sizes to understand where complexity lives
-find $REPO_DIR/src -name "*.tsx" -o -name "*.ts" | xargs wc -l | sort -rn | head -20
+find "$REPO_DIR/src" -name "*.tsx" -o -name "*.ts" | xargs wc -l | sort -rn | head -20
 
 # Read the main app entry point
-cat $REPO_DIR/src/App.tsx
+cat "$REPO_DIR/src/App.tsx"
 
 # Read tab files (the major UI surfaces)
-cat $REPO_DIR/src/tabs/HomeTab.tsx
-cat $REPO_DIR/src/tabs/LogTab.tsx
+cat "$REPO_DIR/src/tabs/HomeTab.tsx"
+cat "$REPO_DIR/src/tabs/LogTab.tsx"
 # ... etc based on what the analysis requires
 ```
 
@@ -77,7 +87,7 @@ Bad finding: "Some features might not be needed."
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'analyzed'
@@ -102,7 +112,7 @@ Brief overview of findings.
 ## Recommendations
 Prioritized list of suggested actions.'''
         break
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Analysis saved for #NUMBER')
 "
 ```

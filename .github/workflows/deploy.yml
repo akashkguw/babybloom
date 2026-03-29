@@ -32,7 +32,10 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests
-        run: npx vitest run
+        run: npx vitest run --reporter=verbose
+
+      - name: Regression tests
+        run: node tests/regression.cjs
 
       - name: Build
         run: npm run build

@@ -10,19 +10,29 @@ Only process issues where `status == "triaged"` and `route == "infrastructure"`.
 
 **IMPORTANT:** This agent should ONLY run when explicitly invoked by the owner in a manual session. Never run as part of the automated `babybloom-issue-worker` scheduled task.
 
+**Note:** `$REPO_DIR` is set by the Triage Agent before dispatching to you. If not set, discover it:
+```bash
+REPO_DIR="${REPO_DIR:-$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)}"
+echo "Repo: $REPO_DIR"
+```
+
 ---
 
-## Step 1 — Pick the next infrastructure issue
+## Step 1 — Pick the next infrastructure issue and mark in_progress
 
 ```bash
 python3 -c "
 import json
-q = json.load(open('$REPO_DIR/bot/pending-issues.json'))
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
 infra = [i for i in q if i.get('status') == 'triaged' and i.get('route') == 'infrastructure']
 if infra:
     i = infra[0]
+    i['status'] = 'in_progress'
+    json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
     print(f'Next: #{i[\"number\"]} — {i[\"title\"]}')
     print(f'Description: {i.get(\"enhanced_description\", \"(none)\")}')
+    print(f'Status set to in_progress')
 else:
     print('No infrastructure issues.')
 "
@@ -52,17 +62,17 @@ Understand what you're changing before editing:
 
 ```bash
 # For bot.js changes
-cat $REPO_DIR/bot/bot.js
+cat "$REPO_DIR/bot/bot.js"
 
 # For pipeline changes
-cat $REPO_DIR/bot/pipeline.sh
+cat "$REPO_DIR/bot/pipeline.sh"
 
 # For deploy changes
-cat $REPO_DIR/bot/deploy.sh
+cat "$REPO_DIR/bot/deploy.sh"
 
 # For GitHub Actions
-cat $REPO_DIR/.github/workflows/deploy.yml
-cat $REPO_DIR/.github/workflows/test.yml
+cat "$REPO_DIR/.github/workflows/deploy.yml"
+cat "$REPO_DIR/.github/workflows/test.yml"
 ```
 
 ### Bot architecture overview
@@ -78,6 +88,7 @@ cat $REPO_DIR/.github/workflows/test.yml
 |--------|---------|-------------|
 | `pending` | New, unprocessed | bot.js |
 | `triaged` | Classified and enriched | Triage Agent |
+| `in_progress` | Currently being worked on | Any specialist agent |
 | `implemented` | Code committed | Implementation Agent |
 | `infra_implemented` | Infrastructure change committed | Infrastructure Agent (you) |
 | `analyzed` | Analysis complete | Analysis Agent |
@@ -111,13 +122,13 @@ You may NOT edit:
 
 For bot.js changes, verify syntax:
 ```bash
-cd $REPO_DIR/bot && node -c bot.js && echo "✅ Syntax OK"
+cd "$REPO_DIR/bot" && node -c bot.js && echo "✅ Syntax OK"
 ```
 
 For shell script changes, verify syntax:
 ```bash
-bash -n $REPO_DIR/bot/pipeline.sh && echo "✅ pipeline.sh syntax OK"
-bash -n $REPO_DIR/bot/deploy.sh && echo "✅ deploy.sh syntax OK"
+bash -n "$REPO_DIR/bot/pipeline.sh" && echo "✅ pipeline.sh syntax OK"
+bash -n "$REPO_DIR/bot/deploy.sh" && echo "✅ deploy.sh syntax OK"
 ```
 
 For workflow YAML, verify it's valid YAML:
@@ -130,7 +141,7 @@ python3 -c "import yaml; yaml.safe_load(open('$REPO_DIR/.github/workflows/deploy
 Even though your changes are in `bot/` or `.github/`, they can affect the overall pipeline. Always verify the app still builds and tests pass:
 
 ```bash
-cd $REPO_DIR && npm run test && node tests/regression.cjs && npm run type-check && npm run build
+cd "$REPO_DIR" && npm run test && node tests/regression.cjs && npm run type-check && npm run build
 ```
 
 If any of these fail after your infra changes, **fix the root cause before committing.** Infrastructure changes that break the app pipeline are your responsibility.
@@ -143,7 +154,7 @@ If any of these fail after your infra changes, **fix the root cause before commi
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['implementation_notes'] = '''WHAT YOU ACTUALLY DID:
@@ -152,7 +163,7 @@ for i in q:
 - Testing done: what syntax/logic checks passed
 - Any manual steps needed: e.g. restart bot, reload plist'''
         break
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Implementation notes saved')
 "
 ```
@@ -162,7 +173,7 @@ print('Implementation notes saved')
 ## Step 7 — Commit
 
 ```bash
-cd $REPO_DIR
+cd "$REPO_DIR"
 git config user.email "akashgupta5384@gmail.com"
 git config user.name "Akash"
 git add bot/bot.js bot/pipeline.sh bot/deploy.sh bot/package.json .github/workflows/ bot/*.md
@@ -179,11 +190,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'infra_implemented'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Done: #NUMBER (infrastructure)')
 "
 ```

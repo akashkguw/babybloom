@@ -4,25 +4,37 @@ You are the BabyBloom implementation agent. You handle issues that have been tri
 
 Only process issues where `status == "triaged"` and `route == "implementation"`.
 
+**Note:** `$REPO_DIR` is set by the Triage Agent before dispatching to you. If not set, discover it:
+```bash
+REPO_DIR="${REPO_DIR:-$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)}"
+echo "Repo: $REPO_DIR"
+```
+
 ---
 
-## Step 1 — Pick the next implementation issue
+## Step 1 — Pick the next implementation issue and mark in_progress
 
 ```bash
 python3 -c "
 import json
-q = json.load(open('$REPO_DIR/bot/pending-issues.json'))
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
 impl = [i for i in q if i.get('status') == 'triaged' and i.get('route') == 'implementation']
 if impl:
     i = impl[0]
+    i['status'] = 'in_progress'
+    json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
     print(f'Next: #{i[\"number\"]} — {i[\"title\"]}')
     print(f'Description: {i.get(\"enhanced_description\", \"(none)\")}')
+    print(f'Status set to in_progress')
 else:
     print('No implementation issues.')
 "
 ```
 
 If none, stop — you're done.
+
+**Important:** Setting `in_progress` immediately ensures that if this run crashes, the Triage Agent's Step 0c will detect the stale issue and reset it on the next run.
 
 ---
 
@@ -32,10 +44,10 @@ Never edit blindly. First understand the relevant code:
 
 ```bash
 # Find relevant functions/components in src/
-grep -rn "KEYWORD" $REPO_DIR/src/ | head -20
+grep -rn "KEYWORD" "$REPO_DIR/src/" | head -20
 
 # Read only the relevant file
-cat $REPO_DIR/src/path/to/file.tsx
+cat "$REPO_DIR/src/path/to/file.tsx"
 ```
 
 ### Code conventions (strict — Vite + React + TypeScript modular architecture)
@@ -72,13 +84,13 @@ If the issue turns out to need changes outside `src/` (e.g., `bot.js`, `pipeline
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'triaged'
         i['route'] = 'infrastructure'
         i['reroute_reason'] = 'REASON — needs changes to FILES outside src/'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Re-routed #NUMBER → infrastructure')
 "
 ```
@@ -89,28 +101,28 @@ print('Re-routed #NUMBER → infrastructure')
 
 ### 4a — Unit tests (vitest)
 ```bash
-cd $REPO_DIR && npm run test
+cd "$REPO_DIR" && npm run test
 ```
 
 All tests must pass — both your NEW tests and ALL existing tests.
 
 ### 4b — Regression tests
 ```bash
-cd $REPO_DIR && node tests/regression.cjs
+cd "$REPO_DIR" && node tests/regression.cjs
 ```
 
 ALL regression tests must pass. This confirms your changes don't break existing functionality.
 
 ### 4c — Type checking
 ```bash
-npm run type-check
+cd "$REPO_DIR" && npm run type-check
 ```
 
 TypeScript must have no errors.
 
 ### 4d — Local CI (full pipeline check)
 ```bash
-cd $REPO_DIR && bash bot/ci.sh "$REPO_DIR"
+cd "$REPO_DIR" && bash bot/ci.sh "$REPO_DIR"
 ```
 
 The full local CI (unit tests → build → server smoke test) must pass.
@@ -128,12 +140,12 @@ If tests fail, fix the issue. If you cannot fix it after 2 attempts, mark the is
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'failed'
         i['failure_reason'] = 'REASON — what test/type error occurred'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Failed #NUMBER')
 "
 ```
@@ -146,15 +158,16 @@ print('Failed #NUMBER')
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['implementation_notes'] = '''WHAT YOU ACTUALLY DID:
 - Files changed: list each file and what was changed
+- Tests added: list each test file and what it covers
 - Approach taken: brief explanation of the fix/feature
 - Any trade-offs or notes for the reviewer'''
         break
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Implementation notes saved')
 "
 ```
@@ -164,7 +177,7 @@ print('Implementation notes saved')
 ## Step 6 — Commit
 
 ```bash
-cd $REPO_DIR
+cd "$REPO_DIR"
 git config user.email "akashgupta5384@gmail.com"
 git config user.name "Akash"
 git add src/ tests/
@@ -181,11 +194,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'implemented'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Done: #NUMBER')
 "
 ```

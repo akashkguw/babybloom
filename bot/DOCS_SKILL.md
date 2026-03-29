@@ -4,19 +4,29 @@ You are the BabyBloom documentation agent. You handle issues that have been tria
 
 Only process issues where `status == "triaged"` and `route == "documentation"`.
 
+**Note:** `$REPO_DIR` is set by the Triage Agent before dispatching to you. If not set, discover it:
+```bash
+REPO_DIR="${REPO_DIR:-$(find /sessions/*/mnt/*/babybloom -maxdepth 0 -type d 2>/dev/null | head -1)}"
+echo "Repo: $REPO_DIR"
+```
+
 ---
 
-## Step 1 — Pick the next documentation issue
+## Step 1 — Pick the next documentation issue and mark in_progress
 
 ```bash
 python3 -c "
 import json
-q = json.load(open('$REPO_DIR/bot/pending-issues.json'))
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
 docs = [i for i in q if i.get('status') == 'triaged' and i.get('route') == 'documentation']
 if docs:
     i = docs[0]
+    i['status'] = 'in_progress'
+    json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
     print(f'Next: #{i[\"number\"]} — {i[\"title\"]}')
     print(f'Description: {i.get(\"enhanced_description\", \"(none)\")}')
+    print(f'Status set to in_progress')
 else:
     print('No documentation issues.')
 "
@@ -56,14 +66,14 @@ Before writing or updating docs, read the existing documentation and the source 
 
 ```bash
 # Read existing docs
-cat $REPO_DIR/README.md
-cat $REPO_DIR/ARCHITECTURE_PLAN.md
-cat $REPO_DIR/bot/README.md
+cat "$REPO_DIR/README.md"
+cat "$REPO_DIR/ARCHITECTURE_PLAN.md"
+cat "$REPO_DIR/bot/README.md"
 
 # Understand current features by reading source
-ls $REPO_DIR/src/tabs/
-ls $REPO_DIR/src/features/
-cat $REPO_DIR/package.json
+ls "$REPO_DIR/src/tabs/"
+ls "$REPO_DIR/src/features/"
+cat "$REPO_DIR/package.json"
 ```
 
 ### Documentation principles
@@ -103,7 +113,7 @@ You may NOT edit:
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['implementation_notes'] = '''WHAT YOU ACTUALLY DID:
@@ -111,7 +121,7 @@ for i in q:
 - Sections added/modified: brief description
 - What was removed or corrected: outdated info that was fixed'''
         break
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Implementation notes saved')
 "
 ```
@@ -121,7 +131,7 @@ print('Implementation notes saved')
 ## Step 6 — Commit
 
 ```bash
-cd $REPO_DIR
+cd "$REPO_DIR"
 git config user.email "akashgupta5384@gmail.com"
 git config user.name "Akash"
 git add README.md ARCHITECTURE_PLAN.md MIGRATION_GUIDE.md EXTRACTION_STATUS.md bot/README.md docs/ 2>/dev/null
@@ -140,11 +150,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 python3 -c "
 import json
 path = '$REPO_DIR/bot/pending-issues.json'
-q = json.load(open(path))
+q = json.load(open(path, encoding='utf-8'))
 for i in q:
     if i['number'] == NUMBER:
         i['status'] = 'documented'
-json.dump(q, open(path, 'w'), indent=2)
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
 print('Done: #NUMBER (documentation)')
 "
 ```

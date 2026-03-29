@@ -106,11 +106,16 @@ git add tests/ 2>/dev/null || true
 
 # ─── SECRET SCAN — hard stop if any secret found in staged files ───
 echo "🔍 Scanning staged files for secrets..."
-# Patterns: GH personal access tokens and Telegram bot tokens
+# Patterns: common secret token formats
 GH_PAT_PATTERN="github_pat_[A-Za-z0-9_]{30,}"
 GH_TOKEN_PATTERN="ghp_[A-Za-z0-9]{36,}"
 TG_TOKEN_PATTERN="[0-9]{8,}:AA[A-Za-z0-9_-]{30,}"
-if git diff --cached | grep -qE "${GH_PAT_PATTERN}|${GH_TOKEN_PATTERN}|${TG_TOKEN_PATTERN}"; then
+AWS_KEY_PATTERN="AKIA[0-9A-Z]{16}"
+STRIPE_PATTERN="sk_(live|test)_[A-Za-z0-9]{20,}"
+GENERIC_SECRET_PATTERN="(api[_-]?key|secret[_-]?key|access[_-]?token|private[_-]?key)\s*[=:]\s*['\"][A-Za-z0-9+/=_-]{20,}['\"]"
+SSH_PRIVATE_KEY="-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+ALL_PATTERNS="${GH_PAT_PATTERN}|${GH_TOKEN_PATTERN}|${TG_TOKEN_PATTERN}|${AWS_KEY_PATTERN}|${STRIPE_PATTERN}|${GENERIC_SECRET_PATTERN}|${SSH_PRIVATE_KEY}"
+if git diff --cached | grep -qE "${ALL_PATTERNS}"; then
   echo "🚨 SECRET DETECTED in staged files! Aborting."
   echo "   Run: git diff --cached | grep -iE '$SECRET_PATTERNS'"
   create_failure_issue "Secret detected in staged files" "A secret token pattern was found in staged files. Deploy aborted and files unstaged.\n\nAction required: identify and remove the secret, then rotate the token."
