@@ -232,20 +232,32 @@
     "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
   },
   {
-    "number": 149,
-    "title": "the top nav looks right, but island area is not of the same color as nav, it\u2019...",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe top nav looks right, but island area is not of the same color as nav, it\u2019s white/black on light / dark mode. I want a beautiful experience, please fix it\n\n---\n\n**Category:** `bug` `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 150,
+    "title": "feed in ml is not coming from 26th",
+    "body": "## \ud83d\udc1b Bug Report\n\nfeed in ml is not coming from 26th\n\n---\n\n**Category:** `bug` `feeding`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
-      "enhancement",
-      "ui"
+      "feeding"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/149",
-    "created_at": "2026-03-29T17:55:15.444Z",
-    "status": "implemented",
+    "url": "https://github.com/akashkguw/babybloom/issues/150",
+    "created_at": "2026-03-29T18:07:20.057Z",
+    "status": "failed",
     "route": "implementation",
-    "enhanced_description": "The user reports that the \"island\" area (the dynamic island / status bar area at the top of the screen on modern iPhones) does not match the nav bar color. In light mode it appears white and in dark mode it appears black, rather than matching the nav bar's theme color.\n\n- Affected component: Top navigation bar / status bar area / meta theme-color\n- Expected behavior: The status bar / dynamic island area should match the nav bar color in both light and dark modes, creating a seamless visual experience\n- Current behavior: The island area is white in light mode and black in dark mode, visually disconnected from the nav bar\n- Root cause likely: The HTML meta theme-color tag or CSS background on the body/html element does not match the nav bar color, or there are separate theme-color values needed for light/dark modes\n- Edge cases: Must work correctly in both light and dark mode; should handle PWA standalone mode and Safari browser mode\n- Acceptance criteria: The status bar / island area color matches the nav bar color in both light and dark modes\n- Testing: Add unit tests verifying that theme-color meta tag values are correct for both light and dark modes; test that the top-level background color matches the nav bar color",
-    "implementation_notes": "Fixed theme-color meta tag to match nav gradient start color:\n- Files changed:\n  - src/lib/constants/colors.ts: Changed light-mode theme-color from C.a (#00C9A7 teal) to #FF6B8A (nav gradient start pink)\n  - index.html: Changed initial theme-color from #FFF8F0 (light bg) to #2A2654 (dark nav gradient start, since app defaults to dark)\n- Tests added:\n  - tests/unit/themeColor.test.ts: 6 tests verifying theme-color values match nav gradient starts in both modes\n- Approach: The dynamic island/status bar area color is controlled by the meta theme-color tag. It was mismatched with the nav gradient, causing a visual disconnect."
+    "enhanced_description": "User reports that feed volume in ml is no longer displayed since around March 26.\n\nRoot cause: Commit 8a8b6f9 (March 27) removed the daily total feed volume display from the hero widget in HomeTab.tsx. The feedOzToday calculation and its display line were both deleted as part of issue #114.\n\nWhat was removed:\n- The feedOzToday variable that summed all feed oz values for today\n- The display line showing fmtVol(feedOzToday, volumeUnit) below the last feed info in the hero card\n\nAffected component: src/tabs/HomeTab.tsx \u2014 hero widget feed stat card (around line 1253)\n\nCurrent behavior: Hero shows feed count + last feed type/time, but NO total volume\nExpected behavior: Hero should also show total daily feed volume in the user's preferred unit (ml or oz)\n\nFix approach:\n1. Re-add the feedOzToday calculation: sum oz from all feed entries where date === today\n2. Re-add the display line showing fmtVol(feedOzToday, volumeUnit) in the hero feed card, below the last feed label\n\nEdge cases:\n- Days with zero oz feeds (breast only with duration) should show nothing for volume\n- Mixed feeds (some with oz, some without) should only sum entries that have oz\n- Respect user volumeUnit preference (ml vs oz)\n\nTesting:\n- Add unit test verifying feedOzToday calculation sums correctly across mixed feed types\n- Add test that entries without oz field are excluded from sum\n- Add test that fmtVol correctly converts oz to ml when volumeUnit is ml",
+    "failure_reason": "Claude CLI exited with code 1. Check /Users/akashkg/saanvi/babybloom/bot/claude-issue.log for details."
+  },
+  {
+    "number": 151,
+    "title": "if something needs attention / risk in quick log, it should continue to remai...",
+    "body": "## \ud83d\udc1b Bug Report\n\nif something needs attention / risk in quick log, it should continue to remain in top 8.\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/151",
+    "created_at": "2026-03-29T18:07:53.625Z",
+    "status": "pending"
   }
 ]

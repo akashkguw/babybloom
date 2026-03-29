@@ -961,6 +961,13 @@ export default function HomeTab({
     });
   const sleepHrsToday = Math.round(sleepMinsToday / 6) / 10;
 
+  let feedOzToday = 0;
+  (logs.feed || [])
+    .filter((x) => x.date === td && x.oz)
+    .forEach((x) => {
+      feedOzToday += x.oz || 0;
+    });
+
   // Last feed info for hero widget
   const lastFeedToday = (logs.feed || []).find((x) => x.date === td);
   const lastFeedLabel = lastFeedToday
@@ -1257,6 +1264,7 @@ export default function HomeTab({
                       {lastFeedLabel} · {fmtTime(lastFeedToday.time)}
                     </div>
                   )}
+                  {feedOzToday > 0 && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1 }}>{fmtVol(feedOzToday, volumeUnit)}</div>}
                 </>
               )}
             </div>
