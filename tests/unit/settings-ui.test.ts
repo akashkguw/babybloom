@@ -25,7 +25,7 @@ const iconsTs = fs.readFileSync(
 describe('Settings header — no excessive top whitespace (#134)', () => {
   const headerRegion = settingsTsx.slice(
     settingsTsx.indexOf('{/* Header */}'),
-    settingsTsx.indexOf('{/* Header */}') + 800
+    settingsTsx.indexOf('{/* Header */}') + 1200
   );
 
   it('does NOT use app-header className (avoids fixed-position CSS with large safe-area padding)', () => {
@@ -50,7 +50,7 @@ describe('Settings header — no excessive top whitespace (#134)', () => {
 describe('Settings header — icon visibility (#135)', () => {
   const headerRegion = settingsTsx.slice(
     settingsTsx.indexOf('{/* Header */}'),
-    settingsTsx.indexOf('{/* Header */}') + 800
+    settingsTsx.indexOf('{/* Header */}') + 1200
   );
 
   it('has a settings gear icon in the header', () => {
