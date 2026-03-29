@@ -12,7 +12,14 @@ BOT_DIR="$REPO_DIR/bot"
 REPO="akashkguw/babybloom"
 
 # ─── Ensure PATH includes common tool locations (LaunchAgents use minimal PATH) ───
-export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ 2>/dev/null | tail -1)/bin:$PATH"
+# NVM node (find latest installed version)
+NVM_NODE_DIR="$HOME/.nvm/versions/node"
+if [ -d "$NVM_NODE_DIR" ]; then
+  NVM_LATEST=$(ls "$NVM_NODE_DIR" 2>/dev/null | sort -V | tail -1)
+  [ -n "$NVM_LATEST" ] && export PATH="$NVM_NODE_DIR/$NVM_LATEST/bin:$PATH"
+fi
+# Homebrew, system, and user-local paths
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH"
 
 # ─── Clean up stale git lock files ───
 rm -f "$REPO_DIR/.git/HEAD.lock" "$REPO_DIR/.git/index.lock" "$REPO_DIR/.git/MERGE_HEAD.lock" 2>/dev/null
@@ -268,9 +275,18 @@ CLAUDE_TIMEOUT=600  # 10 minutes per issue max
 DEPLOY_PUSHED_SHA=""
 ISSUES_PROCESSED=0
 
-# Check if claude CLI is available
-if command -v claude &>/dev/null; then
-  echo "🤖 Claude CLI found — processing pending issues..."
+# Find claude CLI (LaunchAgents have minimal PATH)
+CLAUDE_BIN=""
+for p in /usr/local/bin/claude /opt/homebrew/bin/claude "$HOME/.npm-global/bin/claude" "$HOME/.local/bin/claude"; do
+  if [ -x "$p" ]; then CLAUDE_BIN="$p"; break; fi
+done
+# Also check PATH as fallback
+if [ -z "$CLAUDE_BIN" ] && command -v claude &>/dev/null; then
+  CLAUDE_BIN=$(command -v claude)
+fi
+
+if [ -n "$CLAUDE_BIN" ]; then
+  echo "🤖 Claude CLI found at $CLAUDE_BIN — processing pending issues..."
 
   # Persistent log: append all Claude runs (not overwritten like the per-issue log)
   CLAUDE_HISTORY_LOG="$BOT_DIR/claude-history.log"
@@ -311,7 +327,8 @@ except: pass
     CLAUDE_START=$(date '+%Y-%m-%d %H:%M:%S')
     echo "  ⏱️  Started: $CLAUDE_START"
 
-    timeout "$CLAUDE_TIMEOUT" claude -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
+    # Run claude with timeout (macOS doesn't have GNU timeout, use background + wait)
+    "$CLAUDE_BIN" -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
@@ -330,10 +347,42 @@ REPO_DIR=$REPO_DIR
 - All filesystem operations work normally (rm, mv, cp are fine)
 - node_modules are macOS-native (no esbuild workaround needed)
 - Use REPO_DIR=$REPO_DIR for all file paths
-" > "$CLAUDE_LOG" 2>&1
+" > "$CLAUDE_LOG" 2>&1 &
+    CLAUDE_PID=$!
 
+    # Wait with timeout (macOS-compatible)
+    SECONDS_WAITED=0
+    while kill -0 "$CLAUDE_PID" 2>/dev/null; do
+      sleep 5
+      SECONDS_WAITED=$((SECONDS_WAITED + 5))
+      if [ $SECONDS_WAITED -ge $CLAUDE_TIMEOUT ]; then
+        echo "  ⏰ Claude timed out after ${CLAUDE_TIMEOUT}s — killing"
+        kill "$CLAUDE_PID" 2>/dev/null
+        sleep 2
+        kill -9 "$CLAUDE_PID" 2>/dev/null
+        break
+      fi
+    done
+    wait "$CLAUDE_PID" 2>/dev/null
     CLAUDE_EXIT=$?
     CLAUDE_END=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # If Claude failed (non-zero exit), mark the issue as failed to prevent infinite retry
+    if [ $CLAUDE_EXIT -ne 0 ]; then
+      echo "  ⚠️  Claude failed (exit $CLAUDE_EXIT) — marking #$ISSUE_NUM as failed to prevent retry loop"
+      python3 -c "
+import json
+path = '$QUEUE_FILE'
+q = json.load(open(path))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        i['status'] = 'failed'
+        i['failure_reason'] = 'Claude CLI exited with code $CLAUDE_EXIT. Check $BOT_DIR/claude-issue.log for details.'
+        break
+json.dump(q, open(path, 'w'), indent=2)
+print('Marked #$ISSUE_NUM as failed')
+" 2>/dev/null
+    fi
 
     # Check what status the issue ended up in after Claude processed it
     ISSUE_RESULT=$(python3 -c "
