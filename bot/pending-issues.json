@@ -191,20 +191,5 @@
     "route": "infrastructure",
     "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
-  },
-  {
-    "number": 125,
-    "title": "i should be add hero widget background from my own photo",
-    "body": "## \u2728 Feature Request\n\ni should be add hero widget background from my own photo. Can select from settings. Provide some in built image / animation or upload from device.\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/125",
-    "created_at": "2026-03-28T23:05:11.219Z",
-    "status": "implemented",
-    "route": "implementation",
-    "enhanced_description": "User requests the ability to customize the hero widget background image.\n- Affected component: Hero widget (likely in dashboard/home screen area)\n- Feature: Allow users to select a background from built-in images/animations OR upload their own photo from device\n- Settings integration: Add a background selection option in the app settings\n- Edge cases: Handle large image files, unsupported formats, landscape vs portrait orientation, and fallback to default if selected image is deleted\n- Acceptance criteria: User can pick from built-in backgrounds or upload a custom photo; selection persists across sessions; hero widget displays the chosen background properly",
-    "implementation_notes": "Files changed:\n- src/features/settings/HeroBackgroundPicker.tsx (NEW): Picker component with 8 built-in gradient presets + custom photo upload. Resizes images to max 800px, stores as JPEG base64 in IndexedDB under key hero_bg. Exports HERO_BG_KEY and HeroBgSetting type for use by HomeTab.\n- src/features/settings/Settings.tsx: Added import for HeroBackgroundPicker, added optional onHeroBgChange prop, added Hero Background section with the picker between General and Feeding Reminders sections.\n- src/tabs/HomeTab.tsx: Added import for HERO_BG_KEY/HeroBgSetting, added heroBg state loaded from IndexedDB on mount, updated hero widget background to use custom gradient or photo with a dark scrim overlay for readability on photo backgrounds.\n\nApproach: Built-in gradients stored as CSS strings, custom photos resized and stored as base64 data URLs in IndexedDB. The hero card conditionally applies gradient animation or photo cover mode. A semi-transparent scrim overlay ensures white text remains readable over photos. Settings unmounts HomeTab, so bg re-loads automatically when settings closes.\n\nTrade-offs: Base64 storage is simple but limited to ~1-2MB images (resizing to 800px keeps this reasonable). No crop UI \u2014 relies on CSS object-fit cover."
   }
 ]
