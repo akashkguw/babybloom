@@ -270,9 +270,9 @@ button {
   padding-bottom: calc(10px + env(safe-area-inset-bottom, 34px)) !important;
 }
 
-/* Content area — leaves room for tab bar + safe area */
+/* Content area — leaves room for tab bar + FAB + safe area */
 .ca {
-  padding-bottom: calc(90px + env(safe-area-inset-bottom, 12px)) !important;
+  padding-bottom: calc(160px + env(safe-area-inset-bottom, 12px)) !important;
 }
 
 .toast {

@@ -201,10 +201,11 @@ export default function GuideTab({ age, vDone, setVDone, subNavRef, logs, birth,
               fontSize: 9,
               fontWeight: 700,
               color: color,
-              background: color + '22',
-              padding: '2px 6px',
+              background: color + '33',
+              padding: '2px 8px',
               borderRadius: 6,
               flexShrink: 0,
+              border: `1px solid ${color}44`,
             }}
           >
             NOW

@@ -36,6 +36,7 @@ export default function SafetyTab({
 
   const [expanded, setEx] = useState<Record<string, boolean>>(initExp);
   const [tipExp, setTipExp] = useState<number>(-1);
+  const [confirmCall, setConfirmCall] = useState<{ name: string; phone: string } | null>(null);
 
   // Handle deep linking from subNavRef
   useEffect(() => {
@@ -493,23 +494,24 @@ export default function SafetyTab({
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <a
-                      href={`tel:${c.phone.replace(/[^0-9+]/g, '')}`}
+                    <button
+                      onClick={() => setConfirmCall({ name: c.name, phone: c.phone })}
                       style={{
-                        width: 40,
-                        height: 40,
+                        width: 44,
+                        height: 44,
                         borderRadius: 12,
                         background: C.ok,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        textDecoration: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
                       }}
                     >
                       <span style={{ color: 'white', fontSize: 18 }}>
                         📞
                       </span>
-                    </a>
+                    </button>
                     {c.id > 2 && (
                       <button
                         onClick={() => {
@@ -542,6 +544,52 @@ export default function SafetyTab({
             />
           </>
         )}
+
+      {/* Call confirmation modal */}
+      {confirmCall && (
+        <div
+          className="mo"
+          onClick={() => setConfirmCall(null)}
+        >
+          <div
+            className="ms"
+            onClick={(e) => e.stopPropagation()}
+            style={{ textAlign: 'center', padding: '32px 24px 40px' }}
+          >
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📞</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.t, marginBottom: 8 }}>
+              Call {confirmCall.name}?
+            </div>
+            <div style={{ fontSize: 14, color: C.tl, marginBottom: 24 }}>
+              {confirmCall.phone}
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setConfirmCall(null)}
+                style={{
+                  flex: 1, padding: '14px 0', borderRadius: 12,
+                  border: `1px solid ${C.b}`, background: C.cd,
+                  color: C.t, fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <a
+                href={`tel:${confirmCall.phone.replace(/[^0-9+]/g, '')}`}
+                onClick={() => setConfirmCall(null)}
+                style={{
+                  flex: 1, padding: '14px 0', borderRadius: 12,
+                  background: C.ok, color: 'white', fontSize: 15, fontWeight: 700,
+                  cursor: 'pointer', textDecoration: 'none', textAlign: 'center',
+                  display: 'block',
+                }}
+              >
+                Call Now
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

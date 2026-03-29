@@ -1047,9 +1047,9 @@ export default function HomeTab({
   const ageMonths = Math.floor(age);
   const ageStr =
     age < 1
-      ? ageDays + ' days'
+      ? ageDays + ' day' + (ageDays !== 1 ? 's' : '')
       : age < 2
-        ? ageWeeks + ' weeks'
+        ? ageWeeks + ' week' + (ageWeeks !== 1 ? 's' : '')
         : ageMonths + ' month' + (ageMonths !== 1 ? 's' : '');
 
   // Staggered reveal after onboarding carousel
@@ -1242,9 +1242,9 @@ export default function HomeTab({
               ) : (
                 <>
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{feedCt}</div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>feeds</div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>feeds</div>
                   {lastFeedLabel && lastFeedToday?.time && (
-                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {lastFeedLabel} · {fmtTime(lastFeedToday.time)}
                     </div>
                   )}
@@ -1256,9 +1256,9 @@ export default function HomeTab({
               borderRadius: 12, padding: '8px 10px', textAlign: 'center', cursor: 'pointer',
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{diaperCt}</div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>diapers</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>diapers</div>
               {lastDiaperLabel && lastDiaperToday?.time && (
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {lastDiaperLabel} · {fmtTime(lastDiaperToday.time)}
                 </div>
               )}
@@ -1270,11 +1270,11 @@ export default function HomeTab({
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>
                 {isSleeping ? '😴' : sleepHrsToday + 'h'}
               </div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>
                 {isSleeping ? 'sleeping' : 'sleep'}
               </div>
               {lastSleepLabel && lastSleepToday?.time && (
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {lastSleepLabel} · {fmtTime(lastSleepToday.time)}
                 </div>
               )}
@@ -1446,21 +1446,26 @@ export default function HomeTab({
               ))}
             </div>
             {slides.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 5 }}>
-                {slides.map((s, i) => (
-                  <div
-                    key={s.id}
-                    onClick={() => setCarouselIdx(i)}
-                    style={{
-                      width: i === idx ? 14 : 5,
-                      height: 5,
-                      borderRadius: 3,
-                      background: i === idx ? C.p : C.b,
-                      cursor: 'pointer',
-                      transition: 'width 0.2s, background 0.2s',
-                    }}
-                  />
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 5, gap: 3 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {slides.map((s, i) => (
+                    <div
+                      key={s.id}
+                      onClick={() => setCarouselIdx(i)}
+                      style={{
+                        width: i === idx ? 14 : 5,
+                        height: 5,
+                        borderRadius: 3,
+                        background: i === idx ? C.p : C.b,
+                        cursor: 'pointer',
+                        transition: 'width 0.2s, background 0.2s',
+                      }}
+                    />
+                  ))}
+                </div>
+                <div style={{ fontSize: 9, color: C.tl, fontWeight: 500 }}>
+                  {idx + 1} of {slides.length} &middot; swipe to see more
+                </div>
               </div>
             )}
           </div>

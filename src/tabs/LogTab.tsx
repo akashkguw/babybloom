@@ -635,17 +635,22 @@ const LogTab: React.FC<LogTabProps> = ({
                       </div>
                     ) : null}
                   </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
                     <button
                       onClick={() => handleEditClick(entry)}
                       style={{
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        padding: 4,
+                        padding: 10,
+                        minWidth: 44,
+                        minHeight: 44,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      <Ic n="edit" s={14} c={C.bl} />
+                      <Ic n="edit" s={18} c={C.bl} />
                     </button>
                     <button
                       onClick={() => removeEntry(entry.id)}
@@ -653,10 +658,15 @@ const LogTab: React.FC<LogTabProps> = ({
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        padding: 4,
+                        padding: 10,
+                        minWidth: 44,
+                        minHeight: 44,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      <Ic n="x" s={16} c={C.tl} />
+                      <Ic n="x" s={18} c={C.tl} />
                     </button>
                   </div>
                 </div>
