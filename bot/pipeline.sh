@@ -356,7 +356,8 @@ except: pass
     echo "  ⏱️  Started: $CLAUDE_START"
 
     # Run claude with timeout (macOS doesn't have GNU timeout, use background + wait)
-    "$CLAUDE_BIN" -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
+    # --dangerously-skip-permissions: required for non-interactive mode to allow file edits
+    "$CLAUDE_BIN" --dangerously-skip-permissions -p "You are the BabyBloom autonomous pipeline agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
