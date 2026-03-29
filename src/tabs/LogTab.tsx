@@ -13,7 +13,6 @@ import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } f
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
-import TimerView from '@/features/feeding/TimerView';
 import StatsView from '@/features/stats/StatsView';
 
 const displayName = (type: string, sides?: string[]): string => {
@@ -115,8 +114,6 @@ const LogTab: React.FC<LogTabProps> = ({
   age,
   subNavRef,
   quickFormRef,
-  timerState,
-  setTimerState,
   volumeUnit,
 }) => {
   const [sub, setSub] = useState<string>(
@@ -160,7 +157,6 @@ const LogTab: React.FC<LogTabProps> = ({
   }, [quickFormRef]);
 
   const subs: SubTab[] = [
-    { id: 'timer', l: 'Timer', e: '⏱️' },
     { id: 'feed', l: 'Feed', e: '🍼' },
     { id: 'pump', l: 'Pump', e: '🫙' },
     { id: 'diaper', l: 'Diaper', e: '💧' },
@@ -417,17 +413,6 @@ const LogTab: React.FC<LogTabProps> = ({
         ))}
       </div>
 
-      {/* Timer View */}
-      {sub === 'timer' && timerState !== undefined && setTimerState ? (
-        <TimerView
-          logs={logs}
-          setLogs={setLogs}
-          age={age}
-          timerState={timerState}
-          setTimerState={setTimerState}
-        />
-      ) : null}
-
       {/* Stats View */}
       {sub === 'stats' ? (
         <StatsView
@@ -439,8 +424,8 @@ const LogTab: React.FC<LogTabProps> = ({
         />
       ) : null}
 
-      {/* Add button (hidden in stats and timer view) */}
-      {sub !== 'stats' && sub !== 'timer' ? (
+      {/* Add button (hidden in stats view) */}
+      {sub !== 'stats' ? (
         <Btn
           label="+ Add Entry"
           onClick={() => {
@@ -452,8 +437,8 @@ const LogTab: React.FC<LogTabProps> = ({
         />
       ) : null}
 
-      {/* Entries with date navigation (hidden in stats and timer view) */}
-      {sub !== 'stats' && sub !== 'timer' ? (
+      {/* Entries with date navigation (hidden in stats view) */}
+      {sub !== 'stats' ? (
         <>
           <div
             style={{

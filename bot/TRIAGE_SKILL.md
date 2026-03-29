@@ -320,6 +320,44 @@ The inline Python snippets in this and other skill files use simple `json.load`/
 
 ---
 
+## Sandbox environment constraints (ALL agents must follow)
+
+Every scheduled run executes inside an isolated Linux sandbox container. The repo is accessed via a mounted folder from the user's Mac. These constraints apply:
+
+### 1. NEVER use `rm` or file-delete operations on mounted files
+Deleting files on the mounted folder triggers a **sandbox permission prompt** that blocks autonomous execution. The agent will hang waiting for user approval.
+
+- **Instead of `rm file`** → use `echo "" > file` or `> file` to blank it out
+- **Instead of `rm -f lockfile`** → just overwrite it with new content
+- This applies to ALL files under `$REPO_DIR` — lock files, temp files, everything
+
+### 2. esbuild / native binary platform mismatch
+The repo's `node_modules/` was installed on **macOS (darwin-arm64)**, but the sandbox runs **Linux (linux-arm64)**. Native binaries like `esbuild` will fail with "the binary could not be found" or platform errors.
+
+**Workaround for running tests/builds in the sandbox:**
+```bash
+cd "$REPO_DIR"
+# Install the Linux-compatible esbuild binary alongside the existing one
+npm install --no-save esbuild-linux-arm64 2>/dev/null || npm install --no-save @esbuild/linux-arm64 2>/dev/null
+# Now vitest/vite commands will work
+npx vitest run --reporter=verbose
+```
+
+If `npm install` fails (network issues), you can still run tests that don't need a build step:
+```bash
+# Type-check works without esbuild
+npx tsc --noEmit
+# Regression tests work (they're plain Node.js)
+node tests/regression.cjs
+```
+
+**Do NOT waste time debugging the esbuild error** — it's a known platform mismatch, not a real bug. Just install the Linux binary and move on.
+
+### 3. PID namespaces are per-session
+Each sandbox run gets its own PID namespace. A PID from a previous session is meaningless in the current session. The lock file mechanism in Step 0b handles this — never trust a bare `kill -0 $PID` across sessions.
+
+---
+
 ## Hard limits (no exceptions)
 
 - This agent ONLY triages — it never edits source code
@@ -327,4 +365,3 @@ The inline Python snippets in this and other skill files use simple `json.load`/
 - Never change an issue's status to `implemented` or `analyzed` — only specialist agents do that
 - Never touch `.env`, tokens, or secrets
 - Never process more than 5 issues per run (batch limit)
-- **NEVER use `rm` or file-delete operations on the mounted repo folder** — this triggers sandbox permission prompts that block autonomous execution. To "clear" a file, overwrite it with `echo "" > file` or `> file` instead.
