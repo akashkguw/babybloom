@@ -33,7 +33,7 @@ import type {
 } from '@/lib/db/schema';
 
 // Union of all log entry types
-type AnyLogEntry =
+export type AnyLogEntry =
   | FeedEntry
   | DiaperEntry
   | SleepEntry

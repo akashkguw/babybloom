@@ -1,0 +1,152 @@
+/**
+ * Core bidirectional sync service: IndexedDB <-> Firestore.
+ *
+ * Merge strategy: last-write-wins by entry id (entry ids are Date.now() timestamps).
+ * When the same id exists in both local and remote, local wins (local is source of
+ * truth after the initial pull). Union of all unique ids is kept.
+ *
+ * Offline handling: a write queue accumulates pending Firestore writes when offline.
+ * Call flushQueue(db) when connectivity is restored to replay them.
+ */
+
+import { dg, ds } from '@/lib/db/indexeddb';
+import { getEntries, saveEntries, type AnyLogEntry } from '@/utils/firestoreUtils';
+import type { Firestore } from 'firebase/firestore';
+
+// ── Category registry ────────────────────────────────────────────────────────
+
+export const SYNC_CATEGORIES = [
+  'feed', 'pump', 'diaper', 'sleep', 'bath', 'massage', 'growth', 'temp', 'meds', 'allergy',
+] as const;
+
+export type SyncCategory = typeof SYNC_CATEGORIES[number];
+
+// ── Minimal shared shape for all log entries ─────────────────────────────────
+
+export interface SyncEntry {
+  id: number;
+  [key: string]: unknown;
+}
+
+// ── Offline write queue ──────────────────────────────────────────────────────
+
+export interface QueuedWrite {
+  profileId: string;
+  category: SyncCategory;
+  entries: SyncEntry[];
+  queuedAt: number;
+}
+
+const _writeQueue: QueuedWrite[] = [];
+
+/** Add entries to the offline write queue. */
+export function enqueueWrite(profileId: string, category: SyncCategory, entries: SyncEntry[]): void {
+  _writeQueue.push({ profileId, category, entries, queuedAt: Date.now() });
+}
+
+/** Return a snapshot of the current write queue (does not mutate). */
+export function getQueue(): QueuedWrite[] {
+  return [..._writeQueue];
+}
+
+/** Clear all pending writes from the queue. */
+export function clearQueue(): void {
+  _writeQueue.length = 0;
+}
+
+/**
+ * Flush the offline write queue to Firestore.
+ * Writes all queued entries and clears the queue on success.
+ */
+export async function flushQueue(db: Firestore): Promise<void> {
+  const pending = [..._writeQueue];
+  if (pending.length === 0) return;
+  await Promise.all(
+    pending.map(({ profileId, category, entries }) =>
+      saveEntries(db, profileId, category, entries as never[])
+    )
+  );
+  clearQueue();
+}
+
+// ── Merge logic ──────────────────────────────────────────────────────────────
+
+/**
+ * Merge two entry arrays by id using last-write-wins.
+ *
+ * Since entry ids are Date.now() timestamps, a higher id = more recently created.
+ * When the same id appears in both arrays, local wins (local is truth after first pull).
+ * Returns entries sorted ascending by id.
+ */
+export function mergeEntries<T extends SyncEntry>(local: T[], remote: T[]): T[] {
+  const map = new Map<number, T>();
+  for (const e of remote) map.set(e.id, e);
+  for (const e of local) map.set(e.id, e); // local overwrites remote on collision
+  return Array.from(map.values()).sort((a, b) => a.id - b.id);
+}
+
+// ── Full sync operations ─────────────────────────────────────────────────────
+
+/**
+ * Pull all remote Firestore entries for a profile, merge with local IndexedDB,
+ * and persist the merged result back to IndexedDB.
+ *
+ * Returns the count of net-new entries added from remote.
+ * No-op if db is null.
+ */
+export async function pullAndMerge(
+  db: Firestore | null,
+  profileId: string,
+): Promise<number> {
+  if (!db) return 0;
+
+  const profileKey = `profileData_${profileId}`;
+  const profileData: { logs?: Record<string, SyncEntry[]> } =
+    (await dg(profileKey)) || {};
+  const localLogs: Record<string, SyncEntry[]> = profileData.logs || {};
+
+  let totalNew = 0;
+  const mergedLogs: Record<string, SyncEntry[]> = { ...localLogs };
+
+  for (const category of SYNC_CATEGORIES) {
+    const local = (localLogs[category] as SyncEntry[] | undefined) || [];
+    const remote = await getEntries<AnyLogEntry>(db, profileId, category) as unknown as SyncEntry[];
+    if (remote.length === 0) {
+      mergedLogs[category] = local;
+      continue;
+    }
+    const merged = mergeEntries(local, remote);
+    mergedLogs[category] = merged;
+    totalNew += merged.length - local.length;
+  }
+
+  await ds(profileKey, { ...profileData, logs: mergedLogs });
+  return Math.max(0, totalNew);
+}
+
+/**
+ * Push all local IndexedDB entries for a profile to Firestore.
+ *
+ * If offline or db is null, entries are queued for later flushing.
+ * If online and db is available, writes directly to Firestore.
+ */
+export async function pushAll(
+  db: Firestore | null,
+  profileId: string,
+  online: boolean,
+): Promise<void> {
+  const profileKey = `profileData_${profileId}`;
+  const profileData: { logs?: Record<string, SyncEntry[]> } =
+    (await dg(profileKey)) || {};
+  const localLogs: Record<string, SyncEntry[]> = profileData.logs || {};
+
+  for (const category of SYNC_CATEGORIES) {
+    const entries = (localLogs[category] as SyncEntry[] | undefined) || [];
+    if (entries.length === 0) continue;
+    if (!db || !online) {
+      enqueueWrite(profileId, category, entries);
+    } else {
+      await saveEntries(db, profileId, category, entries as never[]);
+    }
+  }
+}
