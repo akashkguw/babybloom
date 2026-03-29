@@ -561,7 +561,7 @@ function App() {
     return (
       <div
         style={{
-          maxWidth: 430,
+          maxWidth: 500,
           margin: '0 auto',
           background: C.bg,
           height: '100dvh',
@@ -578,7 +578,7 @@ function App() {
   }
 
   return (
-    <div style={{ maxWidth: 430, margin: '0 auto', background: C.bg, height: '100dvh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ maxWidth: 500, margin: '0 auto', background: C.bg, height: '100dvh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Spacer to push content below the fixed header */}
       <div className="header-spacer" />
       {showAnyBanner && <div className="banner-spacer" />}
@@ -590,9 +590,8 @@ function App() {
           style={{
             position: 'fixed',
             top: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            maxWidth: 430,
+            left: 0,
+            right: 0,
             width: '100%',
             zIndex: 60,
             padding: 'calc(6px + env(safe-area-inset-top, 0px)) 14px 6px',

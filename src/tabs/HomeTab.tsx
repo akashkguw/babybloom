@@ -1080,7 +1080,7 @@ export default function HomeTab({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              maxWidth: 430,
+              maxWidth: 500,
               margin: '0 auto',
             }}
           >

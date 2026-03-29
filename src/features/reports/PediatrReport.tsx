@@ -326,7 +326,7 @@ ${pendingVaccines.length > 0 ? `<div class="flag">Pending: ${pendingVaccines.joi
       <div
         style={{
           width: '100%',
-          maxWidth: 430,
+          maxWidth: 500,
           margin: '0 auto',
           background: C.bg,
           borderRadius: '20px 20px 0 0',

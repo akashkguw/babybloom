@@ -249,17 +249,18 @@ button {
   flex-shrink: 0;
 }
 
-/* Fixed header — accounts for notch/dynamic island */
+/* Fixed header — accounts for notch/dynamic island, always full viewport width */
 .app-header {
   position: fixed;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 430px;
+  left: 0;
+  right: 0;
   width: 100%;
   z-index: 50;
   padding: 8px 12px 8px;
   padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 12px));
+  padding-right: max(12px, env(safe-area-inset-right, 12px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -318,7 +319,7 @@ button {
   border-radius: 20px 20px 0 0;
   padding: 24px 20px 40px;
   width: 100%;
-  max-width: 430px;
+  max-width: 500px;
   max-height: 85vh;
   overflow-y: auto;
   animation: slideUp 0.3s ease-out;

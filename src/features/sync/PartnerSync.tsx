@@ -236,7 +236,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose }:
       <div
         style={{
           width: '100%',
-          maxWidth: 430,
+          maxWidth: 500,
           margin: '0 auto',
           background: C.bg,
           borderRadius: '20px 20px 0 0',
