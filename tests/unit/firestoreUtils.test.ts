@@ -22,20 +22,13 @@ const mockDb = { type: 'firestore', _isMock: true };
 const mockCol = { path: 'mock-collection' };
 const mockDocRef = { id: 'mock-doc' };
 
-const mockBatch = {
-  set: vi.fn(),
-  delete: vi.fn(),
-  commit: vi.fn(() => Promise.resolve()),
-};
-
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => mockDb),
   collection: vi.fn(() => mockCol),
   doc: vi.fn(() => mockDocRef),
-  getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
+  getDoc: vi.fn(() => Promise.resolve({ exists: () => false })),
   setDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
-  writeBatch: vi.fn(() => mockBatch),
 }));
 
 import {
@@ -48,15 +41,13 @@ import {
 import {
   toFirestoreDoc,
   fromFirestoreDoc,
-  saveEntry,
-  saveEntries,
-  getEntries,
-  deleteEntry,
-  getFeedEntries,
-  getDiaperEntries,
+  saveEntriesEncrypted,
+  getEntriesEncrypted,
+  deleteEncryptedCategory,
 } from '@/utils/firestoreUtils';
 
-import { getDocs, setDoc, deleteDoc, writeBatch, collection, doc } from 'firebase/firestore';
+import * as firestoreUtils from '@/utils/firestoreUtils';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 // ── isValidFirestoreConfig ────────────────────────────────────────────────────
 
@@ -154,8 +145,8 @@ describe('firebaseConfig lifecycle', () => {
 describe('toFirestoreDoc', () => {
   it('converts an entry to a plain object', () => {
     const entry = { id: 1, date: '2025-01-01', time: '08:00', type: 'Formula', oz: 3 };
-    const doc = toFirestoreDoc(entry);
-    expect(doc).toEqual({ id: 1, date: '2025-01-01', time: '08:00', type: 'Formula', oz: 3 });
+    const result = toFirestoreDoc(entry);
+    expect(result).toEqual({ id: 1, date: '2025-01-01', time: '08:00', type: 'Formula', oz: 3 });
   });
 
   it('strips undefined fields', () => {
@@ -191,160 +182,122 @@ describe('fromFirestoreDoc', () => {
 
   it('round-trips through toFirestoreDoc and fromFirestoreDoc', () => {
     const original = { id: 10, date: '2025-03-15', time: '14:30', type: 'Wet', peeAmount: 'large' };
-    const doc = toFirestoreDoc(original);
-    const restored = fromFirestoreDoc<typeof original>(doc);
+    const roundTripped = toFirestoreDoc(original);
+    const restored = fromFirestoreDoc<typeof original>(roundTripped);
     expect(restored).toEqual(original);
   });
 });
 
-// ── getEntries ────────────────────────────────────────────────────────────────
+// ── Encrypted-only API surface ────────────────────────────────────────────────
+// Ensure no plaintext CRUD helpers are exported — encryption is mandatory.
 
-describe('getEntries', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('firestoreUtils exports only encrypted helpers (no plaintext write path)', () => {
+  it('does not export unencrypted saveEntries', () => {
+    expect('saveEntries' in firestoreUtils).toBe(false);
   });
 
-  it('returns empty array when db is null', async () => {
-    const result = await getEntries(null, 'bloom-abc123', 'profile_1', 'feed');
-    expect(result).toEqual([]);
-    expect(getDocs).not.toHaveBeenCalled();
+  it('does not export unencrypted getEntries', () => {
+    expect('getEntries' in firestoreUtils).toBe(false);
   });
 
-  it('returns empty array when familyCode is empty', async () => {
-    const result = await getEntries(mockDb as never, '', 'profile_1', 'feed');
-    expect(result).toEqual([]);
-    expect(getDocs).not.toHaveBeenCalled();
+  it('does not export unencrypted saveEntry', () => {
+    expect('saveEntry' in firestoreUtils).toBe(false);
   });
 
-  it('returns empty array when collection is empty', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    const result = await getEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed');
-    expect(result).toEqual([]);
+  it('does not export unencrypted deleteEntry', () => {
+    expect('deleteEntry' in firestoreUtils).toBe(false);
   });
 
-  it('maps Firestore documents to typed entries', async () => {
-    const entry1 = { id: 1, date: '2025-01-01', time: '08:00', type: 'Formula', oz: 3 };
-    const entry2 = { id: 2, date: '2025-01-01', time: '12:00', type: 'Breast L' };
-    vi.mocked(getDocs).mockResolvedValueOnce({
-      docs: [
-        { data: () => entry1 },
-        { data: () => entry2 },
-      ],
-    } as never);
-
-    const result = await getEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed');
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual(entry1);
-    expect(result[1]).toEqual(entry2);
+  it('does not export saveFeedEntries (unencrypted category wrapper)', () => {
+    expect('saveFeedEntries' in firestoreUtils).toBe(false);
   });
 
-  it('calls collection with correct path parts including familyCode', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getEntries(mockDb as never, 'bloom-xyz789', 'profile_2', 'diaper');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-xyz789', 'profiles', 'profile_2', 'diaper');
+  it('does not export saveDiaperEntries (unencrypted category wrapper)', () => {
+    expect('saveDiaperEntries' in firestoreUtils).toBe(false);
+  });
+
+  it('does not export saveSleepEntries (unencrypted category wrapper)', () => {
+    expect('saveSleepEntries' in firestoreUtils).toBe(false);
+  });
+
+  it('does not export getFeedEntries (unencrypted category wrapper)', () => {
+    expect('getFeedEntries' in firestoreUtils).toBe(false);
+  });
+
+  it('exports saveEntriesEncrypted as the only write path', () => {
+    expect(typeof saveEntriesEncrypted).toBe('function');
+  });
+
+  it('exports getEntriesEncrypted as the only read path', () => {
+    expect(typeof getEntriesEncrypted).toBe('function');
+  });
+
+  it('exports deleteEncryptedCategory for cleanup', () => {
+    expect(typeof deleteEncryptedCategory).toBe('function');
   });
 });
 
-// ── saveEntry ─────────────────────────────────────────────────────────────────
+// ── saveEntriesEncrypted (encrypted write path) ───────────────────────────────
 
-describe('saveEntry', () => {
+describe('saveEntriesEncrypted', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('is a no-op when db is null', async () => {
-    await saveEntry(null, 'bloom-abc123', 'profile_1', 'feed', { id: 1, date: '2025-01-01' });
+    const entries = [{ id: 1, date: '2025-01-01', time: '08:00', type: 'Wet' as const, peeAmount: 'small' as const, pooAmount: 'none' as const, pooColor: 'yellow' as const }];
+    await saveEntriesEncrypted(null, 'bloom-abc123', 'profile_1', 'diaper', entries);
     expect(setDoc).not.toHaveBeenCalled();
-  });
-
-  it('is a no-op when familyCode is empty', async () => {
-    await saveEntry(mockDb as never, '', 'profile_1', 'feed', { id: 1, date: '2025-01-01' });
-    expect(setDoc).not.toHaveBeenCalled();
-  });
-
-  it('calls setDoc with the entry data', async () => {
-    const entry = { id: 5, date: '2025-02-10', time: '10:00', type: 'Formula', oz: 4 };
-    await saveEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', entry);
-    expect(setDoc).toHaveBeenCalledWith(mockDocRef, toFirestoreDoc(entry));
-  });
-
-  it('uses entry id as the document id', async () => {
-    const entry = { id: 42, date: '2025-03-01', time: '07:00' };
-    await saveEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'sleep', entry);
-    expect(doc).toHaveBeenCalledWith(mockCol, '42');
-  });
-});
-
-// ── saveEntries (batch) ───────────────────────────────────────────────────────
-
-describe('saveEntries', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockBatch.set.mockClear();
-    mockBatch.commit.mockClear();
-  });
-
-  it('is a no-op when db is null', async () => {
-    await saveEntries(null, 'bloom-abc123', 'profile_1', 'feed', [{ id: 1, date: '2025-01-01' }]);
-    expect(writeBatch).not.toHaveBeenCalled();
   });
 
   it('is a no-op when entries array is empty', async () => {
-    await saveEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', []);
-    expect(writeBatch).not.toHaveBeenCalled();
+    await saveEntriesEncrypted(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', []);
+    expect(setDoc).not.toHaveBeenCalled();
   });
 
-  it('calls batch.set for each entry and commits', async () => {
-    const entries = [
-      { id: 1, date: '2025-01-01', time: '08:00', type: 'Formula' as const },
-      { id: 2, date: '2025-01-01', time: '12:00', type: 'Breast L' as const },
-    ];
-    await saveEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', entries);
-    expect(mockBatch.set).toHaveBeenCalledTimes(2);
-    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+  it('uses the _encrypted document path (not per-entry paths)', async () => {
+    const entries = [{ id: 1, date: '2025-01-01', time: '08:00', type: 'Wet' as const, peeAmount: 'small' as const, pooAmount: 'none' as const, pooColor: 'yellow' as const }];
+    await saveEntriesEncrypted(mockDb as never, 'bloom-abc123', 'profile_1', 'diaper', entries);
+    expect(doc).toHaveBeenCalledWith(mockCol, '_encrypted');
+    expect(setDoc).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes to the family-scoped collection path', async () => {
+    const entries = [{ id: 1, date: '2025-01-01', time: '08:00', type: 'Wet' as const, peeAmount: 'small' as const, pooAmount: 'none' as const, pooColor: 'yellow' as const }];
+    await saveEntriesEncrypted(mockDb as never, 'bloom-test', 'profile_1', 'sleep', entries);
+    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-test', 'profiles', 'profile_1', 'sleep');
+  });
+
+  it('writes an object with ct, iv, and ts fields (encrypted payload shape)', async () => {
+    const entries = [{ id: 42, date: '2025-06-01', time: '09:00', type: 'Wet' as const, peeAmount: 'large' as const, pooAmount: 'small' as const, pooColor: 'yellow' as const }];
+    await saveEntriesEncrypted(mockDb as never, 'bloom-abc123', 'profile_1', 'diaper', entries);
+    const written = vi.mocked(setDoc).mock.calls[0][1] as Record<string, unknown>;
+    expect(typeof written.ct).toBe('string');
+    expect(typeof written.iv).toBe('string');
+    expect(typeof written.ts).toBe('number');
   });
 });
 
-// ── deleteEntry ───────────────────────────────────────────────────────────────
+// ── deleteEncryptedCategory ───────────────────────────────────────────────────
 
-describe('deleteEntry', () => {
+describe('deleteEncryptedCategory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('is a no-op when db is null', async () => {
-    await deleteEntry(null, 'bloom-abc123', 'profile_1', 'feed', 1);
+    await deleteEncryptedCategory(null, 'bloom-abc123', 'profile_1', 'feed');
     expect(deleteDoc).not.toHaveBeenCalled();
   });
 
-  it('calls deleteDoc with the correct doc ref', async () => {
-    await deleteEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'diaper', 7);
-    expect(doc).toHaveBeenCalledWith(mockCol, '7');
+  it('deletes the _encrypted document for the given category', async () => {
+    await deleteEncryptedCategory(mockDb as never, 'bloom-abc123', 'profile_1', 'sleep');
+    expect(doc).toHaveBeenCalledWith(mockCol, '_encrypted');
     expect(deleteDoc).toHaveBeenCalledWith(mockDocRef);
   });
-});
 
-// ── Typed category helpers ────────────────────────────────────────────────────
-
-describe('category-specific helpers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('getFeedEntries passes "feed" as the category with familyCode', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getFeedEntries(mockDb as never, 'bloom-abc123', 'profile_1');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-abc123', 'profiles', 'profile_1', 'feed');
-  });
-
-  it('getDiaperEntries passes "diaper" as the category with familyCode', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getDiaperEntries(mockDb as never, 'bloom-abc123', 'profile_1');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-abc123', 'profiles', 'profile_1', 'diaper');
-  });
-
-  it('all helpers return empty array when db is null', async () => {
-    expect(await getFeedEntries(null, 'bloom-abc123', 'p')).toEqual([]);
-    expect(await getDiaperEntries(null, 'bloom-abc123', 'p')).toEqual([]);
+  it('deletes from the family-scoped collection path', async () => {
+    await deleteEncryptedCategory(mockDb as never, 'bloom-xyz789', 'profile_2', 'diaper');
+    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-xyz789', 'profiles', 'profile_2', 'diaper');
   });
 });
