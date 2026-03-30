@@ -171,14 +171,19 @@ function App() {
     setTab(t);
   };
 
-  // Save field to both global and profile-specific keys
+  // Firebase autosync — uses bundled VITE_ env vars (no user config needed)
+  const firebaseSyncState = useFirebaseSync(activeProfile != null ? String(activeProfile) : null);
+
+  // Save field to both global and profile-specific keys, then trigger debounced sync
   const spd = (field: string, val: any) => {
     ds(field, val);
     if (activeProfile) {
       dg(`profileData_${activeProfile}`).then((d: any) => {
         const data = d || {};
         data[field] = val;
-        ds(`profileData_${activeProfile}`, data);
+        ds(`profileData_${activeProfile}`, data).then(() => {
+          firebaseSyncState.requestSync();
+        });
       });
     }
   };
@@ -232,9 +237,6 @@ function App() {
     setLgR(v);
     spd('logs', v);
   };
-
-  // Firebase autosync — uses bundled VITE_ env vars (no user config needed)
-  const firebaseSyncState = useFirebaseSync(activeProfile != null ? String(activeProfile) : null);
 
   const setTeeth = (fn: any) => {
     if (typeof fn === 'function') {

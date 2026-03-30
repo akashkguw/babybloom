@@ -19,7 +19,7 @@ import { collection, getDocs, limit as fbLimit, query, type Firestore } from 'fi
 // ── Category registry ────────────────────────────────────────────────────────
 
 export const SYNC_CATEGORIES = [
-  'feed', 'pump', 'diaper', 'sleep', 'bath', 'massage', 'growth', 'temp', 'meds', 'allergy',
+  'feed', 'pump', 'diaper', 'sleep', 'tummy', 'bath', 'massage', 'growth', 'temp', 'meds', 'allergy',
 ] as const;
 
 export type SyncCategory = typeof SYNC_CATEGORIES[number];

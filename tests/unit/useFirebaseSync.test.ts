@@ -83,6 +83,11 @@ describe('useFirebaseSync', () => {
       expect(typeof result.current.syncAll).toBe('function');
     });
 
+    it('exposes requestSync function (debounced sync trigger)', () => {
+      const { result } = renderHook(() => useFirebaseSync(null));
+      expect(typeof result.current.requestSync).toBe('function');
+    });
+
     it('exposes familyCode, setFamilyCode, and generateAndSaveFamilyCode', () => {
       const { result } = renderHook(() => useFirebaseSync(null));
       expect(typeof result.current.setFamilyCode).toBe('function');
@@ -346,6 +351,77 @@ describe('useFirebaseSync', () => {
 
       expect(mockGenerateUniqueFamilyCode).not.toHaveBeenCalled();
       expect(mockSaveFamilyCode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestSync (debounced)', () => {
+    it('triggers syncAll after debounce delay', async () => {
+      vi.useFakeTimers();
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      // Wait for initial sync to complete
+      await vi.runAllTimersAsync();
+      await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+
+      vi.clearAllMocks();
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockLoadFamilyCode.mockResolvedValue('bloom-testcode');
+      mockPullAndMerge.mockResolvedValue(0);
+      mockPushAll.mockResolvedValue(undefined);
+      mockFlushQueue.mockResolvedValue(undefined);
+
+      // Call requestSync — should not fire immediately
+      act(() => { result.current.requestSync(); });
+      expect(mockPullAndMerge).not.toHaveBeenCalled();
+
+      // Advance past the debounce window (3s)
+      await act(async () => {
+        vi.advanceTimersByTime(3000);
+        await vi.runAllTimersAsync();
+      });
+
+      await waitFor(() => {
+        expect(mockPullAndMerge).toHaveBeenCalled();
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('coalesces multiple rapid calls into a single sync', async () => {
+      vi.useFakeTimers();
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await vi.runAllTimersAsync();
+      await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+
+      vi.clearAllMocks();
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockLoadFamilyCode.mockResolvedValue('bloom-testcode');
+      mockPullAndMerge.mockResolvedValue(0);
+      mockPushAll.mockResolvedValue(undefined);
+      mockFlushQueue.mockResolvedValue(undefined);
+
+      // Call requestSync three times rapidly
+      act(() => {
+        result.current.requestSync();
+        result.current.requestSync();
+        result.current.requestSync();
+      });
+
+      // Advance past debounce
+      await act(async () => {
+        vi.advanceTimersByTime(3000);
+        await vi.runAllTimersAsync();
+      });
+
+      await waitFor(() => {
+        // Should only have synced once despite 3 calls
+        expect(mockPullAndMerge).toHaveBeenCalledTimes(1);
+      });
+
+      vi.useRealTimers();
     });
   });
 

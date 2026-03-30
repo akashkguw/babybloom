@@ -32,6 +32,8 @@ export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 export interface UseFirebaseSyncReturn {
   syncAll: () => Promise<void>;
+  /** Debounced sync trigger — call after any local data change. */
+  requestSync: () => void;
   syncStatus: SyncStatus;
   lastSyncedAt: number | null;
   familyCode: string | null;
@@ -53,6 +55,7 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
   const [syncError, setSyncError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const familyCodeRef = useRef<string | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load family code from IndexedDB on mount
   useEffect(() => {
@@ -144,5 +147,24 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     return () => window.removeEventListener('online', handleOnline);
   }, [syncAll]);
 
-  return { syncAll, syncStatus, lastSyncedAt, familyCode, syncError, setFamilyCode, generateAndSaveFamilyCode };
+  /**
+   * Debounced sync trigger — coalesces rapid data changes into a single
+   * sync cycle after 3 seconds of inactivity. Safe to call on every save.
+   */
+  const requestSync = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      syncAll();
+    }, 3000);
+  }, [syncAll]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  return { syncAll, requestSync, syncStatus, lastSyncedAt, familyCode, syncError, setFamilyCode, generateAndSaveFamilyCode };
 }
