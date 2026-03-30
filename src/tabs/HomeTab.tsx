@@ -1641,12 +1641,17 @@ export default function HomeTab({
           const hasUsage = totalUsage >= 10; // need at least 10 taps before usage-based reordering
           const sortLabel = (q: any) => q.sortKey || q.l;
           const sorted = [...allQlPool].sort((a, b) => {
+            const aKey = sortLabel(a);
+            const bKey = sortLabel(b);
+            // Always keep Nurse Left before Nurse Right regardless of usage counts
+            if (aKey === 'Nurse Left' && bKey === 'Nurse Right') return -1;
+            if (aKey === 'Nurse Right' && bKey === 'Nurse Left') return 1;
             if (hasUsage) {
-              const ua = qlUsage[sortLabel(a)] || 0;
-              const ub = qlUsage[sortLabel(b)] || 0;
+              const ua = qlUsage[aKey] || 0;
+              const ub = qlUsage[bKey] || 0;
               if (ua !== ub) return ub - ua; // more used = first
             }
-            return (agePriority[sortLabel(a)] || 99) - (agePriority[sortLabel(b)] || 99);
+            return (agePriority[aKey] || 99) - (agePriority[bKey] || 99);
           });
 
           // Pin Nurse Left + Right together: Left in column 1 (left), Right in column 2 (right)
@@ -1679,6 +1684,12 @@ export default function HomeTab({
           }
           // Priority items first, then fill remaining slots with normal items
           const topItems = [...priorityItems, ...normalItems.slice(0, Math.max(0, 8 - priorityItems.length))];
+          // Enforce Nurse Left always before Nurse Right regardless of warning/active state
+          const nLIdx = topItems.findIndex((q: any) => (q.sortKey || q.l) === 'Nurse Left');
+          const nRIdx = topItems.findIndex((q: any) => (q.sortKey || q.l) === 'Nurse Right');
+          if (nLIdx >= 0 && nRIdx >= 0 && nRIdx < nLIdx) {
+            [topItems[nLIdx], topItems[nRIdx]] = [topItems[nRIdx], topItems[nLIdx]];
+          }
           const visibleItems = qlExpanded ? qlItems : topItems.slice(0, 8);
           const hiddenCount = qlItems.length - 8;
           const showSeeMore = hiddenCount > 0 && !qlExpanded;
