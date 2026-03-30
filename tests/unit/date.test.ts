@@ -10,6 +10,8 @@ import {
   autoSleepType,
   calcSleepMins,
   getWeekStart,
+  findUnmatchedSleep,
+  type SleepEntry,
 } from '@/lib/utils/date';
 
 describe('date utils', () => {
@@ -151,6 +153,43 @@ describe('date utils', () => {
     it('boundary: 18:59 is Nap, 19:00 is Night Sleep', () => {
       expect(autoSleepType('18:59')).toBe('Nap');
       expect(autoSleepType('19:00')).toBe('Night Sleep');
+    });
+
+    // ── entries-aware overload ──
+    it('returns Sleep type (Nap) when no prior sleep entries exist — no unmatched sleep-start', () => {
+      expect(autoSleepType([], '10:00')).toBe('Nap');
+    });
+
+    it('returns Sleep type (Night Sleep) when entries are empty and time is evening', () => {
+      expect(autoSleepType([], '21:00')).toBe('Night Sleep');
+    });
+
+    it('returns Wake Up when an unmatched Nap exists in entries', () => {
+      const entries: SleepEntry[] = [{ id: 1, type: 'Nap', date: '2026-03-30', time: '10:00' }];
+      expect(autoSleepType(entries, '11:00')).toBe('Wake Up');
+    });
+
+    it('returns Wake Up when an unmatched Night Sleep exists in entries', () => {
+      const entries: SleepEntry[] = [{ id: 1, type: 'Night Sleep', date: '2026-03-29', time: '22:00' }];
+      expect(autoSleepType(entries, '06:00')).toBe('Wake Up');
+    });
+
+    it('returns Sleep type when sleep-start is already matched by a Wake Up', () => {
+      const entries: SleepEntry[] = [
+        { id: 1, type: 'Nap', date: '2026-03-30', time: '10:00' },
+        { id: 2, type: 'Wake Up', date: '2026-03-30', time: '11:00' },
+      ];
+      expect(autoSleepType(entries, '12:00')).toBe('Nap');
+    });
+
+    it('returns Sleep type (not Wake Up) when two Wake Ups already closed the sleep', () => {
+      const entries: SleepEntry[] = [
+        { id: 1, type: 'Nap', date: '2026-03-30', time: '09:00' },
+        { id: 2, type: 'Wake Up', date: '2026-03-30', time: '10:00' },
+        { id: 3, type: 'Wake Up', date: '2026-03-30', time: '11:00' },
+      ];
+      // Double Wake Up should not result in a third Wake Up suggestion
+      expect(autoSleepType(entries, '12:00')).toBe('Nap');
     });
   });
 

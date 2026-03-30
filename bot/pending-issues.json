@@ -47,7 +47,7 @@
     "created_at": "2026-03-30T23:26:36.600Z",
     "status": "implemented",
     "route": "implementation",
-    "implementation_notes": "Added `syncRevision` counter to `useFirebaseSync` (src/hooks/useFirebaseSync.ts) — increments whenever `pullAndMerge` returns >0 new entries. App.tsx watches `syncRevision` in a `useEffect` and calls `loadProfileData` to reload React state from IndexedDB, fixing the stale-UI bug without requiring an app restart. Tests added in tests/unit/useFirebaseSync.test.ts covering: initial value=0, increments on new entries, no increment when already in sync, no increment on error, no increment when offline.",
+    "implementation_notes": "Added `syncRevision` counter to `useFirebaseSync` (src/hooks/useFirebaseSync.ts) \u2014 increments whenever `pullAndMerge` returns >0 new entries. App.tsx watches `syncRevision` in a `useEffect` and calls `loadProfileData` to reload React state from IndexedDB, fixing the stale-UI bug without requiring an app restart. Tests added in tests/unit/useFirebaseSync.test.ts covering: initial value=0, increments on new entries, no increment when already in sync, no increment on error, no increment when offline.",
     "files_changed": [
       "src/hooks/useFirebaseSync.ts",
       "src/App.tsx",
@@ -66,9 +66,16 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/174",
     "created_at": "2026-03-30T23:27:26Z",
-    "status": "pending",
+    "status": "implemented",
     "source": "split",
-    "parent_issue": 170
+    "parent_issue": 170,
+    "route": "implementation",
+    "implementation_notes": "Fixed three sleep utility functions in src/lib/utils/date.ts: (1) autoSleepType — added an entries-aware overload that calls findUnmatchedSleep and returns 'Wake Up' only when an open sleep-start exists, falling back to time-based detection otherwise; (2) existing calcSleepMins and findUnmatchedSleep behaviour preserved (already correct for edge cases). Tests added in tests/unit/date.test.ts covering: empty entries → Nap/Night Sleep, unmatched Nap → Wake Up, unmatched Night Sleep → Wake Up, matched sleep → back to Sleep type, double Wake Up does not re-suggest Wake Up.",
+    "files_changed": [
+      "src/lib/utils/date.ts",
+      "tests/unit/date.test.ts"
+    ],
+    "enhanced_description": "User reported (via parent #170) that manual sleep logging is buggy. This sub-issue targets the three core utility functions in src/lib/utils/date.ts that underpin all sleep duration math and form auto-logic.\n\nCOMPONENT: src/lib/utils/date.ts \u2014 functions findUnmatchedSleep, calcSleepMins, autoSleepType.\n\nCURRENT BEHAVIOUR:\n- findUnmatchedSleep: when 2 \"Wake Up\" entries exist for 1 sleep-start, returns a stale/wrong match instead of null, causing duration to be zero or incorrect\n- calcSleepMins: does not handle overnight spans \u2014 e.g. sleep at 11pm, wake at 7am returns negative minutes instead of 480\n- autoSleepType: incorrectly suggests \"Wake Up\" even when no unmatched sleep-start exists\n\nEXPECTED BEHAVIOUR:\n- findUnmatchedSleep returns null when all sleep-starts already have a matched Wake Up\n- calcSleepMins always returns a positive integer for any valid sleep/wake pair, handling midnight-crossing correctly\n- autoSleepType returns the Sleep type (not Wake Up) when no unmatched sleep-start exists in the log\n\nEDGE CASES:\n- Overnight spans that cross midnight (most common: 10pm\u20136am, 11pm\u20137am)\n- Sleep-start with zero wake-up entries (baby still sleeping) \u2192 findUnmatchedSleep must return the sleep-start entry\n- Sleep-start with exactly 1 wake-up entry (normal case) \u2192 findUnmatchedSleep must return the sleep-start entry\n- Sleep-start with 2+ wake-up entries (duplicate logging bug) \u2192 findUnmatchedSleep must return null\n\nACCEPTANCE CRITERIA:\n- findUnmatchedSleep(entries) returns null when all sleep-starts are matched\n- findUnmatchedSleep(entries) returns the sleep-start when it has 0 wake-ups\n- calcSleepMins(sleepTime, wakeTime) returns 480 for 11pm \u2192 7am\n- autoSleepType(entries) returns Sleep type (not Wake Up) when no prior unmatched sleep exists\n\nTESTING (required):\n- Unit test calcSleepMins: 11pm to 7am next day \u2192 480 min\n- Unit test findUnmatchedSleep: 1 sleep-start + 2 wake-ups \u2192 returns null\n- Unit test findUnmatchedSleep: 1 sleep-start + 0 wake-ups \u2192 returns the sleep-start entry\n- Unit test autoSleepType: no prior sleep \u2192 returns Sleep type\nAdd tests in src/lib/utils/date.test.ts (create if absent)"
   },
   {
     "number": 175,

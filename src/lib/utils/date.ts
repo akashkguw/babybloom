@@ -110,19 +110,37 @@ export function monthLabel(dateStr: string): string {
  * @returns Week start date as YYYY-MM-DD
  */
 /**
- * Auto-detect sleep type based on time of day
+ * Auto-detect sleep type based on time of day and optional existing entries.
+ *
+ * Overload 1 — time-only (legacy): returns 'Nap' or 'Night Sleep' based on
+ * the hour of the provided time string (or the current time if omitted).
+ *
+ * Overload 2 — entries-aware: when a SleepEntry[] is passed as the first
+ * argument, returns 'Wake Up' if there is an unmatched sleep-start in that
+ * list; otherwise falls back to time-based detection ('Nap' or 'Night Sleep').
+ *
  * Night Sleep: 7:00 PM (19:00) to 6:59 AM (06:59)
  * Nap: 7:00 AM (07:00) to 6:59 PM (18:59)
- * @param time Optional HH:MM string; defaults to current time
- * @returns 'Nap' or 'Night Sleep'
  */
-export function autoSleepType(time?: string): "Nap" | "Night Sleep" {
-  let hour: number;
-  if (time) {
-    hour = parseInt(time.split(":")[0]);
+export function autoSleepType(time?: string): "Nap" | "Night Sleep";
+export function autoSleepType(entries: SleepEntry[], time?: string): "Nap" | "Night Sleep" | "Wake Up";
+export function autoSleepType(
+  entriesOrTime?: SleepEntry[] | string,
+  time?: string
+): "Nap" | "Night Sleep" | "Wake Up" {
+  let effectiveTime: string | undefined;
+
+  if (Array.isArray(entriesOrTime)) {
+    // Entries-aware path: suggest Wake Up when an open sleep-start exists.
+    if (findUnmatchedSleep(entriesOrTime)) return "Wake Up";
+    effectiveTime = time;
   } else {
-    hour = new Date().getHours();
+    effectiveTime = entriesOrTime;
   }
+
+  const hour = effectiveTime
+    ? parseInt(effectiveTime.split(":")[0])
+    : new Date().getHours();
   return hour >= 19 || hour < 7 ? "Night Sleep" : "Nap";
 }
 
