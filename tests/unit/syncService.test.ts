@@ -23,7 +23,7 @@ vi.mock('@/utils/firestoreUtils', () => ({
   saveEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
   getEntriesEncrypted: (db: unknown, fc: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, fc, pid, cat),
   saveEntriesEncrypted: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
-  deleteEncryptedCategory: (...args: unknown[]) => mockDeleteEncryptedCategory(...args),
+  deleteEncryptedCategory: (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown) => mockDeleteEncryptedCategory(_db, _fc, _pid, _cat),
 }));
 
 // ── Mock firebase/firestore (needed by firestoreUtils types + syncService imports) ──

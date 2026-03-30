@@ -112,9 +112,9 @@ export async function decrypt<T = unknown>(payload: EncryptedPayload, familyCode
   const ciphertext = fromBase64(payload.ct);
 
   const plaintext = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as Uint8Array<ArrayBuffer> },
     key,
-    ciphertext,
+    ciphertext as Uint8Array<ArrayBuffer>,
   );
 
   return JSON.parse(new TextDecoder().decode(plaintext)) as T;
