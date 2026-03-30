@@ -56,6 +56,7 @@ interface LogEntry {
   feedMins?: string;
   feedOz?: string;
   autoSleep?: string;
+  endTime?: string;
 }
 
 interface FormData {
@@ -76,6 +77,7 @@ interface FormData {
   sleepMins?: string;
   mins?: number;
   autoSleep?: string;
+  endTime?: string;
   weight?: string;
   height?: string;
   head?: string;
@@ -305,37 +307,26 @@ const LogTab: React.FC<LogTabProps> = ({
       ...(sub === 'tummy' ? { type: 'Tummy Time' } : {}),
     };
 
-    // Validate Wake Up: block if there is no unmatched sleep-start.
-    // This prevents two Wake Up entries being logged against the same sleep-start,
-    // which previously caused duplicate duration addition and corrupted sleep totals.
-    if (sub === 'sleep' && entry.type === 'Wake Up' && !editId) {
-      const sleepEntries = logs.sleep || [];
-      // When editing we skip this check; entries are cast to SleepEntry shape inline.
-      const unmatched = findUnmatchedSleep(
-        sleepEntries.map((e) => ({ id: Number(e.id), type: e.type || '' }))
-      );
-      if (!unmatched) {
-        toast('No open sleep entry — log a sleep start first'); return;
-      }
+    // For sleep entries: ensure type is Nap or Night Sleep (unified form no longer uses Wake Up)
+    if (sub === 'sleep' && (!entry.type || entry.type === 'Wake Up')) {
+      entry.type = autoSleepType(entry.time);
     }
 
-    // Auto-compute sleep duration for Wake Up if not already set
-    if (sub === 'sleep' && entry.type === 'Wake Up' && !entry.mins) {
-      const sleepEntries = logs.sleep || [];
-      const unmatched = findUnmatchedSleep(
-        sleepEntries.map((e) => ({ id: Number(e.id), type: e.type || '', date: e.date, time: e.time }))
-      );
-      if (unmatched && unmatched.time && unmatched.date && entry.time && entry.date) {
-        const df = calcSleepMins(unmatched.date, unmatched.time, entry.date, entry.time);
-        if (df > 0) {
-          const hrs2 = Math.floor(df / 60);
-          const mins2 = df % 60;
-          entry.mins = df;
-          entry.amount =
-            (hrs2 > 0 ? hrs2 + 'h ' : '') + (mins2 > 0 ? mins2 + 'm' : '0m');
-          entry.sleepHrs = String(hrs2);
-          entry.sleepMins = String(mins2);
-        }
+    // Compute duration from endTime if provided (unified form)
+    if (sub === 'sleep' && entry.endTime && entry.time && entry.date) {
+      const entryStartDate = entry.date;
+      // If endTime < startTime (HH:MM), wake-up crossed midnight → next day
+      const wakeDate = entry.endTime < entry.time
+        ? (() => { const d = new Date(entryStartDate + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })()
+        : entryStartDate;
+      const df = calcSleepMins(entryStartDate, entry.time, wakeDate, entry.endTime);
+      if (df > 0) {
+        const hrs2 = Math.floor(df / 60);
+        const mins2 = df % 60;
+        entry.mins = df;
+        entry.amount = (hrs2 > 0 ? hrs2 + 'h ' : '') + (mins2 > 0 ? mins2 + 'm' : '0m');
+        entry.sleepHrs = String(hrs2);
+        entry.sleepMins = String(mins2);
       }
     }
 
@@ -354,9 +345,7 @@ const LogTab: React.FC<LogTabProps> = ({
     setForm({});
     toast(
       (editId ? 'Updated!' : 'Logged!') +
-        (sub === 'sleep' &&
-        entry.type === 'Wake Up' &&
-        entry.mins
+        (sub === 'sleep' && entry.mins
           ? ' (' + entry.amount + ' sleep)'
           : '')
     );
@@ -371,9 +360,15 @@ const LogTab: React.FC<LogTabProps> = ({
 
   function handleEditClick(entry: LogEntry) {
     const e: Record<string, any> = { ...entry };
-    if (sub === 'sleep' && typeof e.mins === 'number') {
-      e.sleepHrs = String(Math.floor(e.mins / 60));
-      e.sleepMins = String(Math.round(e.mins % 60));
+    if (sub === 'sleep') {
+      if (typeof e.mins === 'number') {
+        e.sleepHrs = String(Math.floor(e.mins / 60));
+        e.sleepMins = String(Math.round(e.mins % 60));
+      }
+      // Normalize legacy Wake Up entries to Nap/Night Sleep for the unified form
+      if (e.type === 'Wake Up') {
+        e.type = autoSleepType(e.time);
+      }
     }
     if (sub === 'feed') {
       if (e.mins && !e.oz) e.feedMins = String(e.mins);
