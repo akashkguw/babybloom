@@ -16,10 +16,14 @@ vi.mock('@/lib/db/indexeddb', () => ({
 // ── Mock @/utils/firestoreUtils ───────────────────────────────────────────────
 const mockGetEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown) => [] as { id: number; [key: string]: unknown }[]);
 const mockSaveEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown, _entries: unknown) => undefined);
+const mockDeleteEncryptedCategory = vi.fn(async () => undefined);
 
 vi.mock('@/utils/firestoreUtils', () => ({
   getEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, fc, pid, cat),
   saveEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
+  getEntriesEncrypted: (db: unknown, fc: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, fc, pid, cat),
+  saveEntriesEncrypted: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
+  deleteEncryptedCategory: (...args: unknown[]) => mockDeleteEncryptedCategory(...args),
 }));
 
 // ── Mock firebase/firestore (needed by firestoreUtils types + syncService imports) ──
@@ -263,6 +267,26 @@ describe('pullAndMerge', () => {
   it('calls getEntries for all 11 categories', async () => {
     await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     expect(mockGetEntries).toHaveBeenCalledTimes(11);
+  });
+
+  it('deletes remote data after successful merge (ephemeral relay)', async () => {
+    const remoteFeeds = [{ id: 100 }];
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return remoteFeeds;
+      return [];
+    });
+
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    // Should have called deleteEncryptedCategory for 'feed' (the only category with remote data)
+    expect(mockDeleteEncryptedCategory).toHaveBeenCalledTimes(1);
+    expect(mockDeleteEncryptedCategory).toHaveBeenCalledWith(mockDb, 'bloom-abc123', 'p1', 'feed');
+  });
+
+  it('does not delete categories with no remote data', async () => {
+    // All categories return empty
+    mockGetEntries.mockResolvedValue([]);
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    expect(mockDeleteEncryptedCategory).not.toHaveBeenCalled();
   });
 
   it('returns 0 (not negative) when remote has fewer entries than local', async () => {

@@ -13,7 +13,12 @@
  */
 
 import { dg, ds } from '@/lib/db/indexeddb';
-import { getEntries, saveEntries, type AnyLogEntry } from '@/utils/firestoreUtils';
+import {
+  getEntriesEncrypted,
+  saveEntriesEncrypted,
+  deleteEncryptedCategory,
+  type AnyLogEntry,
+} from '@/utils/firestoreUtils';
 import { collection, getDocs, limit as fbLimit, query, type Firestore } from 'firebase/firestore';
 
 // ── Category registry ────────────────────────────────────────────────────────
@@ -67,7 +72,7 @@ export async function flushQueue(db: Firestore): Promise<void> {
   if (pending.length === 0) return;
   await Promise.all(
     pending.map(({ familyCode, profileId, category, entries }) =>
-      saveEntries(db, familyCode, profileId, category, entries as never[])
+      saveEntriesEncrypted(db, familyCode, profileId, category, entries as never[])
     )
   );
   clearQueue();
@@ -167,10 +172,11 @@ export async function pullAndMerge(
 
   let totalNew = 0;
   const mergedLogs: Record<string, SyncEntry[]> = { ...localLogs };
+  const categoriesToClean: string[] = [];
 
   for (const category of SYNC_CATEGORIES) {
     const local = (localLogs[category] as SyncEntry[] | undefined) || [];
-    const remote = await getEntries<AnyLogEntry>(db, familyCode, profileId, category) as unknown as SyncEntry[];
+    const remote = await getEntriesEncrypted<AnyLogEntry>(db, familyCode, profileId, category) as unknown as SyncEntry[];
     if (remote.length === 0) {
       mergedLogs[category] = local;
       continue;
@@ -178,9 +184,17 @@ export async function pullAndMerge(
     const merged = mergeEntries(local, remote);
     mergedLogs[category] = merged;
     totalNew += merged.length - local.length;
+    categoriesToClean.push(category);
   }
 
   await ds(profileKey, { ...profileData, logs: mergedLogs });
+
+  // Ephemeral cleanup — delete remote data after successful merge.
+  // Firestore is a relay, not permanent storage.
+  await Promise.all(
+    categoriesToClean.map((cat) => deleteEncryptedCategory(db, familyCode, profileId, cat))
+  );
+
   return Math.max(0, totalNew);
 }
 
@@ -208,7 +222,7 @@ export async function pushAll(
     if (!db || !online) {
       enqueueWrite(familyCode, profileId, category, entries);
     } else {
-      await saveEntries(db, familyCode, profileId, category, entries as never[]);
+      await saveEntriesEncrypted(db, familyCode, profileId, category, entries as never[]);
     }
   }
 }

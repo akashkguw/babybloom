@@ -15,6 +15,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDoc,
   setDoc,
   deleteDoc,
   writeBatch,
@@ -31,6 +32,7 @@ import type {
   MedsEntry,
   AllergyEntry,
 } from '@/lib/db/schema';
+import { encrypt, decrypt, isEncryptedPayload, type EncryptedPayload } from '@/utils/crypto';
 
 // Union of all log entry types
 export type AnyLogEntry =
@@ -146,6 +148,70 @@ export async function deleteEntry(
   if (!db || !familyCode) return;
   const col = categoryCol(db, familyCode, profileId, category);
   await deleteDoc(doc(col, String(id)));
+}
+
+// ── Encrypted CRUD helpers ───────────────────────────────────────────────────
+// These store each category as a single encrypted document at:
+//   families/{familyCode}/profiles/{profileId}/{category}/_encrypted
+// The document contains { ct, iv, ts } where ts is the write timestamp.
+
+/**
+ * Save entries for a category as a single encrypted document.
+ * Includes a timestamp for TTL-based cleanup.
+ */
+export async function saveEntriesEncrypted<T extends AnyLogEntry>(
+  db: Firestore | null,
+  familyCode: string,
+  profileId: string,
+  category: string,
+  entries: T[],
+): Promise<void> {
+  if (!db || !familyCode || entries.length === 0) return;
+  const payload = await encrypt(entries, familyCode);
+  const col = categoryCol(db, familyCode, profileId, category);
+  await setDoc(doc(col, '_encrypted'), {
+    ct: payload.ct,
+    iv: payload.iv,
+    ts: Date.now(),
+  });
+}
+
+/**
+ * Fetch and decrypt entries for a category from Firestore.
+ * Returns an empty array if the document doesn't exist or decryption fails.
+ */
+export async function getEntriesEncrypted<T extends AnyLogEntry>(
+  db: Firestore | null,
+  familyCode: string,
+  profileId: string,
+  category: string,
+): Promise<T[]> {
+  if (!db || !familyCode) return [];
+  const col = categoryCol(db, familyCode, profileId, category);
+  const snap = await getDoc(doc(col, '_encrypted'));
+  if (!snap.exists()) return [];
+  const data = snap.data();
+  if (!isEncryptedPayload(data)) return [];
+  try {
+    return await decrypt<T[]>(data as EncryptedPayload, familyCode);
+  } catch {
+    // Decryption failed — stale data from a different family code, skip
+    return [];
+  }
+}
+
+/**
+ * Delete the encrypted document for a category (post-pull cleanup).
+ */
+export async function deleteEncryptedCategory(
+  db: Firestore | null,
+  familyCode: string,
+  profileId: string,
+  category: string,
+): Promise<void> {
+  if (!db || !familyCode) return;
+  const col = categoryCol(db, familyCode, profileId, category);
+  await deleteDoc(doc(col, '_encrypted'));
 }
 
 // ── Category-specific typed helpers ──────────────────────────────────────────
