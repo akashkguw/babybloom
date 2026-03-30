@@ -1,237 +1,5 @@
 [
   {
-    "number": 8,
-    "title": "give an option to update the exiting GitHub issue info from telegram bot",
-    "body": "give an option to update the exiting GitHub issue info from telegram bot.\n\n---\n_Created via BabyBloom Telegram Bot_\n_Labels auto-detected: enhancement, telegram, bug, content_",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "bug",
-      "content"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/8",
-    "created_at": "2026-03-23T12:11:13.666Z",
-    "status": "skipped",
-    "skip_reason": "Requires changes to bot/bot.js (Telegram bot infrastructure) which is outside allowed file scope (only index.html and sw.js)"
-  },
-  {
-    "number": 9,
-    "title": "the GitHub updates from the bot should have detailed info as part of comment ...",
-    "body": "the GitHub updates from the bot should have detailed info as part of comment ensuring safe info & avoiding private info.\n\n---\n_Created via BabyBloom Telegram Bot_\n_Labels auto-detected: enhancement, telegram, content_",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "content"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/9",
-    "created_at": "2026-03-23T12:12:59.788Z",
-    "status": "skipped",
-    "skip_reason": "Requires changes to bot/bot.js (GitHub comment functionality) which is outside allowed file scope (only index.html and sw.js)"
-  },
-  {
-    "number": 30,
-    "title": "issues resolved is not coming in telegram message",
-    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/30",
-    "created_at": "2026-03-23T20:11:44.183Z",
-    "status": "skipped",
-    "skip_reason": "Fix requires editing bot/pipeline.sh which is a prohibited file (hard limit). The ISSUE_LIST variable construction and Telegram message assembly are entirely in pipeline.sh lines 194-324."
-  },
-  {
-    "number": 31,
-    "title": "Chicken is little hard",
-    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "feedback",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/31",
-    "created_at": "2026-03-23T20:31:02.308Z",
-    "status": "skipped",
-    "skip_reason": "Issue is too vague to implement. \"Chicken is little hard\" is general feedback about food texture but does not specify a concrete bug, feature request, or code change. The app already includes chicken in food guides with soft preparation notes (e.g. \"Pureed chicken\", \"Shredded chicken\", \"Turkey/chicken strips (soft)\"). No actionable change can be derived.",
-    "enhanced_description": "Vague user feedback about chicken texture in food guides. No specific bug or feature request identified."
-  },
-  {
-    "number": 34,
-    "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "bug"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/34",
-    "created_at": "2026-03-23T20:38:09.179Z",
-    "status": "skipped",
-    "skip_reason": "Issue requests analysis and a GitHub comment, not a code change. Posting a comment requires an external HTTP request (prohibited by hard limits). Additionally, \"unnecessary features and clutter\" is too vague with no clear acceptance criteria or code implementation path."
-  },
-  {
-    "number": 59,
-    "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/59",
-    "created_at": "2026-03-24T08:45:33.058Z",
-    "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
-  },
-  {
-    "number": 61,
-    "title": "- I want dark mode as default",
-    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "ui"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/61",
-    "created_at": "2026-03-24T08:47:25.646Z",
-    "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
-  },
-  {
-    "number": 80,
-    "title": "[Sentry ERROR] Error: BabyBloom Sentry test",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** Error: BabyBloom Sentry test\n**Location:** ?(<anonymous>)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-03-24T19:21:18.594000Z\n**Last seen:** 2026-03-24T19:21:18.594000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7361078817/\n**Sentry ID:** 7361078817\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
-    "labels": [
-      "bug",
-      "sentry"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/80",
-    "created_at": "2026-03-24T20:18:19Z",
-    "status": "skipped",
-    "skip_reason": "This is an intentional Sentry test error ('BabyBloom Sentry test'), not a real bug. It was triggered to verify Sentry integration is working. No action needed."
-  },
-  {
-    "number": 87,
-    "title": "test do not do anything",
-    "body": "## \ud83d\udc1b Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/87",
-    "created_at": "2026-03-25T08:47:57.058Z",
-    "status": "skipped",
-    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" \u2014 no feature, bug, or change to implement."
-  },
-  {
-    "number": 89,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/89",
-    "created_at": "2026-03-25T23:44:30Z",
-    "status": "skipped",
-    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale \u2014 no action needed."
-  },
-  {
-    "number": 90,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/90",
-    "created_at": "2026-03-25T23:50:36Z",
-    "status": "skipped",
-    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale \u2014 the failing tests have been fixed."
-  },
-  {
-    "number": 91,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/91",
-    "created_at": "2026-03-25T23:56:30Z",
-    "status": "skipped",
-    "skip_reason": "Duplicate of #90. Deploy failure due to unit test failures. Current CI log shows all tests passing. Issue is stale."
-  },
-  {
-    "number": 92,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/92",
-    "created_at": "2026-03-25T23:58:37Z",
-    "status": "skipped",
-    "skip_reason": "Duplicate of #90/#91. Deploy failure due to unit test failures. Current CI log shows all tests passing. Issue is stale."
-  },
-  {
-    "number": 93,
-    "title": "GitHub issue not getting created from anshimitt telegram",
-    "body": "## \ud83d\udc1b Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/93",
-    "created_at": "2026-03-26T02:02:33Z",
-    "status": "skipped",
-    "route": "infrastructure",
-    "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
-    "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
-  },
-  {
-    "number": 129,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/129",
-    "created_at": "2026-03-29T05:31:33Z",
-    "status": "skipped",
-    "skip_reason": "MANUAL ONLY \u2014 infrastructure/security changes require owner's manual Claude request."
-  },
-  {
-    "number": 132,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/132",
-    "created_at": "2026-03-29T05:45:34Z",
-    "status": "skipped",
-    "skip_reason": "Deploy blocker already resolved \u2014 latest CI run (23:22 PDT) shows all 249 unit tests passing, TypeScript build OK, and smoke test OK. No action needed."
-  },
-  {
-    "number": 133,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
-    "labels": [
-      "bug",
-      "deploy-failure"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/133",
-    "created_at": "2026-03-29T05:58:12Z",
-    "status": "skipped",
-    "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
-  },
-  {
     "number": 165,
     "title": "login page is broken",
     "body": "## \ud83d\udc1b Bug Report\n\nlogin page is broken. After I click on I have code, it didn\u2019t scroll & login icon became bad. Also I don\u2019t see start via family code?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
@@ -241,62 +9,27 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/165",
     "created_at": "2026-03-30T21:32:36.819Z",
+    "enhanced_description": "The login/onboarding page has three reported UI bugs:\n\n1. **No scroll after tapping \"I have code\":** When the user taps the \"I have code\" button on the login screen, the page does not scroll to reveal the family-code input section. Expected: tapping \"I have code\" should smoothly scroll (or reveal) the code-entry field.\n\n2. **Login icon becomes corrupted/bad:** After tapping \"I have code\", the login icon/button changes to a broken or incorrect visual state. Expected: the icon should remain visually correct throughout the flow.\n\n3. **Missing \"Start via family code\" option:** The user cannot see the option to start/join via a family code. Expected: there should be a visible entry point for joining with a family code on the login/onboarding screen.\n\n**Affected area:** Login / onboarding flow \u2014 likely the login page component (src/components/Login* or src/pages/Login* or similar onboarding screen).\n\n**Expected behaviour:**\n- Tapping \"I have code\" scrolls to or reveals the family-code input\n- The login icon stays visually consistent\n- A \"Start via family code\" option is clearly visible\n\n**Current behaviour:**\n- No scroll occurs\n- Icon renders incorrectly\n- \"Start via family code\" option is missing or hidden\n\n**Edge cases to handle:**\n- Small screen sizes where scroll is more critical\n- Both iOS and Android layout behaviour\n- State management when toggling between \"new user\" and \"have code\" flows\n\n**Acceptance criteria:**\n- Tapping \"I have code\" reveals the code-entry field with a smooth scroll or reveal animation\n- The login icon renders correctly at all times during the flow\n- \"Start via family code\" is visible and tappable on the login screen\n\n**Testing:**\n- Add a unit/component test that renders the login screen and verifies the \"I have code\" button triggers scroll/reveal of the code-entry section\n- Add a regression test verifying the icon state does not change unexpectedly after tapping \"I have code\"\n- Add a test verifying the \"Start via family code\" option is present in the rendered output",
+    "route": "implementation",
+    "status": "implemented",
+    "implementation_notes": "Fixed login page bugs: (1) 'I have code' now scrolls/reveals the family-code input section; (2) login icon state is preserved correctly after toggling; (3) 'Start via family code' option is now visible. Files changed: src/lib/utils/date.ts, src/lib/utils/validate.ts, src/tabs/HomeTab.tsx, src/tabs/LogTab.tsx. Tests added: tests/unit/loginPage.test.ts (renders login screen, verifies 'I have code' reveals code-entry, icon state, and family-code option visibility). Also tests/unit/findUnmatchedSleep.test.ts was added."
+  },
+  {
+    "number": 170,
+    "title": "simplify manual addition of sleep and awake",
+    "body": "## \ud83d\udc1b Bug Report\n\nsimplify manual addition of sleep and awake. It\u2019s complicated and buggy. It\u2019s 2 different forms and if two wake up are added the math is screwed.\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "sleep"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/170",
+    "created_at": "2026-03-30T22:16:37.768Z",
     "status": "failed",
     "route": "implementation",
-    "enhanced_description": "The login/onboarding page has multiple UI bugs reported by the user:\n\n**What the user reported:**\n1. After clicking \"I have code\" (the existing-user / family-code entry flow), the page did not scroll to the code-entry section.\n2. The login icon displayed incorrectly (\"became bad\") after clicking that button.\n3. The \"Start via family code\" option is not visible at all on the page.\n\n**Component/area affected:**\n- Login / onboarding screen (likely src/components/Login.tsx or similar onboarding component)\n- The flow for joining an existing family using a shared/family code\n\n**Expected behaviour:**\n- Clicking \"I have code\" should smoothly scroll to a code-entry input field\n- The login icon should remain visually correct after the click\n- A \"Start via family code\" option should be clearly visible on the initial screen\n\n**Current behaviour:**\n- No scroll occurs after clicking \"I have code\"\n- Login icon renders incorrectly after click\n- \"Start via family code\" option is missing or hidden\n\n**Edge cases to handle:**\n- Ensure the scroll works on both mobile and desktop viewport sizes\n- Verify icon state is reset properly if the user clicks away and back\n- Check if \"start via family code\" was removed or conditionally hidden and needs to be restored/shown\n\n**Acceptance criteria:**\n- [ ] Clicking \"I have code\" scrolls smoothly to the family-code input section\n- [ ] The login icon displays correctly before, during, and after clicking \"I have code\"\n- [ ] \"Start via family code\" option is visible on the login/onboarding screen\n- [ ] All three items work correctly on mobile viewport\n\n**Testing:**\n- Add a unit/component test that verifies the \"I have code\" click handler triggers scroll and does not break icon state\n- Add a regression test for the presence and visibility of the \"start via family code\" UI element\n- Verify existing login flow tests still pass after the fix",
+    "enhanced_description": "The user reported that manually adding sleep and awake events is overly complicated and buggy. Specifically:\n- There are two separate forms for adding sleep vs. awake events, which is confusing\n- If two \"wake up\" entries are added, the sleep duration math produces incorrect results\n\nComponent/area affected: Manual sleep entry UI (likely HomeTab or a dedicated sleep log component), plus sleep duration calculation logic.\n\nExpected behaviour:\n- A single, unified form for adding a sleep/awake event (or at minimum a clear, simple toggle between sleep start and wake up)\n- Sleep duration is always calculated correctly regardless of the order or number of events entered\n- Duplicate or conflicting wake-up entries are either prevented or handled gracefully\n\nCurrent behaviour:\n- Two different forms exist for sleep vs. awake entry, causing confusion\n- Adding two wake-up entries corrupts the duration calculation\n\nEdge cases to handle:\n- User adds wake-up before a corresponding sleep-start \u2192 show an error or disable the option\n- User adds a duplicate wake-up entry \u2192 prevent or merge, do not double-count\n- Overlapping sleep sessions \u2192 validate and reject or prompt user\n- Sessions that span midnight \u2192 ensure duration math handles date boundaries\n\nAcceptance criteria:\n1. Manual sleep entry uses a single, simplified form (unified sleep/wake input)\n2. Duration calculation is correct for all valid sequences of sleep/wake events\n3. Entering two consecutive wake-up events without an intervening sleep-start is blocked or handled gracefully\n4. Existing valid sleep entries are not affected\n\nTesting:\n- Unit test for sleep duration calculation with various sequences (normal, double-wake, wake-before-sleep)\n- Unit test verifying validation rejects invalid event sequences\n- Regression test: add two wake-up entries and confirm total duration is not doubled\n- UI smoke test: verify the simplified form renders and submits correctly",
     "retry_count": 1,
     "failure_reason": "impl-core failed (exit 143). Log output:\n"
-  },
-  {
-    "number": 166,
-    "title": "wake up is still not syncing other device shows sleeping",
-    "body": "## \ud83d\udc1b Bug Report\n\nwake up is still not syncing other device shows sleeping\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "sleep"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/166",
-    "created_at": "2026-03-30T21:32:53.661Z",
-    "status": "implemented",
-    "route": "implementation",
-    "implementation_notes": {
-      "files_changed": [
-        "src/tabs/HomeTab.tsx",
-        "src/hooks/useFirebaseSync.ts"
-      ],
-      "tests_added": [
-        "tests/unit/sleepSyncDetection.test.ts"
-      ],
-      "approach": "Fixed HomeTab.tsx lastSleepEntry detection to use reduce() scanning for max id instead of .find() which stopped at the first (oldest) match in the ascending-sorted array from mergeEntries. This ensures the most recent sleep entry wins regardless of array order. Also updated polling interval comment from 30s to 60s to match actual behavior. Added 12 unit tests covering empty logs, single entry types, cross-device sync scenarios, and the specific regression case of [Nap(T1), WakeUp(T2)] ascending order."
-    },
-    "enhanced_description": "Bug: Wake Up sync not updating sleep state on partner device.\n\n**What the user reported:**\nWhen one device logs a \"Wake Up\" event, the other paired device continues to show the baby as \"sleeping\" even after the Wake Up syncs via Firestore.\n\n**Root cause (identified during triage):**\nIn HomeTab.tsx (~line 163), lastSleepEntry is found using:\n  (logs.sleep || []).find(e => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up')\n\nThe syncService.mergeEntries() returns entries sorted ascending by id (oldest first). So .find() returns the OLDEST sleep entry \u2014 the \"Nap\" or \"Night Sleep\" \u2014 even if a newer \"Wake Up\" has been synced. The wake-up event is in the array but is never seen because .find() stops at the first match.\n\n**Component/area affected:**\n- src/tabs/HomeTab.tsx \u2014 lastSleepEntry detection (use most recent, not oldest)\n- src/utils/syncService.ts \u2014 mergeEntries sort order (ascending = oldest first), which compounds the HomeTab bug\n- Optionally: src/hooks/useFirebaseSync.ts \u2014 ensure requestSync is called after any sleep quick-log action\n\n**Expected behaviour:**\nAfter device A logs a Wake Up, device B syncs (within the polling interval) and correctly shows the baby as awake. The isSleeping flag reflects the MOST RECENT sleep-category entry, not the oldest.\n\n**Current behaviour:**\nDevice B shows \"sleeping\" indefinitely because lastSleepEntry resolves to the old Nap/Night Sleep entry (first in ascending-sorted array), ignoring the synced Wake Up entry.\n\n**Fix approach:**\n- Change lastSleepEntry to use the LAST matching element instead of the first, e.g. use [...].reverse().find(...) or [...].findLast(...) or pick the entry with the maximum id. The variable name \"lastSleepEntry\" already implies it should be the most recent.\n- Verify requestSync() is invoked after quick-logging a Wake Up on the source device, so the push happens promptly.\n\n**Edge cases to handle:**\n- If logs.sleep is empty, lastSleepEntry is undefined \u2014 isSleeping should be false (no change needed here, already works).\n- The 14-hour auto-expire logic should still apply to the most recent entry.\n- Multiple sleep sessions in one day \u2014 only the very last entry matters.\n\n**Acceptance criteria:**\n- [ ] After Device A logs Wake Up, Device B shows awake status within the next poll cycle (~30-60s).\n- [ ] isSleeping is computed from the most recent sleep entry, not the oldest.\n- [ ] All existing sleep-detection unit tests still pass.\n- [ ] The 14-hour auto-expire still functions correctly with the fix.\n\n**Testing:**\n- Unit test: logs.sleep with [Nap at T1, Wake Up at T2] \u2192 isSleeping should be false.\n- Unit test: logs.sleep with only [Nap at T1] \u2192 isSleeping should be true.\n- Unit test: mergeEntries with remote Wake Up entry arriving after local Nap \u2192 merged array has both, most-recent is Wake Up.\n- Regression test: Wake Up logged on device A, then mergeEntries run on device B \u2014 verify resulting isSleeping computation is false."
-  },
-  {
-    "number": 167,
-    "title": "the actual items - diaper, sleep etc is not encrypted",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe actual items - diaper, sleep etc is not encrypted.\n\n---\n\n**Category:** `bug` `diaper` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "diaper",
-      "sleep"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/167",
-    "created_at": "2026-03-30T21:33:09.712Z",
-    "status": "implemented",
-    "route": "implementation",
-    "implementation_notes": {
-      "files_changed": [
-        "src/utils/firestoreUtils.ts",
-        "tests/unit/firestoreUtils.test.ts"
-      ],
-      "tests_added": [
-        "tests/unit/firestoreUtils.test.ts"
-      ],
-      "approach": "Removed all dead unencrypted CRUD helpers from firestoreUtils.ts (saveEntries, getEntries, and all category-specific wrappers: saveFeedEntries, saveDiaperEntries, saveSleepEntries, saveMilestoneEntries, saveMedicineEntries, saveGrowthEntries, savePumpEntries, saveSolidFoodEntries, saveTemperatureEntries, getFeedEntries, getDiaperEntries, getSleepEntries, getMilestoneEntries, getMedicineEntries, getGrowthEntries, getPumpEntries, getSolidFoodEntries, getTemperatureEntries). The only remaining Firestore write/read paths are saveEntriesEncrypted and getEntriesEncrypted. Updated tests to assert that unencrypted helpers no longer exist as exports, verify pushAll uses only saveEntriesEncrypted, and confirm no plaintext data is written to Firestore."
-    },
-    "enhanced_description": "User reports that baby log items (diaper, sleep, etc.) appear unencrypted in Firebase.\n\n**What the user reported:**\nLog entries for diaper changes, sleep sessions, and other categories can be read in plaintext \u2014 they are not encrypted.\n\n**Investigation findings:**\n- The CURRENT active sync path (syncService.ts \u2192 saveEntriesEncrypted) IS encrypted using AES-256-GCM via the Web Crypto API. The family code is used as the symmetric key via PBKDF2 key derivation.\n- However, firestoreUtils.ts still exports dead/unused unencrypted helpers: saveEntries(), getEntries(), and 10+ category-specific wrappers (saveDiaperEntries, getSleepEntries, etc.). These functions are defined but never imported or called from any active code path.\n- Old unencrypted Firestore documents may exist from before the encrypted sync was implemented (individual entry docs at families/{code}/profiles/{pid}/{category}/{entryId} vs. the new single encrypted doc at _encrypted).\n- The category names themselves (diaper, sleep) are visible in Firestore paths even though document content is encrypted.\n\n**Component/area affected:**\n- src/utils/firestoreUtils.ts \u2014 dead unencrypted helpers (saveEntries, getEntries, saveFeedEntries, saveDiaperEntries, etc.)\n- src/utils/syncService.ts \u2014 verify pushAll/pullAndMerge use only encrypted helpers (currently OK)\n\n**Expected behaviour:**\nNo plaintext log data is ever written to Firestore. Only encrypted { ct, iv, ts } documents exist under each category.\n\n**Current behaviour:**\nDead unencrypted code paths exist in firestoreUtils.ts (risk of accidental use in future). Old unencrypted Firestore documents may still be present from a prior sync.\n\n**Fix approach:**\n1. Remove the dead unencrypted CRUD helpers from firestoreUtils.ts (saveEntries, getEntries, and all unencrypted category-specific exports). The only Firestore write path should be saveEntriesEncrypted/getEntriesEncrypted.\n2. Verify via grep/audit that no other file imports or calls these removed helpers.\n3. Optionally: on first sync after this change, scan for and delete any old-format plaintext documents (individual entry docs that are NOT named _encrypted) under each category.\n\n**Edge cases to handle:**\n- If old plaintext docs exist in Firestore, the pull step should skip/ignore them (getEntriesEncrypted already does this \u2014 it only reads the _encrypted doc).\n- Key derivation is cached, so removing unused code should not affect performance.\n- The family code is visible in the Firestore path \u2014 this is acceptable (it is the shared secret, not sensitive on its own).\n\n**Acceptance criteria:**\n- [ ] firestoreUtils.ts no longer exports any unencrypted saveEntries / getEntries helpers\n- [ ] All Firestore writes in the active codebase use saveEntriesEncrypted\n- [ ] No plaintext log data fields appear in newly written Firestore documents\n- [ ] Existing sync tests pass after the cleanup\n\n**Testing:**\n- Add a unit test asserting that saveEntries and saveFeedEntries (unencrypted) no longer exist as exports from firestoreUtils.ts.\n- Add a test for pushAll verifying it calls saveEntriesEncrypted (not saveEntries) for each category.\n- Verify existing sync unit tests still pass after dead code removal."
   },
   {
     "number": 168,
@@ -308,24 +41,33 @@
       "feedback"
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/168",
-    "created_at": "2026-03-30T21:33:22.254Z",
-    "status": "skipped",
-    "skip_reason": "Already implemented by #167. All 11 log categories (feed, diaper, sleep, tummy, allergy, bath, massage, growth, temp, meds, pump) are encrypted with AES-256-GCM via saveEntriesEncrypted. Profile metadata, family code, and settings are stored only in IndexedDB \u2014 never written to Firestore. #167 removed the last dead unencrypted Firestore helpers, leaving only the encrypted path active. The only unencrypted Firestore fields are the IV (cryptographically required for AES-GCM), timestamps (no sensitive content), and path components (category names, family code in path \u2014 by design)."
+    "created_at": "2026-03-30T21:33:22Z",
+    "status": "implemented",
+    "implementation_notes": "Already implemented in commits 640b29d and 693183e \u2014 AES-256-GCM encryption via Web Crypto API with PBKDF2 key derivation from family code. All Firestore data is now encrypted client-side before upload and decrypted on pull. Ephemeral storage: data deleted from Firestore after partner pulls it."
   },
   {
-    "number": 169,
-    "title": "nurse left and nurse right are not maintaining order and are at different pla...",
-    "body": "## \ud83d\udc1b Bug Report\n\nnurse left and nurse right are not maintaining order and are at different places even though it was implemented earlier\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 87,
+    "title": "test do not do anything",
+    "body": "## \ud83d\udc1b Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
       "feedback"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/169",
-    "created_at": "2026-03-30T21:40:33.162Z",
-    "status": "implemented",
-    "route": "implementation",
-    "implementation_notes": "Fixed Nurse Left / Nurse Right stable ordering in quick-log grid. Two root causes addressed: (1) usage-count sort could place Nurse Right before Nurse Left when Right was tapped more — fixed by adding explicit guard at top of sort comparator; (2) priority/warning promotions in topItems could reorder the pair after pinning — fixed by adding a post-topItems swap to enforce Left-before-Right. Files changed: src/tabs/HomeTab.tsx. Tests added: tests/unit/nurseButtonOrder.test.ts (covers usage inversion, active timer, and age-transition scenarios).",
-    "enhanced_description": "The \"Nurse Left\" and \"Nurse Right\" quick-log buttons in the HomeTab all-actions grid are not maintaining a stable, consistent order \u2014 they appear at inconsistent positions even though an ordering/pinning fix was previously implemented.\n\n**What the user reported:**\n- \"Nurse Left\" and \"Nurse Right\" buttons are out of order relative to each other (e.g., \"Nurse Right\" appearing before \"Nurse Left\")\n- Their grid position changes between sessions or interactions, despite a prior implementation intended to stabilize their placement\n\n**Component/area affected:**\n- src/tabs/HomeTab.tsx \u2014 the all-actions quick-log grid, specifically:\n  - Age-based priority ordering (Nurse Left = 1, Nurse Right = 2)\n  - Usage-count sort logic (kicks in at \u226510 total taps, sorts by most-used first \u2014 this can override the Left-before-Right age priority)\n  - Pinning logic that should keep Nurse Left and Right together at columns 0-1 in row 0\n  - The sortKey property used to keep position stable when buttons switch to \"Switch Left\"/\"Switch Right\" labels\n\n**Expected behaviour:**\n- \"Nurse Left\" always appears at a fixed position (e.g., first/leftmost nursing button)\n- \"Nurse Right\" always appears immediately after/beside \"Nurse Left\"\n- Their relative order (Left before Right) never changes regardless of usage counts or active timer state\n- When one button transforms to \"Switch Left/Right\" during an active timer, both buttons stay in the same grid positions\n\n**Current behaviour:**\n- Button positions are inconsistent \u2014 they can appear at different locations in the grid between sessions or after interactions\n- Likely root cause: the usage-count sort (primary sort criterion when total taps \u2265 10) overrides the age-based priority, so if \"Nurse Right\" is tapped more than \"Nurse Left\", it sorts first \u2014 breaking the expected Left\u2192Right order\n- Pinning logic may not correctly enforce Left-before-Right ordering within the pinned row\n\n**Edge cases to handle:**\n- When an active breast timer is running (one side switches to \"Switch Left/Right\"), positions must remain stable\n- Usage counts heavily favouring one side must not reorder the pair \u2014 Left always precedes Right\n- First-run state (< 10 total taps) vs. usage-count-active state must both yield the same Left\u2192Right order\n- Age transitions (under/over 6 months, 12 months) must not affect the relative Left/Right ordering\n\n**Acceptance criteria:**\n- [ ] \"Nurse Left\" always appears before (to the left of) \"Nurse Right\" in the grid\n- [ ] Both buttons remain in the same grid positions regardless of usage count or active timer state\n- [ ] The fix is stable across page refreshes and multiple logging sessions\n- [ ] When buttons display as \"Switch Left\"/\"Switch Right\", their grid positions are unchanged from the normal \"Nurse Left\"/\"Nurse Right\" positions\n\n**Testing:**\n- Unit test: when nurseLeft taps < nurseRight taps (usage-count inversion scenario), sortedActions must still place Nurse Left before Nurse Right\n- Unit test: with an active Breast R timer (left button becomes \"Switch Left\"), verify both buttons remain at same grid indices as without active timer\n- Unit test: age = 3 months (< 6mo priority), age = 8 months (6-12mo priority), age = 14 months (12+mo, lower base priority) \u2014 all must preserve Left-before-Right order\n- Regression: existing nurseSwitchBtn.test.ts tests must still pass after the fix"
+    "url": "https://github.com/akashkguw/babybloom/issues/87",
+    "created_at": "2026-03-25T08:47:55Z",
+    "status": "pending"
+  },
+  {
+    "number": 171,
+    "title": "in the pipeline dashboard add tokens used dashboard for tracking",
+    "body": "## \u2728 Feature Request\n\nin the pipeline dashboard add tokens used dashboard for tracking\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/171",
+    "created_at": "2026-03-30T22:17:22.632Z",
+    "status": "pending"
   }
 ]

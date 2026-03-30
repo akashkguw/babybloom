@@ -127,6 +127,40 @@ export function autoSleepType(time?: string): "Nap" | "Night Sleep" {
 }
 
 /**
+ * Minimal shape needed for sleep-entry matching.
+ * Both HomeTab and LogTab use their own local LogEntry interfaces;
+ * this keeps date.ts free of cross-module dependencies.
+ */
+export interface SleepEntry {
+  id: number;
+  type: string;
+  date?: string;
+  time?: string;
+}
+
+/**
+ * Find the most-recent sleep-start (Nap / Night Sleep) that has NOT yet
+ * been followed by a Wake Up entry.
+ *
+ * Algorithm: scan ALL entries and track the one with the highest numeric id.
+ * - If the highest-id entry is a Nap or Night Sleep → it is unmatched → return it.
+ * - If the highest-id entry is a Wake Up → the last sleep is already closed → return null.
+ * - If no relevant entries exist → return null.
+ *
+ * This prevents double-counting when two Wake Up entries are logged against
+ * the same sleep-start (the root cause of the corrupted duration math).
+ */
+export function findUnmatchedSleep(entries: SleepEntry[]): SleepEntry | null {
+  let latest: SleepEntry | null = null;
+  for (const e of entries) {
+    if (e.type !== 'Nap' && e.type !== 'Night Sleep' && e.type !== 'Wake Up') continue;
+    if (!latest || e.id > latest.id) latest = e;
+  }
+  if (!latest) return null;
+  return latest.type === 'Nap' || latest.type === 'Night Sleep' ? latest : null;
+}
+
+/**
  * Calculate sleep duration in minutes using both date and time.
  * Returns 0 if duration is non-positive or exceeds 24 hours.
  */

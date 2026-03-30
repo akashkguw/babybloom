@@ -3,13 +3,14 @@ import { Card as Cd, Button as Btn, ProgressCircle as PR } from '@/components/sh
 import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
 import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
-import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
+import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import type { CountryConfig, CountryCode } from '@/lib/constants/countries';
 import { getAvailableCountries } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
-import { isValidBirthDate } from '@/lib/utils/validate';
+import { isValidBirthDate, isValidFamilyCode } from '@/lib/utils/validate';
+import { saveFamilyCode } from '@/utils/syncService';
 import WelcomeCarousel from '@/components/onboarding/WelcomeCarousel';
 import MilestoneCarousel from '@/components/onboarding/MilestoneCarousel';
 import { getEncouragement } from '@/lib/constants/encouragements';
@@ -124,8 +125,26 @@ export default function HomeTab({
   const [revealStage, setRevealStage] = useState<number | null>(null);
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [showFamilyCode, setShowFamilyCode] = useState(false);
+  const [familyCodeInput, setFamilyCodeInput] = useState('');
+  const joinSectionRef = useRef<HTMLDivElement>(null);
+  const familyCodeSectionRef = useRef<HTMLDivElement>(null);
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
   const [heroBg, setHeroBg] = useState<HeroBgSetting | null>(null);
+
+  // Scroll share-code section into view when revealed
+  useEffect(() => {
+    if (showJoinCode && joinSectionRef.current) {
+      joinSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [showJoinCode]);
+
+  // Scroll family-code section into view when revealed
+  useEffect(() => {
+    if (showFamilyCode && familyCodeSectionRef.current) {
+      familyCodeSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [showFamilyCode]);
 
   // Load hero background setting
   useEffect(() => {
@@ -506,13 +525,13 @@ export default function HomeTab({
   if (!birth) {
     const selCountry = countries.find((c) => c.code === country);
     return (
-      <div style={{ padding: '40px 20px 32px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ padding: '40px 20px 32px', textAlign: 'center', minHeight: '100vh', overflowY: 'auto' }}>
         {/* Decorative header */}
         <div style={{
           width: 80, height: 80, borderRadius: '50%', margin: '0 auto 16px',
           background: `linear-gradient(135deg, ${C.p}, ${C.s})`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 8px 24px ${C.p}44`,
+          boxShadow: `0 8px 24px ${C.p}44`, flexShrink: 0,
         }}>
           <span style={{ fontSize: 38 }}>🍼</span>
         </div>
@@ -634,73 +653,130 @@ export default function HomeTab({
           {/* Divider */}
           <div style={{ height: 1, background: C.b, margin: '20px -4px 16px' }} />
 
-          {/* Have a share code? */}
-          {!showJoinCode ? (
-            <div
-              onClick={() => setShowJoinCode(true)}
-              style={{ cursor: 'pointer', textAlign: 'center' }}
-            >
-              <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
-                Have a QR code or share code from your partner?
-              </span>
-            </div>
-          ) : (
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
-                Paste share code
-              </div>
-              <textarea
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Paste the BB1:... code here"
-                style={{
-                  width: '100%', height: 70, background: C.bg,
-                  border: '1px solid ' + C.b, borderRadius: 12,
-                  padding: 10, fontSize: 11, fontFamily: 'monospace',
-                  color: C.t, resize: 'none', boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ marginTop: 8 }}>
-                <Btn
-                  label="Join with share code"
-                  onClick={() => {
-                    if (!joinCode.trim()) { toast('Please paste a share code'); return; }
-                    // Decode the share code inline (same logic as PartnerSync)
-                    try {
-                      let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
-                      // Case-insensitive: messaging apps may lowercase "BB1:" to "bb1:"
-                      const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
-                      if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
-                      // Strip ALL non-base64 characters (invisible unicode from messaging apps)
-                      cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
-                      const binary = atob(cleaned);
-                      const bytes = new Uint8Array(binary.length);
-                      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                      const json = new TextDecoder().decode(bytes);
-                      const payload = JSON.parse(json);
-                      if (payload.v !== 1) { toast('Invalid sync code format'); return; }
-                      // Apply data from share code
-                      if (payload.logs) setLogs(payload.logs);
-                      if (payload.birth) setBirth(payload.birth);
-                      else setBirth(today());
-                      toast('Data synced from partner!');
-                      setShowWelcome(true);
-                    } catch {
-                      toast('Invalid sync code — check and try again');
-                    }
-                  }}
-                  color={C.s}
-                  full={true}
-                />
-              </div>
+          {/* Have a share code? — ref enables scroll-into-view on reveal */}
+          <div ref={joinSectionRef}>
+            {!showJoinCode ? (
               <div
-                onClick={() => { setShowJoinCode(false); setJoinCode(''); }}
-                style={{ cursor: 'pointer', textAlign: 'center', marginTop: 8 }}
+                onClick={() => setShowJoinCode(true)}
+                style={{ cursor: 'pointer', textAlign: 'center' }}
               >
-                <span style={{ fontSize: 12, color: C.tl }}>Cancel</span>
+                <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
+                  Have a QR code or share code from your partner?
+                </span>
               </div>
-            </div>
-          )}
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
+                  Paste share code
+                </div>
+                <textarea
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  placeholder="Paste the BB1:... code here"
+                  style={{
+                    width: '100%', height: 70, background: C.bg,
+                    border: '1px solid ' + C.b, borderRadius: 12,
+                    padding: 10, fontSize: 11, fontFamily: 'monospace',
+                    color: C.t, resize: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ marginTop: 8 }}>
+                  <Btn
+                    label="Join with share code"
+                    onClick={() => {
+                      if (!joinCode.trim()) { toast('Please paste a share code'); return; }
+                      // Decode the share code inline (same logic as PartnerSync)
+                      try {
+                        let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
+                        // Case-insensitive: messaging apps may lowercase "BB1:" to "bb1:"
+                        const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
+                        if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
+                        // Strip ALL non-base64 characters (invisible unicode from messaging apps)
+                        cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
+                        const binary = atob(cleaned);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                        const json = new TextDecoder().decode(bytes);
+                        const payload = JSON.parse(json);
+                        if (payload.v !== 1) { toast('Invalid sync code format'); return; }
+                        // Apply data from share code
+                        if (payload.logs) setLogs(payload.logs);
+                        if (payload.birth) setBirth(payload.birth);
+                        else setBirth(today());
+                        toast('Data synced from partner!');
+                        setShowWelcome(true);
+                      } catch {
+                        toast('Invalid sync code — check and try again');
+                      }
+                    }}
+                    color={C.s}
+                    full={true}
+                  />
+                </div>
+                <div
+                  onClick={() => { setShowJoinCode(false); setJoinCode(''); }}
+                  style={{ cursor: 'pointer', textAlign: 'center', marginTop: 8 }}
+                >
+                  <span style={{ fontSize: 12, color: C.tl }}>Cancel</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Start via family code — cloud sync entry point (always visible) */}
+          <div ref={familyCodeSectionRef} style={{ marginTop: 12 }}>
+            {!showFamilyCode ? (
+              <div
+                onClick={() => setShowFamilyCode(true)}
+                style={{ cursor: 'pointer', textAlign: 'center' }}
+              >
+                <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
+                  Start via family code
+                </span>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
+                  Enter family code
+                </div>
+                <input
+                  type="text"
+                  value={familyCodeInput}
+                  onChange={(e) => setFamilyCodeInput(e.target.value.trim())}
+                  placeholder="bloom-xxxxxxxx"
+                  style={{
+                    width: '100%', background: C.bg, border: '1px solid ' + C.b,
+                    borderRadius: 12, padding: '10px 12px', fontSize: 13,
+                    fontFamily: 'monospace', color: C.t, boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ marginTop: 8 }}>
+                  <Btn
+                    label="Join family"
+                    onClick={async () => {
+                      const code = familyCodeInput.trim().toLowerCase();
+                      if (!isValidFamilyCode(code)) {
+                        toast('Invalid family code — should be bloom-xxxxxxxx');
+                        return;
+                      }
+                      await saveFamilyCode(code);
+                      setBirth(today());
+                      toast('Family code saved! Welcome to BabyBloom');
+                      setShowWelcome(true);
+                    }}
+                    color={C.s}
+                    full={true}
+                  />
+                </div>
+                <div
+                  onClick={() => { setShowFamilyCode(false); setFamilyCodeInput(''); }}
+                  style={{ cursor: 'pointer', textAlign: 'center', marginTop: 8 }}
+                >
+                  <span style={{ fontSize: 12, color: C.tl }}>Cancel</span>
+                </div>
+              </div>
+            )}
+          </div>
         </Cd>
 
         <div style={{ marginTop: 20, fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
@@ -720,13 +796,13 @@ export default function HomeTab({
       entry
     ) as LogEntry;
 
-    // Auto-compute sleep duration for Wake Up
+    // Auto-compute sleep duration for Wake Up using only the unmatched sleep start.
+    // Using findUnmatchedSleep prevents double-counting when two Wake Ups are logged
+    // against the same sleep-start entry.
     if (cat === 'sleep' && e.type === 'Wake Up') {
-      const sl = (logs.sleep || []).filter(
-        (x) => x.type === 'Nap' || x.type === 'Night Sleep'
-      );
-      if (sl.length > 0 && sl[0].time && sl[0].date && e.time && e.date) {
-        const df = calcSleepMins(sl[0].date, sl[0].time, e.date, e.time);
+      const unmatched = findUnmatchedSleep(logs.sleep || []);
+      if (unmatched && unmatched.time && unmatched.date && e.time && e.date) {
+        const df = calcSleepMins(unmatched.date, unmatched.time, e.date, e.time);
         if (df > 0) {
           const hrs2 = Math.floor(df / 60);
           const mins2 = df % 60;

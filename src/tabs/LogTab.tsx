@@ -9,7 +9,7 @@ import {
   TabHeader,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
@@ -305,13 +305,28 @@ const LogTab: React.FC<LogTabProps> = ({
       ...(sub === 'tummy' ? { type: 'Tummy Time' } : {}),
     };
 
+    // Validate Wake Up: block if there is no unmatched sleep-start.
+    // This prevents two Wake Up entries being logged against the same sleep-start,
+    // which previously caused duplicate duration addition and corrupted sleep totals.
+    if (sub === 'sleep' && entry.type === 'Wake Up' && !editId) {
+      const sleepEntries = logs.sleep || [];
+      // When editing we skip this check; entries are cast to SleepEntry shape inline.
+      const unmatched = findUnmatchedSleep(
+        sleepEntries.map((e) => ({ id: Number(e.id), type: e.type || '' }))
+      );
+      if (!unmatched) {
+        toast('No open sleep entry — log a sleep start first'); return;
+      }
+    }
+
     // Auto-compute sleep duration for Wake Up if not already set
     if (sub === 'sleep' && entry.type === 'Wake Up' && !entry.mins) {
-      const sl = (logs.sleep || []).filter(
-        (e) => e.type === 'Nap' || e.type === 'Night Sleep'
+      const sleepEntries = logs.sleep || [];
+      const unmatched = findUnmatchedSleep(
+        sleepEntries.map((e) => ({ id: Number(e.id), type: e.type || '', date: e.date, time: e.time }))
       );
-      if (sl.length > 0 && sl[0].time && sl[0].date && entry.time && entry.date) {
-        const df = calcSleepMins(sl[0].date, sl[0].time, entry.date, entry.time);
+      if (unmatched && unmatched.time && unmatched.date && entry.time && entry.date) {
+        const df = calcSleepMins(unmatched.date, unmatched.time, entry.date, entry.time);
         if (df > 0) {
           const hrs2 = Math.floor(df / 60);
           const mins2 = df % 60;
@@ -1149,16 +1164,21 @@ const LogTab: React.FC<LogTabProps> = ({
             {/* Sleep specific */}
             {sub === 'sleep' ? (
               (() => {
-                // Find last sleep entry for auto-calc on Wake Up
-                let lastSleep: LogEntry | null = null;
-                if (form.type === 'Wake Up') {
-                  const sleepEntries = (logs.sleep || []).filter(
-                    (e) => e.type === 'Nap' || e.type === 'Night Sleep'
-                  );
-                  if (sleepEntries.length > 0) {
-                    lastSleep = sleepEntries[0];
-                  }
-                }
+                // Find the unmatched sleep-start for auto-calc on Wake Up.
+                // Using findUnmatchedSleep ensures we never re-use a sleep that
+                // already has a Wake Up logged after it.
+                const unmatchedSleep = findUnmatchedSleep(
+                  (logs.sleep || []).map((e) => ({
+                    id: Number(e.id),
+                    type: e.type || '',
+                    date: e.date,
+                    time: e.time,
+                  }))
+                );
+                const lastSleep: LogEntry | null =
+                  form.type === 'Wake Up' && unmatchedSleep
+                    ? ((logs.sleep || []).find((e) => Number(e.id) === unmatchedSleep.id) || null)
+                    : null;
 
                 // Compute auto duration for display
                 let autoMins: number | null = null;
@@ -1196,16 +1216,15 @@ const LogTab: React.FC<LogTabProps> = ({
                               }
                               onClick={() => {
                                 if (t === 'Wake Up') {
-                                  // Auto-calc from last sleep entry
-                                  const sl = (logs.sleep || []).filter(
-                                    (e) =>
-                                      e.type === 'Nap' ||
-                                      e.type === 'Night Sleep'
-                                  );
-                                  if (sl.length > 0 && sl[0].time && sl[0].date) {
+                                  // Auto-calc from the unmatched sleep-start only.
+                                  // unmatchedSleep is computed above in the IIFE scope.
+                                  const sl = unmatchedSleep
+                                    ? (logs.sleep || []).find((e) => Number(e.id) === unmatchedSleep.id) || null
+                                    : null;
+                                  if (sl && sl.time && sl.date) {
                                     const wt2 = form.time || now();
                                     const wd2 = form.date || selectedDate;
-                                    const df2 = calcSleepMins(sl[0].date, sl[0].time, wd2, wt2);
+                                    const df2 = calcSleepMins(sl.date, sl.time, wd2, wt2);
                                     if (df2 > 0) {
                                       const hrs2 = Math.floor(df2 / 60);
                                       const mins2 = df2 % 60;
@@ -1219,9 +1238,9 @@ const LogTab: React.FC<LogTabProps> = ({
                                           (mins2 > 0 ? mins2 + 'm' : '0m'),
                                         mins: df2,
                                         autoSleep:
-                                          sl[0].type +
+                                          sl.type +
                                           ' at ' +
-                                          fmtTime(sl[0].time),
+                                          fmtTime(sl.time),
                                       });
                                       return;
                                     }
@@ -1350,8 +1369,12 @@ const LogTab: React.FC<LogTabProps> = ({
                               color: C.w,
                             }}
                           >
-                            No previous sleep entry found — enter duration
-                            manually below
+                            {unmatchedSleep === null &&
+                            (logs.sleep || []).some(
+                              (e) => e.type === 'Nap' || e.type === 'Night Sleep'
+                            )
+                              ? 'Baby is already marked as awake — log a new sleep start first'
+                              : 'No previous sleep entry found — log a sleep start first'}
                           </div>
                         ) : null}
 
