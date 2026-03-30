@@ -447,6 +447,16 @@ function App() {
     return () => clearTimeout(safetyTimer);
   }, []);
 
+  // Reload React state from IndexedDB after Firebase sync merges new remote entries.
+  // pullAndMerge() writes directly to IndexedDB; without this effect the UI stays
+  // stale until the app is restarted (the original bug: #173).
+  const syncRevision = firebaseSyncState.syncRevision;
+  useEffect(() => {
+    if (loading || activeProfile == null || syncRevision === 0) return;
+    loadProfileData(activeProfile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncRevision]);
+
   // Scroll to top on tab change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

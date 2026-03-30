@@ -40,6 +40,13 @@ export interface UseFirebaseSyncReturn {
   syncError: string | null;
   setFamilyCode: (code: string) => Promise<void>;
   generateAndSaveFamilyCode: () => Promise<string>;
+  /**
+   * Increments each time a pull brings new entries from a partner device.
+   * Consumers (e.g. App.tsx) should watch this value and reload their
+   * local state from IndexedDB when it changes, so the UI reflects the
+   * freshly-merged data without requiring an app restart.
+   */
+  syncRevision: number;
 }
 
 /**
@@ -53,6 +60,7 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [familyCode, setFamilyCodeState] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncRevision, setSyncRevision] = useState<number>(0);
   const isMountedRef = useRef(true);
   const familyCodeRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,10 +108,11 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     setSyncError(null);
 
     try {
+      let newCount = 0;
       if (navigator.onLine) {
         // Online: flush any queued writes, then pull+merge, then push local
         await flushQueue(db);
-        await pullAndMerge(db, code, profileId);
+        newCount = await pullAndMerge(db, code, profileId);
         await pushAll(db, code, profileId, true);
       } else {
         // Offline: queue local writes for later; skip remote pull
@@ -114,6 +123,10 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
         setSyncStatus('synced');
         setSyncError(null);
         setLastSyncedAt(Date.now());
+        // Notify consumers that new remote data was merged into IndexedDB.
+        // They should reload their local state so the UI reflects the update
+        // without requiring an app restart.
+        if (newCount > 0) setSyncRevision((r) => r + 1);
       }
     } catch (err) {
       if (isMountedRef.current) {
@@ -176,5 +189,5 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     };
   }, []);
 
-  return { syncAll, requestSync, syncStatus, lastSyncedAt, familyCode, syncError, setFamilyCode, generateAndSaveFamilyCode };
+  return { syncAll, requestSync, syncStatus, lastSyncedAt, familyCode, syncError, setFamilyCode, generateAndSaveFamilyCode, syncRevision };
 }

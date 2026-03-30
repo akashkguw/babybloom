@@ -414,4 +414,79 @@ describe('useFirebaseSync', () => {
       expect(mockPullAndMerge).toHaveBeenCalled();
     });
   });
+
+  describe('syncRevision — live UI refresh after sync (#173)', () => {
+    it('starts at 0', () => {
+      const { result } = renderHook(() => useFirebaseSync(null));
+      expect(result.current.syncRevision).toBe(0);
+    });
+
+    it('increments when pullAndMerge returns new entries (>0)', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockResolvedValue(3); // 3 new entries from remote
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => {
+        expect(result.current.syncStatus).toBe('synced');
+      });
+      expect(result.current.syncRevision).toBe(1);
+    });
+
+    it('does NOT increment when pullAndMerge returns 0 (already in sync)', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockResolvedValue(0); // no new entries
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => {
+        expect(result.current.syncStatus).toBe('synced');
+      });
+      expect(result.current.syncRevision).toBe(0);
+    });
+
+    it('increments again on a second sync that finds new entries', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockResolvedValue(2);
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+      expect(result.current.syncRevision).toBe(1);
+
+      // Trigger a second sync with new entries
+      vi.clearAllMocks();
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockResolvedValue(5);
+      mockPushAll.mockResolvedValue(undefined);
+      mockFlushQueue.mockResolvedValue(undefined);
+
+      await act(async () => {
+        await result.current.syncAll();
+      });
+
+      expect(result.current.syncRevision).toBe(2);
+    });
+
+    it('does NOT increment on error', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockRejectedValue(new Error('Network error'));
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => expect(result.current.syncStatus).toBe('error'));
+      expect(result.current.syncRevision).toBe(0);
+    });
+
+    it('does NOT increment when offline (no pull performed)', async () => {
+      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => expect(result.current.syncStatus).toBe('synced'));
+      // Offline path skips pullAndMerge, so syncRevision stays 0
+      expect(result.current.syncRevision).toBe(0);
+    });
+  });
 });

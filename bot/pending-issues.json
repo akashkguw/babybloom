@@ -1,18 +1,24 @@
 [
   {
-    "number": 172,
-    "title": "\ud83d\udea8 Pipeline: #170 failed after 3 attempts",
-    "body": "## Pipeline Failure Report\n\nIssue **#170** \u2014 simplify manual addition of sleep and awake has **failed 3 times** and will no longer be retried.\n\n### Last Error\n```\nimpl-core failed (exit 143). Log output:\n\n```\n\nManual investigation required.\n\n---\n_Auto-created by pipeline.sh_",
+    "number": 170,
+    "title": "simplify manual addition of sleep and awake",
+    "body": "## \ud83d\udc1b Bug Report\n\nsimplify manual addition of sleep and awake. It\u2019s complicated and buggy. It\u2019s 2 different forms and if two wake up are added the math is screwed.\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
-      "pipeline-failure"
+      "telegram",
+      "sleep"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/172",
-    "created_at": "2026-03-30T23:08:43Z",
-    "status": "infra_implemented",
-    "route": "infrastructure",
-    "enhanced_description": "Pipeline failure report for issue #170 (\"simplify manual addition of sleep and awake\").\n\nWhat was reported:\n  The impl-core phase exited with code 143 (SIGTERM \u2014 process was killed) three consecutive times while processing issue #170. pipeline.sh auto-created this report after exhausting all retries.\n\nArea affected:\n  bot/pipeline.sh \u2014 specifically the impl-core phase and its timeout/retry handling.\n\nRoot cause hypothesis:\n  Exit 143 = SIGTERM = the impl-core Claude CLI process was killed before it finished. Likely causes:\n    1. Issue #170 (sleep/awake simplification) was too large/complex for the impl-core time budget.\n    2. A system-level timeout (e.g., launchd watchdog, ulimit) killed the process.\n    3. The Claude CLI hit a rate-limit or network error that resulted in a hung process that was then killed.\n\nExpected behaviour:\n  impl-core should either complete within the timeout or fail gracefully with a meaningful error. Three silent SIGTERM failures should trigger diagnostic output (log the last N lines of impl-core output before exit).\n\nCurrent behaviour:\n  impl-core exits 143 with empty log output (\"Log output:\" section is blank), making it impossible to diagnose the failure.\n\nEdge cases to handle:\n  - Issue #170 may need to be auto-split and re-queued (similar to Step 3.5 splitting logic).\n  - The timeout budget may need to be increased, or impl-core may need a heartbeat/progress check.\n  - Distinguish between SIGTERM-from-timeout vs SIGTERM-from-external-kill in the failure report.\n\nAcceptance criteria:\n  1. pipeline.sh captures and logs the last 50 lines of impl-core output before it dies (even on SIGKILL/SIGTERM).\n  2. Failure report includes the captured log snippet so developers can diagnose the root cause.\n  3. Optionally: automatically re-queue the failed issue as a split if exit was 143 (timeout-likely).\n\nTesting:\n  - Manually simulate an impl-core timeout by setting a very short timeout and verify the failure report now contains log output.\n  - Verify the pipeline continues processing other issues after a SIGTERM failure.",
-    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed: bot/pipeline.sh\n  1. run_claude_phase(): added PHASE_TIMED_OUT flag; on timeout, snapshot log to ${PHASE_LOG}.pre_kill before killing the process, then copy to ${PHASE_LOG}.captured after kill (pre-kill snapshot has more content since post-kill buffers may not flush)\n  2. impl-core failure handler: replaced tail-30-of-log with tri-source capture (captured > log > JSON stdout), increased to 50 lines, added empty-log fallback message, annotated exit 143 as SIGTERM with timeout duration\n- Approach taken: The root cause is that SIGTERM/SIGKILL prevents flushing buffered output to the log file. By snapshotting the log before sending the kill signal, we preserve whatever was written up to that point. The .captured file is checked first on failure.\n- Testing done: bash -n pipeline.sh (syntax OK); full npm run test (643/643 passed); regression.cjs (21/21 passed); npm run type-check; npm run build\n- Any manual steps needed: none \u2014 changes take effect on the next pipeline run"
+    "url": "https://github.com/akashkguw/babybloom/issues/170",
+    "created_at": "2026-03-30T22:16:37Z",
+    "status": "split",
+    "enhanced_description": "The user reported that manually adding sleep and wake-up entries is complicated and buggy. There are two separate toggle states (\"Sleep\" and \"Wake Up\") in the sleep log form, and if two Wake Up entries are added back-to-back, the duration math produces incorrect results.\n\nCOMPONENT: LogTab.tsx \u2014 sleep sub-section (lines ~1159\u20131300), with supporting logic in lib/utils/date.ts (calcSleepMins, findUnmatchedSleep, autoSleepType).\n\nCURRENT BEHAVIOUR:\n- The form has a \"Sleep\" / \"Wake Up\" toggle that maps internally to Nap/Night Sleep vs Wake Up types\n- When switching to \"Wake Up\", it auto-finds the most recent unmatched sleep-start and pre-fills duration\n- If the user has already logged a Wake Up and tries to log another, findUnmatchedSleep may return the wrong entry or no entry, causing duration to be zero or incorrect\n- The two-form mental model (log sleep-start, then log wake-up separately) is confusing for users\n\nEXPECTED BEHAVIOUR:\n- Simplify to a single unified sleep session form: one entry captures both start time and end/wake time together\n- OR: keep the two-step flow but make the Wake Up path bulletproof so duplicate wake-ups cannot corrupt duration math\n- Duration should always be computed correctly regardless of how many wake-up entries exist\n\nEDGE CASES:\n- Overnight sleep spanning midnight (date boundary) \u2014 calcSleepMins must handle correctly\n- Editing an existing sleep entry vs. adding a new one\n- Entries with only a start time (baby still sleeping, no end time yet)\n- Legacy \"Wake Up\" entries already in the DB must remain readable\n\nACCEPTANCE CRITERIA:\n- User can add a sleep session without confusion about the Sleep/Wake Up toggle\n- If a Wake Up is added when no unmatched sleep exists, show a clear error or gracefully skip auto-calc\n- Duration is always non-negative and mathematically correct\n- No regression on existing sleep entries (Nap / Night Sleep types preserved)\n\nTESTING:\n- Unit test calcSleepMins with overnight spans (e.g. 11pm to 7am next day) \u2014 verify minutes > 0\n- Unit test findUnmatchedSleep: when 2 wake-ups exist for 1 sleep-start, it should not return stale matches\n- Unit test the form validation path when \"Wake Up\" is selected but no prior sleep exists\n- Regression test: add Sleep at 10pm, add Wake Up at 6am \u2192 duration should be 8h 0m",
+    "retry_count": 1,
+    "prev_failure": "impl-core failed (exit 143). Log output:\nExit 143 = SIGTERM (process killed, likely timeout after 420s). (no output captured \u2014 process may have been killed before producing output)",
+    "split_into": [
+      174,
+      175
+    ],
+    "skip_reason": "Auto-split into 2 sub-issues: #174, #175"
   },
   {
     "number": 87,
@@ -25,6 +31,58 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:55Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Test/noise submission \u2014 title and body say \"test do not do anything\". No actionable request."
+  },
+  {
+    "number": 173,
+    "title": "sync data not updating until app is closed & opened",
+    "body": "## \ud83d\udc1b Bug Report\n\nsync data not updating until app is closed & opened\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/173",
+    "created_at": "2026-03-30T23:26:36.600Z",
+    "status": "implemented",
+    "route": "implementation",
+    "implementation_notes": "Added `syncRevision` counter to `useFirebaseSync` (src/hooks/useFirebaseSync.ts) — increments whenever `pullAndMerge` returns >0 new entries. App.tsx watches `syncRevision` in a `useEffect` and calls `loadProfileData` to reload React state from IndexedDB, fixing the stale-UI bug without requiring an app restart. Tests added in tests/unit/useFirebaseSync.test.ts covering: initial value=0, increments on new entries, no increment when already in sync, no increment on error, no increment when offline.",
+    "files_changed": [
+      "src/hooks/useFirebaseSync.ts",
+      "src/App.tsx",
+      "tests/unit/useFirebaseSync.test.ts"
+    ],
+    "enhanced_description": "User reported that synced data does not appear in the app until it is fully closed and re-opened \u2014 indicating that live/reactive data updates are not propagating to the UI after a sync event.\n\nCOMPONENT: Data sync layer \u2014 likely the IndexedDB read hooks, service worker sync handler, or cross-tab broadcast mechanism. Relevant files may include src/lib/db.ts (or similar), sync-related hooks (useFeedData, useSleepData, etc.), and any BroadcastChannel / storage-event listeners.\n\nCURRENT BEHAVIOUR:\n- When new data arrives via sync (e.g. from another device or tab), the UI does not reflect the update\n- The user must fully close and reopen the app (triggering a fresh mount and re-fetch) to see updated data\n\nEXPECTED BEHAVIOUR:\n- After a sync event completes, all affected UI components should automatically re-render with the latest data \u2014 no app restart required\n\nROOT CAUSE CANDIDATES:\n1. The sync handler writes data to IndexedDB but does not emit a change notification that the UI hooks subscribe to\n2. React state or context holding the data is not refreshed after sync (stale closure / missing dependency)\n3. BroadcastChannel or storage event listeners may be missing or not wired up to trigger a re-fetch\n4. Service worker background sync completes silently without posting a message to the active page\n\nEDGE CASES:\n- Sync may update multiple record types simultaneously \u2014 all affected views must refresh\n- The app may be in the background (PWA) when sync fires \u2014 update must be deferred until foregrounded or applied immediately\n- Partial sync (only some records updated) \u2014 only affected list views should re-render, not a full reload\n\nACCEPTANCE CRITERIA:\n- After a sync event, the relevant data views (feed log, sleep log, growth chart, etc.) update within a few seconds without a page reload\n- No duplicate entries or flicker during the update\n- Works when sync fires while the app is in the foreground and in the background (PWA)\n\nTESTING:\n- Unit test: simulate a sync write to IndexedDB and verify the relevant hook/store re-emits updated data\n- Integration test: write a new record directly to IndexedDB (bypassing UI), then verify the component re-renders with the new record\n- Manual smoke test: open app in two tabs, add an entry in tab A, verify tab B updates without reload"
+  },
+  {
+    "number": 174,
+    "title": "Fix sleep utility functions: findUnmatchedSleep, calcSleepMins, autoSleepType",
+    "body": "Part of #170\n\nSCOPE: Fix the three core sleep utility functions in lib/utils/date.ts so they handle edge cases correctly. This is the foundation for fixing the buggy sleep form.\n\nFILES:\n- src/lib/utils/date.ts (modify findUnmatchedSleep, calcSleepMins, autoSleepType)\n- src/lib/utils/date.test.ts or similar (add unit tests)\n\nBEHAVIOUR TO FIX:\n- findUnmatchedSleep: when 2 Wake Up entries exist for 1 sleep-start, it returns a stale/wrong match causing duration to be zero or incorrect\n- calcSleepMins: must handle overnight spans correctly (e.g. 11pm sleep, 7am wake = 480 min, not negative)\n- autoSleepType: should not suggest Wake Up if no unmatched sleep-start exists\n\nACCEPTANCE CRITERIA:\n- findUnmatchedSleep returns null (not a stale entry) when all sleep-starts already have a matched Wake Up\n- calcSleepMins returns correct positive minutes for overnight spans\n- autoSleepType returns Sleep (not Wake Up) when no unmatched sleep-start exists\n\nTESTING (required):\n- Unit test calcSleepMins: 11pm to 7am next day \u2192 480 min\n- Unit test findUnmatchedSleep: 1 sleep-start + 2 wake-ups \u2192 returns null\n- Unit test autoSleepType: no prior sleep \u2192 returns Sleep type\n- Unit test findUnmatchedSleep: 1 sleep-start + 0 wake-ups \u2192 returns the sleep-start entry",
+    "labels": [
+      "sub-issue",
+      "bug",
+      "sleep"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/174",
+    "created_at": "2026-03-30T23:27:26Z",
+    "status": "pending",
+    "source": "split",
+    "parent_issue": 170
+  },
+  {
+    "number": 175,
+    "title": "Simplify sleep log form UI in LogTab.tsx (depends on #170 utility fix)",
+    "body": "Part of #170\n\nDEPENDS ON: The sub-issue that fixes findUnmatchedSleep/calcSleepMins/autoSleepType in date.ts\n\nSCOPE: Simplify the sleep form section in LogTab.tsx (~lines 1159-1300) so users can add sleep sessions without confusion. The two-form toggle (Sleep / Wake Up) is confusing and buggy.\n\nFILES:\n- src/components/LogTab.tsx (modify sleep sub-section, approx lines 1159-1300)\n\nCHANGES TO MAKE:\n- If a Wake Up is added when findUnmatchedSleep returns null (no unmatched sleep), show a clear user-visible error message instead of silently computing wrong duration\n- Remove or reduce the confusing mental model of two separate forms\n- Preferred approach: keep the Sleep/Wake Up toggle but add a guard: if Wake Up is selected and no matching sleep-start exists, disable the submit button and show an inline error like \"No open sleep session to close. Log a Sleep start first.\"\n- Alternatively (if simpler): combine into a single form where the user enters both start-time and end-time in one go\n\nEDGE CASES:\n- Entries with only a start time (baby still sleeping, no end time yet) \u2014 must still be saveable\n- Editing an existing sleep entry\n- Legacy Wake Up entries in DB must remain readable\n\nACCEPTANCE CRITERIA:\n- User cannot accidentally submit a Wake Up with no matching sleep (form prevents it with clear error)\n- Duration is always correct (uses fixed utilities from the companion sub-issue)\n- No regression on Nap / Night Sleep types\n\nTESTING (required):\n- Render test: Wake Up mode with no prior sleep \u2192 submit button disabled, error message visible\n- Render test: Wake Up mode with a prior unmatched sleep \u2192 submit button enabled, duration pre-filled\n- Regression: add Sleep at 10pm, add Wake Up at 6am \u2192 duration shows 8h 0m",
+    "labels": [
+      "sub-issue",
+      "bug",
+      "sleep"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/175",
+    "created_at": "2026-03-30T23:27:27Z",
+    "status": "pending",
+    "source": "split",
+    "parent_issue": 170
   }
 ]
