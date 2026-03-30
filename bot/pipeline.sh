@@ -557,15 +557,16 @@ except:
 
     # ═══ PHASE 1: TRIAGE (if pending) ═══
     if [ "$ISSUE_STATUS" = "pending" ]; then
-      # Extract current issue JSON inline so Claude doesn't read the whole pending-issues.json to find it
-      TRIAGE_ISSUE_JSON=$(python3 -c "
+      # Write current issue JSON to temp file (avoids shell quoting issues)
+      CURRENT_ISSUE_FILE="$BOT_DIR/current-issue.json"
+      python3 -c "
 import json
 q = json.load(open('$QUEUE_FILE'))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
-        print(json.dumps(i, indent=2))
+        json.dump(i, open('$CURRENT_ISSUE_FILE', 'w'), indent=2)
         break
-" 2>/dev/null)
+" 2>/dev/null
 
       run_claude_phase "triage" "You are the BabyBloom triage agent running natively on macOS.
 
@@ -573,20 +574,16 @@ REPO_DIR=$REPO_DIR
 GITHUB_TOKEN=$GITHUB_TOKEN
 REPO=$REPO
 
-## Current Issue
-\`\`\`json
-$TRIAGE_ISSUE_JSON
-\`\`\`
-
 ## Instructions
 1. Read $REPO_DIR/bot/TRIAGE_SKILL.md
-2. SKIP the run-lock step — pipeline.sh handles serialization
-3. SKIP stale recovery — pipeline.sh already handled it
-4. Triage ONLY issue #$ISSUE_NUM (details above): classify it, enrich the description, assign a route
-5. If route=implementation AND the issue is large (needs 3+ new files, external service integration, etc.), follow Step 3.5 to auto-split it into smaller sub-issues
-6. Update pending-issues.json with status=triaged (or split) and the route — do NOT read the full file to find the issue, just update by number
-7. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
-8. STOP after triaging
+2. Read $REPO_DIR/bot/current-issue.json to get the issue details
+3. SKIP the run-lock step — pipeline.sh handles serialization
+4. SKIP stale recovery — pipeline.sh already handled it
+5. Triage ONLY issue #$ISSUE_NUM: classify it, enrich the description, assign a route
+6. If route=implementation AND the issue is large (needs 3+ new files, external service integration, etc.), follow Step 3.5 to auto-split it into smaller sub-issues
+7. Update pending-issues.json with status=triaged (or split) and the route
+8. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
+9. STOP after triaging
 
 ## Environment
 - Running natively on macOS (not in a sandbox)
@@ -684,29 +681,25 @@ make sure your implementation and tests are compatible from the start.
     if [ "$ISSUE_ROUTE" = "implementation" ]; then
       # ── Implementation: split into 3 sub-phases for token visibility ──
 
-      # Extract current issue JSON inline so Claude doesn't need to read the full pending-issues.json
-      ISSUE_JSON=$(python3 -c "
+      # Write current issue JSON to a temp file (avoids shell quoting issues with inline JSON)
+      CURRENT_ISSUE_FILE="$BOT_DIR/current-issue.json"
+      python3 -c "
 import json
 q = json.load(open('$QUEUE_FILE'))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
-        print(json.dumps(i, indent=2))
+        json.dump(i, open('$CURRENT_ISSUE_FILE', 'w'), indent=2)
         break
-" 2>/dev/null)
+" 2>/dev/null
 
       # Phase 2a: IMPL-CORE — read code, implement changes, write unit tests
       run_claude_phase "impl-core" "You are the BabyBloom implementation agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 $RETRY_CONTEXT
-## Current Issue
-\`\`\`json
-$ISSUE_JSON
-\`\`\`
-
 ## Instructions — CORE IMPLEMENTATION ONLY
 1. Read $REPO_DIR/bot/IMPL_SKILL.md for codebase map and conventions
-2. The issue details are above — do NOT read pending-issues.json to find the issue
+2. Read $REPO_DIR/bot/current-issue.json to get the issue details — do NOT read pending-issues.json to find the issue
 3. Read ONLY the source files relevant to this issue (Step 2 of IMPL_SKILL.md)
 4. Implement the code changes in src/ (Step 3 of IMPL_SKILL.md)
 5. Write unit tests in tests/unit/ for your changes
@@ -722,7 +715,7 @@ $ISSUE_JSON
 
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  impl-core failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
-        CORE_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-core.log" 2>/dev/null | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+        CORE_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-core.log" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')
         python3 -c "
 import json
 path = '$QUEUE_FILE'
@@ -776,7 +769,7 @@ Do NOT commit. Do NOT mark the issue as implemented. STOP after all tests pass (
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  impl-test failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
         # Capture last 30 lines of test output for the failure report
-        TEST_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-test.log" 2>/dev/null | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+        TEST_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-test.log" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')
         python3 -c "
 import json
 path = '$QUEUE_FILE'
@@ -862,28 +855,24 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\"
         *)               SKILL_FILE="IMPL_SKILL.md" ;;
       esac
 
-      # Extract current issue JSON inline
-      SPECIALIST_ISSUE_JSON=$(python3 -c "
+      # Write current issue JSON to temp file
+      CURRENT_ISSUE_FILE="$BOT_DIR/current-issue.json"
+      python3 -c "
 import json
 q = json.load(open('$QUEUE_FILE'))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
-        print(json.dumps(i, indent=2))
+        json.dump(i, open('$CURRENT_ISSUE_FILE', 'w'), indent=2)
         break
-" 2>/dev/null)
+" 2>/dev/null
 
       run_claude_phase "$ISSUE_ROUTE" "You are the BabyBloom $ISSUE_ROUTE agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
-## Current Issue
-\`\`\`json
-$SPECIALIST_ISSUE_JSON
-\`\`\`
-
 ## Instructions
 1. Read and follow $REPO_DIR/bot/$SKILL_FILE
-2. The issue details are above — process ONLY issue #$ISSUE_NUM
+2. Read $REPO_DIR/bot/current-issue.json for issue details — process ONLY issue #$ISSUE_NUM
 3. The issue has already been triaged (route=$ISSUE_ROUTE)
 4. Complete the work: implement, test, and commit (or analyze/document depending on route)
 5. STOP after completing this one issue

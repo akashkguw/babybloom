@@ -38,6 +38,7 @@ bot/pipeline.log
 bot/pending-issues.json
 bot/pending-issues.json.lock
 bot/archived-issues.json
+bot/current-issue.json
 bot/.pipeline.lock
 bot/worker.lock
 bot/claude-*.json
