@@ -183,17 +183,25 @@ export async function pullAndMerge(
     }
     const merged = mergeEntries(local, remote);
     mergedLogs[category] = merged;
-    totalNew += merged.length - local.length;
-    categoriesToClean.push(category);
+    const newFromRemote = merged.length - local.length;
+    totalNew += newFromRemote;
+    // Only delete from Firestore if we actually received new entries from
+    // the partner. If newFromRemote === 0 the data is our own push — leave
+    // it so the partner can still pull it.
+    if (newFromRemote > 0) {
+      categoriesToClean.push(category);
+    }
   }
 
   await ds(profileKey, { ...profileData, logs: mergedLogs });
 
-  // Ephemeral cleanup — delete remote data after successful merge.
+  // Ephemeral cleanup — delete remote data that has been successfully merged.
   // Firestore is a relay, not permanent storage.
-  await Promise.all(
-    categoriesToClean.map((cat) => deleteEncryptedCategory(db, familyCode, profileId, cat))
-  );
+  if (categoriesToClean.length > 0) {
+    await Promise.all(
+      categoriesToClean.map((cat) => deleteEncryptedCategory(db, familyCode, profileId, cat))
+    );
+  }
 
   return Math.max(0, totalNew);
 }

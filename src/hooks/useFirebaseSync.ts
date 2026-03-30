@@ -153,7 +153,7 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
       if (isMountedRef.current && familyCodeRef.current && navigator.onLine) {
         syncAll();
       }
-    }, 30_000);
+    }, 60_000);
     return () => clearInterval(interval);
   }, [syncAll]);
 

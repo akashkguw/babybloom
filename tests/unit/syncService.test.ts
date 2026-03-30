@@ -289,6 +289,19 @@ describe('pullAndMerge', () => {
     expect(mockDeleteEncryptedCategory).not.toHaveBeenCalled();
   });
 
+  it('does not delete own data from Firestore (no new entries from partner)', async () => {
+    // Local already has id:100, remote also has id:100 — it's our own push
+    mockStore['profileData_p1'] = { logs: { feed: [{ id: 100 }] } };
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return [{ id: 100 }];
+      return [];
+    });
+
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    // Should NOT delete — partner hasn't pulled yet
+    expect(mockDeleteEncryptedCategory).not.toHaveBeenCalled();
+  });
+
   it('returns 0 (not negative) when remote has fewer entries than local', async () => {
     mockStore['profileData_p1'] = { logs: { feed: [{ id: 1 }, { id: 2 }, { id: 3 }] } };
     mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
