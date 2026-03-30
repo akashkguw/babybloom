@@ -324,31 +324,16 @@ export default function Settings({
         {/* ─── Group: Data & Support ─── */}
         <GroupLabel label="Data & Support" />
 
-        <Section title="Firebase Autosync" iconName="database" iconColor={C.s}>
+        <Section title="Share & Sync Data" iconName="database" iconColor={C.s}>
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
-            Baby data syncs automatically across devices.
+            Baby data syncs automatically across devices via Firebase.
           </div>
           <FirebaseSyncSection
             syncStatus={firestoreSyncStatus}
             lastSyncedAt={firestoreLastSyncedAt}
             syncError={firestoreSyncError}
           />
-        </Section>
-
-        <Section title="Guide" iconName="book" iconColor={C.s}>
-          <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
-            Revisit the app walkthrough — learn about quick logging, smart alerts, wellness tracking, and more.
-          </div>
-          <Button
-            label="View Guide"
-            onClick={() => { if (onShowGuide) onShowGuide(); }}
-            color={C.s}
-            full
-          />
-        </Section>
-
-        <Section title="Data" iconName="database" iconColor={C.a}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             <Button
               label="Sync / Share Data"
               onClick={() => { if (onSync) onSync(); }}
@@ -366,6 +351,18 @@ export default function Settings({
               full
             />
           </div>
+        </Section>
+
+        <Section title="Guide" iconName="book" iconColor={C.s}>
+          <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
+            Revisit the app walkthrough — learn about quick logging, smart alerts, wellness tracking, and more.
+          </div>
+          <Button
+            label="View Guide"
+            onClick={() => { if (onShowGuide) onShowGuide(); }}
+            color={C.s}
+            full
+          />
         </Section>
 
         <Section title="Reset" iconName="alert-triangle" iconColor="#FF5252">
