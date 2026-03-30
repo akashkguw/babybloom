@@ -282,15 +282,18 @@ fi
 echo "📋 Work found: $HAS_WORK actionable issue(s), $UNPUSHED_COUNT unpushed commit(s)"
 
 # ─── Archive completed/skipped issues to reduce token usage ───
-# Moves terminal-state issues (implemented, skipped, failed+notified with 3+ retries)
-# to archived-issues.json. Strips verbose fields (enhanced_description, implementation_notes)
-# from the active file. This dramatically reduces tokens when Claude reads pending-issues.json.
+# Moves terminal-state issues out of pending-issues.json:
+#   - implemented/infra_implemented/documented/analyzed → implemented.json
+#   - skipped/rejected/dead-failed → archived-issues.json
+# Strips verbose fields from remaining active issues to save tokens.
 ARCHIVE_FILE="$BOT_DIR/archived-issues.json"
+IMPL_FILE="$BOT_DIR/implemented.json"
 ARCHIVED_COUNT=$(python3 -c "
 import json, os
 
 queue_path = '$QUEUE_FILE'
 archive_path = '$ARCHIVE_FILE'
+impl_path = '$IMPL_FILE'
 
 try:
     queue = json.load(open(queue_path))
@@ -302,16 +305,27 @@ try:
 except:
     archive = []
 
+try:
+    implemented = json.load(open(impl_path))
+except:
+    implemented = []
+
 archive_nums = {i['number'] for i in archive}
-terminal = ('implemented', 'skipped', 'infra_implemented', 'documented', 'analyzed', 'rejected')
+impl_nums = {i['number'] for i in implemented}
+
+impl_statuses = ('implemented', 'infra_implemented', 'documented', 'analyzed')
+skip_statuses = ('skipped', 'rejected')
 
 active = []
 moved = 0
 for i in queue:
     s = i.get('status', '')
-    is_terminal = s in terminal
     is_dead_failed = s == 'failed' and i.get('notified') and i.get('retry_count', 0) >= 3
-    if is_terminal or is_dead_failed:
+    if s in impl_statuses:
+        if i['number'] not in impl_nums:
+            implemented.append(i)
+        moved += 1
+    elif s in skip_statuses or is_dead_failed:
         if i['number'] not in archive_nums:
             archive.append(i)
         moved += 1
@@ -324,6 +338,7 @@ for i in queue:
 if moved:
     json.dump(active, open(queue_path, 'w'), indent=2)
     json.dump(archive, open(archive_path, 'w'), indent=2)
+    json.dump(implemented, open(impl_path, 'w'), indent=2)
 
 print(moved)
 " 2>/dev/null || echo 0)
@@ -497,17 +512,27 @@ except: pass
       local PID=$!
 
       local WAITED=0
+      local PHASE_TIMED_OUT=0
       while kill -0 "$PID" 2>/dev/null; do
         sleep 5
         WAITED=$((WAITED + 5))
         if [ $WAITED -ge $PHASE_TIMEOUT ]; then
-          echo "    │  ⏰ Timed out after ${PHASE_TIMEOUT}s"
+          echo "    │  ⏰ Timed out after ${PHASE_TIMEOUT}s — snapshotting partial log"
+          # Snapshot log before killing — post-kill buffers may not flush
+          cp "$PHASE_LOG" "${PHASE_LOG}.pre_kill" 2>/dev/null
+          PHASE_TIMED_OUT=1
           kill "$PID" 2>/dev/null; sleep 2; kill -9 "$PID" 2>/dev/null
           break
         fi
       done
       wait "$PID" 2>/dev/null
       PHASE_EXIT=$?
+      # After kill: merge pre-kill snapshot into a .captured file (pre-kill may have more content)
+      if [ "$PHASE_TIMED_OUT" -eq 1 ] && [ -s "${PHASE_LOG}.pre_kill" ]; then
+        cp "${PHASE_LOG}.pre_kill" "${PHASE_LOG}.captured" 2>/dev/null
+      elif [ -s "$PHASE_LOG" ]; then
+        cp "$PHASE_LOG" "${PHASE_LOG}.captured" 2>/dev/null
+      fi
 
       local PHASE_END=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -711,11 +736,28 @@ $RETRY_CONTEXT
 - All filesystem operations work normally (rm, mv, cp are fine)
 - node_modules are macOS-native (no esbuild workaround needed)
 - Use REPO_DIR=$REPO_DIR for all file paths
-" 300
+" 420
 
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  impl-core failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
-        CORE_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-core.log" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')
+        # Capture last 50 lines: prefer pre-kill snapshot (most content on timeout), then log, then JSON stdout
+        _IMPL_CAPTURED="$BOT_DIR/claude-phase-impl-core.log.captured"
+        _IMPL_LOG="$BOT_DIR/claude-phase-impl-core.log"
+        _IMPL_JSON="$BOT_DIR/claude-phase-impl-core.json"
+        if [ -s "$_IMPL_CAPTURED" ]; then
+          CORE_OUTPUT=$(tail -50 "$_IMPL_CAPTURED" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')
+        elif [ -s "$_IMPL_LOG" ]; then
+          CORE_OUTPUT=$(tail -50 "$_IMPL_LOG" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')
+        fi
+        # If still empty, try partial stdout from JSON file
+        if [ -z "$(echo "${CORE_OUTPUT:-}" | tr -d ' \t')" ] && [ -s "$_IMPL_JSON" ]; then
+          CORE_OUTPUT="[stdout partial] $(head -c 1000 "$_IMPL_JSON" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')"
+        fi
+        [ -z "$(echo "${CORE_OUTPUT:-}" | tr -d ' \t')" ] && CORE_OUTPUT="(no output captured — process may have been killed before producing output)"
+        # Annotate SIGTERM exit code so the failure report is actionable
+        if [ "$PHASE_EXIT" -eq 143 ]; then
+          CORE_OUTPUT="Exit 143 = SIGTERM (process killed, likely timeout after ${PHASE_TIMEOUT:-420}s). ${CORE_OUTPUT}"
+        fi
         python3 -c "
 import json
 path = '$QUEUE_FILE'

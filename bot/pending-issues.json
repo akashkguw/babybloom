@@ -1,21 +1,18 @@
 [
   {
-    "number": 170,
-    "title": "simplify manual addition of sleep and awake",
-    "body": "## \ud83d\udc1b Bug Report\n\nsimplify manual addition of sleep and awake. It\u2019s complicated and buggy. It\u2019s 2 different forms and if two wake up are added the math is screwed.\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "number": 172,
+    "title": "\ud83d\udea8 Pipeline: #170 failed after 3 attempts",
+    "body": "## Pipeline Failure Report\n\nIssue **#170** \u2014 simplify manual addition of sleep and awake has **failed 3 times** and will no longer be retried.\n\n### Last Error\n```\nimpl-core failed (exit 143). Log output:\n\n```\n\nManual investigation required.\n\n---\n_Auto-created by pipeline.sh_",
     "labels": [
       "bug",
-      "telegram",
-      "sleep"
+      "pipeline-failure"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/170",
-    "created_at": "2026-03-30T22:16:37.768Z",
-    "status": "failed",
-    "enhanced_description": "The user reported that manually adding sleep and awake events is overly complicated and buggy. Specifically:\n- There are two separate forms for adding sleep vs. awake events, which is confusing\n- If two \"wake up\" entries are added, the sleep duration math produces incorrect results\n\nComponent/area affected: Manual sleep entry UI (likely HomeTab or a dedicated sleep log component), plus sleep duration calculation logic.\n\nExpected behaviour:\n- A single, unified form for adding a sleep/awake event (or at minimum a clear, simple toggle between sleep start and wake up)\n- Sleep duration is always calculated correctly regardless of the order or number of events entered\n- Duplicate or conflicting wake-up entries are either prevented or handled gracefully\n\nCurrent behaviour:\n- Two different forms exist for sleep vs. awake entry, causing confusion\n- Adding two wake-up entries corrupts the duration calculation\n\nEdge cases to handle:\n- User adds wake-up before a corresponding sleep-start \u2192 show an error or disable the option\n- User adds a duplicate wake-up entry \u2192 prevent or merge, do not double-count\n- Overlapping sleep sessions \u2192 validate and reject or prompt user\n- Sessions that span midnight \u2192 ensure duration math handles date boundaries\n\nAcceptance criteria:\n1. Manual sleep entry uses a single, simplified form (unified sleep/wake input)\n2. Duration calculation is correct for all valid sequences of sleep/wake events\n3. Entering two consecutive wake-up events without an intervening sleep-start is blocked or handled gracefully\n4. Existing valid sleep entries are not affected\n\nTesting:\n- Unit test for sleep duration calculation with various sequences (normal, double-wake, wake-before-sleep)\n- Unit test verifying validation rejects invalid event sequences\n- Regression test: add two wake-up entries and confirm total duration is not doubled\n- UI smoke test: verify the simplified form renders and submits correctly",
-    "retry_count": 2,
-    "prev_failure": "impl-core failed (exit 143). Log output:\n",
-    "route": "implementation",
-    "failure_reason": "impl-core failed (exit 143). Log output:\n"
+    "url": "https://github.com/akashkguw/babybloom/issues/172",
+    "created_at": "2026-03-30T23:08:43Z",
+    "status": "in_progress",
+    "route": "infrastructure",
+    "enhanced_description": "Pipeline failure report for issue #170 (\"simplify manual addition of sleep and awake\").\n\nWhat was reported:\n  The impl-core phase exited with code 143 (SIGTERM \u2014 process was killed) three consecutive times while processing issue #170. pipeline.sh auto-created this report after exhausting all retries.\n\nArea affected:\n  bot/pipeline.sh \u2014 specifically the impl-core phase and its timeout/retry handling.\n\nRoot cause hypothesis:\n  Exit 143 = SIGTERM = the impl-core Claude CLI process was killed before it finished. Likely causes:\n    1. Issue #170 (sleep/awake simplification) was too large/complex for the impl-core time budget.\n    2. A system-level timeout (e.g., launchd watchdog, ulimit) killed the process.\n    3. The Claude CLI hit a rate-limit or network error that resulted in a hung process that was then killed.\n\nExpected behaviour:\n  impl-core should either complete within the timeout or fail gracefully with a meaningful error. Three silent SIGTERM failures should trigger diagnostic output (log the last N lines of impl-core output before exit).\n\nCurrent behaviour:\n  impl-core exits 143 with empty log output (\"Log output:\" section is blank), making it impossible to diagnose the failure.\n\nEdge cases to handle:\n  - Issue #170 may need to be auto-split and re-queued (similar to Step 3.5 splitting logic).\n  - The timeout budget may need to be increased, or impl-core may need a heartbeat/progress check.\n  - Distinguish between SIGTERM-from-timeout vs SIGTERM-from-external-kill in the failure report.\n\nAcceptance criteria:\n  1. pipeline.sh captures and logs the last 50 lines of impl-core output before it dies (even on SIGKILL/SIGTERM).\n  2. Failure report includes the captured log snippet so developers can diagnose the root cause.\n  3. Optionally: automatically re-queue the failed issue as a split if exit was 143 (timeout-likely).\n\nTesting:\n  - Manually simulate an impl-core timeout by setting a very short timeout and verify the failure report now contains log output.\n  - Verify the pipeline continues processing other issues after a SIGTERM failure.",
+    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed: bot/pipeline.sh\n  1. run_claude_phase(): added PHASE_TIMED_OUT flag; on timeout, snapshot log to ${PHASE_LOG}.pre_kill before killing the process, then copy to ${PHASE_LOG}.captured after kill (pre-kill snapshot has more content since post-kill buffers may not flush)\n  2. impl-core failure handler: replaced tail-30-of-log with tri-source capture (captured > log > JSON stdout), increased to 50 lines, added empty-log fallback message, annotated exit 143 as SIGTERM with timeout duration\n- Approach taken: The root cause is that SIGTERM/SIGKILL prevents flushing buffered output to the log file. By snapshotting the log before sending the kill signal, we preserve whatever was written up to that point. The .captured file is checked first on failure.\n- Testing done: bash -n pipeline.sh (syntax OK); full npm run test (643/643 passed); regression.cjs (21/21 passed); npm run type-check; npm run build\n- Any manual steps needed: none \u2014 changes take effect on the next pipeline run"
   },
   {
     "number": 87,
@@ -28,22 +25,6 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:55Z",
-    "status": "skipped",
-    "skip_reason": "Test/spam issue with no actionable content \u2014 title and body both say 'test do not do anything'"
-  },
-  {
-    "number": 171,
-    "title": "in the pipeline dashboard add tokens used dashboard for tracking",
-    "body": "## \u2728 Feature Request\n\nin the pipeline dashboard add tokens used dashboard for tracking\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/171",
-    "created_at": "2026-03-30T22:17:22.632Z",
-    "status": "infra_implemented",
-    "route": "infrastructure",
-    "enhanced_description": "The user wants a token-usage tracking section added to the internal pipeline dashboard (bot/dashboard.js, served at http://localhost:4040).\n\nWhat the user reported:\n- The pipeline dashboard shows run history, CI results, and issue queue status, but currently has no visibility into how many Claude API tokens each pipeline run consumed.\n- The user wants a \"Tokens Used\" panel so they can monitor and control API costs over time.\n\nComponent/area affected:\n- bot/dashboard.js \u2014 the Node.js dashboard server that parses pipeline.log and renders HTML\n- Potentially bot/pipeline.log (source of token data) or a new bot/token-usage.json if the pipeline already emits token counts\n\nExpected behaviour:\n- A new section in the dashboard (e.g. a \"Token Usage\" card or table) showing:\n  - Total tokens used per pipeline run (input + output, or just total)\n  - A summary of recent runs (e.g. last 7 days) with per-run token counts\n  - Optionally: a cumulative total / trend line\n- Data sourced from pipeline.log lines that report token usage (e.g. lines emitted by claude -p output), or from a dedicated token-tracking file if one exists\n\nCurrent behaviour:\n- No token usage data is displayed anywhere in the dashboard.\n\nEdge cases to handle:\n- Runs where token data is absent (older log entries before token reporting was added) \u2014 show \"N/A\" or omit gracefully\n- Very large token counts \u2014 format with commas or K/M abbreviations\n- Dashboard should not crash if the token data file/log section is missing\n\nAcceptance criteria:\n1. Dashboard displays token usage for each pipeline run (or at minimum a summary panel)\n2. The display is clearly labelled (input tokens, output tokens, or total)\n3. Missing data handled gracefully (no crashes, clear N/A label)\n4. No new npm dependencies required (plain Node.js HTTP server only)\n\nTesting:\n- Unit test or manual verification: mock a pipeline.log with token-usage lines and confirm the parser extracts them correctly\n- Verify the dashboard renders the token section without errors when data is present and when it is absent",
-    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed: bot/dashboard.js\n- Added parseClaudeHistory() to parse claude-history.log for token data\n- Added fmtK() helper to format large token counts (K/M abbreviations)\n- Added Token Usage section: 3 summary stats (input/output/cost for 7d) + per-run table\n- Data source: claude-history.log already written by pipeline.sh with phase breakdowns\n- No new npm dependencies\n- Testing: syntax OK, 643 unit tests passed, 21/21 regression checks, type-check, build"
+    "status": "pending"
   }
 ]
