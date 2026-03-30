@@ -36,6 +36,12 @@ bot/.deploy_env
 bot/sentry-tracked.json
 bot/pipeline.log
 bot/pending-issues.json
+bot/pending-issues.json.lock
+bot/.pipeline.lock
+bot/worker.lock
+bot/claude-*.json
+bot/AGENT_STRATEGY_REVIEW.md
+bot/__pycache__/
 bot/node_modules/
 
 # macOS LaunchAgent plists (contain local paths, not portable)
