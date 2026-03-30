@@ -1,20 +1,5 @@
 [
   {
-    "number": 165,
-    "title": "login page is broken",
-    "body": "## \ud83d\udc1b Bug Report\n\nlogin page is broken. After I click on I have code, it didn\u2019t scroll & login icon became bad. Also I don\u2019t see start via family code?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/165",
-    "created_at": "2026-03-30T21:32:36.819Z",
-    "enhanced_description": "The login/onboarding page has three reported UI bugs:\n\n1. **No scroll after tapping \"I have code\":** When the user taps the \"I have code\" button on the login screen, the page does not scroll to reveal the family-code input section. Expected: tapping \"I have code\" should smoothly scroll (or reveal) the code-entry field.\n\n2. **Login icon becomes corrupted/bad:** After tapping \"I have code\", the login icon/button changes to a broken or incorrect visual state. Expected: the icon should remain visually correct throughout the flow.\n\n3. **Missing \"Start via family code\" option:** The user cannot see the option to start/join via a family code. Expected: there should be a visible entry point for joining with a family code on the login/onboarding screen.\n\n**Affected area:** Login / onboarding flow \u2014 likely the login page component (src/components/Login* or src/pages/Login* or similar onboarding screen).\n\n**Expected behaviour:**\n- Tapping \"I have code\" scrolls to or reveals the family-code input\n- The login icon stays visually consistent\n- A \"Start via family code\" option is clearly visible\n\n**Current behaviour:**\n- No scroll occurs\n- Icon renders incorrectly\n- \"Start via family code\" option is missing or hidden\n\n**Edge cases to handle:**\n- Small screen sizes where scroll is more critical\n- Both iOS and Android layout behaviour\n- State management when toggling between \"new user\" and \"have code\" flows\n\n**Acceptance criteria:**\n- Tapping \"I have code\" reveals the code-entry field with a smooth scroll or reveal animation\n- The login icon renders correctly at all times during the flow\n- \"Start via family code\" is visible and tappable on the login screen\n\n**Testing:**\n- Add a unit/component test that renders the login screen and verifies the \"I have code\" button triggers scroll/reveal of the code-entry section\n- Add a regression test verifying the icon state does not change unexpectedly after tapping \"I have code\"\n- Add a test verifying the \"Start via family code\" option is present in the rendered output",
-    "route": "implementation",
-    "status": "implemented",
-    "implementation_notes": "Fixed login page bugs: (1) 'I have code' now scrolls/reveals the family-code input section; (2) login icon state is preserved correctly after toggling; (3) 'Start via family code' option is now visible. Files changed: src/lib/utils/date.ts, src/lib/utils/validate.ts, src/tabs/HomeTab.tsx, src/tabs/LogTab.tsx. Tests added: tests/unit/loginPage.test.ts (renders login screen, verifies 'I have code' reveals code-entry, icon state, and family-code option visibility). Also tests/unit/findUnmatchedSleep.test.ts was added."
-  },
-  {
     "number": 170,
     "title": "simplify manual addition of sleep and awake",
     "body": "## \ud83d\udc1b Bug Report\n\nsimplify manual addition of sleep and awake. It\u2019s complicated and buggy. It\u2019s 2 different forms and if two wake up are added the math is screwed.\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
@@ -26,24 +11,11 @@
     "url": "https://github.com/akashkguw/babybloom/issues/170",
     "created_at": "2026-03-30T22:16:37.768Z",
     "status": "failed",
-    "route": "implementation",
     "enhanced_description": "The user reported that manually adding sleep and awake events is overly complicated and buggy. Specifically:\n- There are two separate forms for adding sleep vs. awake events, which is confusing\n- If two \"wake up\" entries are added, the sleep duration math produces incorrect results\n\nComponent/area affected: Manual sleep entry UI (likely HomeTab or a dedicated sleep log component), plus sleep duration calculation logic.\n\nExpected behaviour:\n- A single, unified form for adding a sleep/awake event (or at minimum a clear, simple toggle between sleep start and wake up)\n- Sleep duration is always calculated correctly regardless of the order or number of events entered\n- Duplicate or conflicting wake-up entries are either prevented or handled gracefully\n\nCurrent behaviour:\n- Two different forms exist for sleep vs. awake entry, causing confusion\n- Adding two wake-up entries corrupts the duration calculation\n\nEdge cases to handle:\n- User adds wake-up before a corresponding sleep-start \u2192 show an error or disable the option\n- User adds a duplicate wake-up entry \u2192 prevent or merge, do not double-count\n- Overlapping sleep sessions \u2192 validate and reject or prompt user\n- Sessions that span midnight \u2192 ensure duration math handles date boundaries\n\nAcceptance criteria:\n1. Manual sleep entry uses a single, simplified form (unified sleep/wake input)\n2. Duration calculation is correct for all valid sequences of sleep/wake events\n3. Entering two consecutive wake-up events without an intervening sleep-start is blocked or handled gracefully\n4. Existing valid sleep entries are not affected\n\nTesting:\n- Unit test for sleep duration calculation with various sequences (normal, double-wake, wake-before-sleep)\n- Unit test verifying validation rejects invalid event sequences\n- Regression test: add two wake-up entries and confirm total duration is not doubled\n- UI smoke test: verify the simplified form renders and submits correctly",
-    "retry_count": 1,
+    "retry_count": 2,
+    "prev_failure": "impl-core failed (exit 143). Log output:\n",
+    "route": "implementation",
     "failure_reason": "impl-core failed (exit 143). Log output:\n"
-  },
-  {
-    "number": 168,
-    "title": "all data in firebase should be encrypted",
-    "body": "## \u2728 Feature Request\n\nall data in firebase should be encrypted\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "enhancement",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/168",
-    "created_at": "2026-03-30T21:33:22Z",
-    "status": "implemented",
-    "implementation_notes": "Already implemented in commits 640b29d and 693183e \u2014 AES-256-GCM encryption via Web Crypto API with PBKDF2 key derivation from family code. All Firestore data is now encrypted client-side before upload and decrypted on pull. Ephemeral storage: data deleted from Firestore after partner pulls it."
   },
   {
     "number": 87,
@@ -56,7 +28,8 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:55Z",
-    "status": "pending"
+    "status": "skipped",
+    "skip_reason": "Test/spam issue with no actionable content \u2014 title and body both say 'test do not do anything'"
   },
   {
     "number": 171,
@@ -68,6 +41,9 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/171",
     "created_at": "2026-03-30T22:17:22.632Z",
-    "status": "pending"
+    "status": "in_progress",
+    "route": "infrastructure",
+    "enhanced_description": "The user wants a token-usage tracking section added to the internal pipeline dashboard (bot/dashboard.js, served at http://localhost:4040).\n\nWhat the user reported:\n- The pipeline dashboard shows run history, CI results, and issue queue status, but currently has no visibility into how many Claude API tokens each pipeline run consumed.\n- The user wants a \"Tokens Used\" panel so they can monitor and control API costs over time.\n\nComponent/area affected:\n- bot/dashboard.js \u2014 the Node.js dashboard server that parses pipeline.log and renders HTML\n- Potentially bot/pipeline.log (source of token data) or a new bot/token-usage.json if the pipeline already emits token counts\n\nExpected behaviour:\n- A new section in the dashboard (e.g. a \"Token Usage\" card or table) showing:\n  - Total tokens used per pipeline run (input + output, or just total)\n  - A summary of recent runs (e.g. last 7 days) with per-run token counts\n  - Optionally: a cumulative total / trend line\n- Data sourced from pipeline.log lines that report token usage (e.g. lines emitted by claude -p output), or from a dedicated token-tracking file if one exists\n\nCurrent behaviour:\n- No token usage data is displayed anywhere in the dashboard.\n\nEdge cases to handle:\n- Runs where token data is absent (older log entries before token reporting was added) \u2014 show \"N/A\" or omit gracefully\n- Very large token counts \u2014 format with commas or K/M abbreviations\n- Dashboard should not crash if the token data file/log section is missing\n\nAcceptance criteria:\n1. Dashboard displays token usage for each pipeline run (or at minimum a summary panel)\n2. The display is clearly labelled (input tokens, output tokens, or total)\n3. Missing data handled gracefully (no crashes, clear N/A label)\n4. No new npm dependencies required (plain Node.js HTTP server only)\n\nTesting:\n- Unit test or manual verification: mock a pipeline.log with token-usage lines and confirm the parser extracts them correctly\n- Verify the dashboard renders the token section without errors when data is present and when it is absent",
+    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed: bot/dashboard.js\n- Added parseClaudeHistory() to parse claude-history.log for token data\n- Added fmtK() helper to format large token counts (K/M abbreviations)\n- Added Token Usage section: 3 summary stats (input/output/cost for 7d) + per-run table\n- Data source: claude-history.log already written by pipeline.sh with phase breakdowns\n- No new npm dependencies\n- Testing: syntax OK, 643 unit tests passed, 21/21 regression checks, type-check, build"
   }
 ]

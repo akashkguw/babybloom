@@ -30,6 +30,11 @@ function esc(s)       {
 function fmt(d) {
   return new Date(d).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 }
+function fmtK(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n/1e3) + 'K';
+  return String(n || 0);
+}
 
 // ─── Pipeline Log Parser ────────────────────────────────────────
 function parsePipelineLog() {
@@ -136,6 +141,51 @@ function parseSentry() {
   const keys   = Object.keys(data);
   const maxSeq = keys.length ? Math.max(...Object.values(data)) : 0;
   return { tracked: keys.length, maxSeq };
+}
+
+// ─── Claude History / Token Parser ──────────────────────────────
+function parseClaudeHistory() {
+  const log   = readFile(path.join(BOT_DIR, 'claude-history.log'));
+  const lines = log.split('\n');
+  const entries = [];
+  let cur = null;
+
+  function flush() { if (cur) { entries.push(cur); cur = null; } }
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    // Header: ═══ Mon Mar 29 09:33:14 PDT 2026 ═══ #143: title
+    if (line.startsWith('═══')) {
+      flush();
+      const m = line.match(/═══\s+(.+?)\s+═══\s+#(\d+):\s*(.*)/);
+      if (m) {
+        cur = { ts: m[1], num: parseInt(m[2]), title: m[3], phases: [], totalCost: 0, totalIn: 0, totalOut: 0 };
+      }
+      continue;
+    }
+
+    if (!cur) continue;
+
+    // Token phase line: "  triage: 94796 in (76314 cached) + 1373 out | 4 turns | $0.1128"
+    const pm = line.match(/^(\S+):\s+(\d+)\s+in\s+\((\d+)\s+cached\)\s+\+\s+(\d+)\s+out\s+\|\s+(\d+)\s+turns\s+\|\s+\$([0-9.]+)/);
+    if (pm) {
+      const inp = parseInt(pm[2]);
+      const out = parseInt(pm[4]);
+      cur.phases.push({ name: pm[1], inputTokens: inp, cachedTokens: parseInt(pm[3]), outputTokens: out, turns: parseInt(pm[5]), cost: parseFloat(pm[6]) });
+      cur.totalIn  += inp;
+      cur.totalOut += out;
+      continue;
+    }
+
+    // Total cost: "Total cost: $0.3541"
+    const cm = line.match(/^Total cost:\s+\$([0-9.]+)/);
+    if (cm) { cur.totalCost = parseFloat(cm[1]); continue; }
+  }
+  flush();
+
+  return entries.reverse(); // most recent first
 }
 
 // ─── Claude Tasks Parser ─────────────────────────────────────────
@@ -442,7 +492,16 @@ function render() {
   const git         = getGitInfo();
   const claudeTasks = parseClaudeTasks();
   const workerRuns  = parseWorkerRuns();
+  const tokenHistory = parseClaudeHistory();
   const now    = new Date().toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+
+  // ── Token usage aggregates ────────────────────────────────────
+  const now7d      = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent7d   = tokenHistory.filter(e => { try { return new Date(e.ts).getTime() > now7d; } catch { return false; } });
+  const totalCost7d = recent7d.reduce((s, e) => s + e.totalCost, 0);
+  const totalIn7d   = recent7d.reduce((s, e) => s + e.totalIn,   0);
+  const totalOut7d  = recent7d.reduce((s, e) => s + e.totalOut,  0);
+  const entriesWithTokens = tokenHistory.filter(e => e.phases.length > 0);
 
   const lastRun      = runs[0];
   const deploys      = runs.filter(r => r.sha);
@@ -1016,6 +1075,68 @@ function render() {
       </div>` : ''}
     </div>
 
+  </div>
+
+  <!-- ═══ TOKEN USAGE ═══ -->
+  <div class="card mb16">
+    <div class="sec-hd">🪙 Token Usage
+      <span class="b-cnt2">${recent7d.length} runs · 7 days</span>
+      ${totalCost7d > 0 ? `<span class="b-cnt3">$${totalCost7d.toFixed(4)} total</span>` : ''}
+    </div>
+
+    <!-- Summary stat row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="wstat" style="background:#F3E5F5">
+        <div class="wstat-lbl">Input (7d)</div>
+        <div class="wstat-val" style="color:#AB47BC">${fmtK(totalIn7d)}</div>
+        <div class="wstat-sub">tokens</div>
+      </div>
+      <div class="wstat" style="background:#E3F2FD">
+        <div class="wstat-lbl">Output (7d)</div>
+        <div class="wstat-val" style="color:#42A5F5">${fmtK(totalOut7d)}</div>
+        <div class="wstat-sub">tokens</div>
+      </div>
+      <div class="wstat" style="background:#E0FFF8">
+        <div class="wstat-lbl">Cost (7d)</div>
+        <div class="wstat-val" style="color:#00C9A7">$${totalCost7d.toFixed(3)}</div>
+        <div class="wstat-sub">${recent7d.length} issue runs</div>
+      </div>
+    </div>
+
+    <!-- Per-run table -->
+    ${entriesWithTokens.length === 0
+      ? `<div style="color:#8E8E9A;font-size:12px;text-align:center;padding:20px 0">No token data yet — will appear after the first Claude pipeline run</div>`
+      : `<div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="border-bottom:2px solid #F0EBE3">
+            <th style="text-align:left;padding:6px 8px;color:#8E8E9A;font-weight:700;white-space:nowrap">Issue</th>
+            <th style="text-align:left;padding:6px 8px;color:#8E8E9A;font-weight:700;white-space:nowrap">When</th>
+            <th style="text-align:left;padding:6px 8px;color:#8E8E9A;font-weight:700;white-space:nowrap">Phases</th>
+            <th style="text-align:right;padding:6px 8px;color:#AB47BC;font-weight:700;white-space:nowrap">Input</th>
+            <th style="text-align:right;padding:6px 8px;color:#42A5F5;font-weight:700;white-space:nowrap">Output</th>
+            <th style="text-align:right;padding:6px 8px;color:#00C9A7;font-weight:700;white-space:nowrap">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entriesWithTokens.slice(0, 20).map(e => {
+            const phaseLabels = e.phases.map(p => esc(p.name)).join(' + ');
+            const ts = e.ts.replace(/ PDT.*$/,'').replace(/ PST.*$/,'').replace(/^\w+ /,'');
+            return `<tr style="border-bottom:1px solid #F8F4F0;transition:background .12s" onmouseover="this.style.background='#FAF7F4'" onmouseout="this.style.background=''">
+              <td style="padding:7px 8px;white-space:nowrap">
+                <code style="background:#E8E6FF;color:#6C63FF;padding:1px 6px;border-radius:6px;font-size:10px">#${e.num}</code>
+                <span style="color:#2D2D3A;margin-left:5px;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:inline-block;vertical-align:middle;white-space:nowrap">${esc(e.title.slice(0, 45))}${e.title.length > 45 ? '…' : ''}</span>
+              </td>
+              <td style="padding:7px 8px;color:#A8A098;white-space:nowrap;font-family:'SF Mono',Menlo,monospace;font-size:10px">${esc(ts)}</td>
+              <td style="padding:7px 8px;color:#8E8E9A;white-space:nowrap">${phaseLabels}</td>
+              <td style="padding:7px 8px;text-align:right;color:#AB47BC;font-weight:700;white-space:nowrap">${fmtK(e.totalIn)}</td>
+              <td style="padding:7px 8px;text-align:right;color:#42A5F5;font-weight:700;white-space:nowrap">${fmtK(e.totalOut)}</td>
+              <td style="padding:7px 8px;text-align:right;color:#00C9A7;font-weight:700;white-space:nowrap">$${e.totalCost.toFixed(4)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
   </div>
 
 </div><!-- /wrap -->
