@@ -310,26 +310,60 @@ fi
 
 # ─── Reset stale in_progress issues ───
 # Pipeline.sh is the sole orchestrator now. Any issues stuck at "in_progress" are stale
-# (from dead workers). Reset them to "triaged" so Claude processes new issues instead of
-# wasting every run on stale recovery.
-STALE_RESET=$(python3 -c "
+# (from dead workers). Reset them to "triaged" — but track retry_count to prevent infinite loops.
+# After 3 resets, mark the issue as permanently failed and post a GitHub issue.
+STALE_RESULT=$(python3 -c "
 import json
 path = '$QUEUE_FILE'
 try:
   q = json.load(open(path))
   reset = 0
+  maxed = []
   for i in q:
     if i.get('status') == 'in_progress':
-      i['status'] = 'triaged'
-      reset += 1
-  if reset:
-    json.dump(q, open(path, 'w'), indent=2)
-  print(reset)
-except: print(0)
-" 2>/dev/null || echo 0)
+      rc = i.get('retry_count', 0) + 1
+      i['retry_count'] = rc
+      if rc >= 3:
+        i['status'] = 'failed'
+        i['notified'] = True
+        i['failure_reason'] = f'Stale in_progress reset {rc} times — likely pipeline killed repeatedly during implementation.'
+        maxed.append(str(i['number']))
+      else:
+        i['status'] = 'triaged'
+        reset += 1
+  json.dump(q, open(path, 'w'), indent=2)
+  print(f'{reset}|{\",\".join(maxed)}')
+except: print('0|')
+" 2>/dev/null || echo '0|')
+
+STALE_RESET=$(echo "$STALE_RESULT" | cut -d'|' -f1)
+STALE_MAXED=$(echo "$STALE_RESULT" | cut -d'|' -f2)
 
 if [ "$STALE_RESET" -gt 0 ]; then
   echo "🔧 Reset $STALE_RESET stale in_progress issue(s) → triaged"
+fi
+
+# Create GitHub issues for permanently failed items
+if [ -n "$STALE_MAXED" ]; then
+  for fnum in $(echo "$STALE_MAXED" | tr ',' ' '); do
+    [ -z "$fnum" ] && continue
+    FTITLE=$(python3 -c "
+import json
+q=json.load(open('$QUEUE_FILE'))
+for i in q:
+  if i.get('number')==int('$fnum'):
+    print(i.get('title','Issue #$fnum'))
+    break
+" 2>/dev/null || echo "Issue #$fnum")
+    echo "🚨 Issue #$fnum exceeded max retries — creating failure GitHub issue"
+    curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"title\":\"🚨 Pipeline: #$fnum failed after 3 attempts\",\"body\":\"## Pipeline Failure\\n\\nIssue **#$fnum** ($FTITLE) has failed 3 times and will no longer be retried automatically.\\n\\n**Last status:** Stale in_progress (pipeline killed during implementation)\\n\\nManual investigation required.\\n\\n---\\n_Auto-created by pipeline.sh_\",\"labels\":[\"bug\",\"pipeline-failure\"]}" \
+      "https://api.github.com/repos/$REPO/issues" > /dev/null 2>&1
+    send_telegram "🚨 *BabyBloom: Issue #$fnum PERMANENTLY FAILED*
+Max retries (3) reached for: $FTITLE
+A GitHub issue has been created for manual review.
+🔗 [Original issue](https://github.com/$REPO/issues/$fnum)"
+  done
 fi
 
 # ═══════════════════════════════════════════════════════════════
@@ -1005,20 +1039,49 @@ for i in q:
         break
 " 2>/dev/null || echo '"⚠️ Implementation failed."')
 
+    # Post comment on the original issue
     curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
       -d "{\"body\":$COMMENT_BODY}" \
       "https://api.github.com/repos/$REPO/issues/$num/comments" 2>&1 | head -2
+
+    # Check retry count — if max retries reached, create a new GitHub failure issue
+    ISSUE_RETRIES=$(python3 -c "
+import json
+q=json.load(open('$QUEUE_FILE'))
+for i in q:
+  if i.get('number')==int('$num'):
+    print(i.get('retry_count',0))
+    break
+" 2>/dev/null || echo 0)
+
+    if [ "$ISSUE_RETRIES" -ge 3 ]; then
+      FAIL_BODY=$(python3 -c "
+import json
+q=json.load(open('$QUEUE_FILE'))
+for i in q:
+  if i.get('number')==int('$num'):
+    reason = i.get('failure_reason','Unknown')[:800]
+    body = f'## Pipeline Failure Report\n\nIssue **#{i[\"number\"]}** — {i.get(\"title\",\"\")} has **failed {i.get(\"retry_count\",0)} times** and will no longer be retried.\n\n### Last Error\n\`\`\`\n{reason}\n\`\`\`\n\nManual investigation required.\n\n---\n_Auto-created by pipeline.sh_'
+    print(json.dumps(body))
+    break
+" 2>/dev/null || echo '\"Pipeline failure for #$num\"')
+      curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+        -d "{\"title\":\"🚨 Pipeline: #$num failed after 3 attempts\",\"body\":$FAIL_BODY,\"labels\":[\"bug\",\"pipeline-failure\"]}" \
+        "https://api.github.com/repos/$REPO/issues" > /dev/null 2>&1
+      echo "🚨 Created GitHub failure issue for #$num (max retries reached)"
+    fi
 
     send_telegram "⚠️ *BabyBloom: Implementation Failed*
 
 🔢 Issue: #$num
 📌 Title: $title
 💥 Reason: $(echo "$reason" | head -c 200)
+🔄 Retries: $ISSUE_RETRIES/3
 
-The issue remains open on GitHub for manual review or retry.
+$([ "$ISSUE_RETRIES" -ge 3 ] && echo '🚨 Max retries reached — new GitHub issue created.' || echo '_Pipeline will auto-retry on the next run._')
 🔗 [View issue](https://github.com/$REPO/issues/$num)"
 
-    echo "⚠️ Failed & notified: #$num — $title"
+    echo "⚠️ Failed & notified: #$num — $title (retry $ISSUE_RETRIES/3)"
   done <<< "$FAILED"
 
   # Mark failed issues as notified so we don't spam Telegram every 60s.

@@ -42,6 +42,7 @@ interface SettingsProps {
   firestoreSyncStatus?: SyncStatus;
   firestoreLastSyncedAt?: number | null;
   firestoreSyncError?: string | null;
+  syncState?: import('@/hooks/useFirebaseSync').UseFirebaseSyncReturn;
 }
 
 /* Section with Icon-based header — professional, consistent iconography */
@@ -105,6 +106,7 @@ export default function Settings({
   firestoreSyncStatus,
   firestoreLastSyncedAt,
   firestoreSyncError,
+  syncState,
 }: SettingsProps) {
   const countries = getAvailableCountries();
 
@@ -173,6 +175,7 @@ export default function Settings({
                 onAdd={onAddProfile}
                 onDelete={onDeleteProfile}
                 onRename={onRenameProfile}
+                syncState={syncState}
               />
             </Section>
           </>

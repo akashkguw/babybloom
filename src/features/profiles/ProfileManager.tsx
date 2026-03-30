@@ -7,6 +7,7 @@ import Card from '@/components/shared/Card';
 import { today } from '@/lib/utils/date';
 import { isValidBirthDate, cleanStr, LIMITS } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
+import type { UseFirebaseSyncReturn } from '@/hooks/useFirebaseSync';
 
 interface Profile {
   id: number;
@@ -21,6 +22,7 @@ interface ProfileManagerProps {
   onAdd: (profile: Profile) => void;
   onDelete: (id: number) => void;
   onRename: (id: number, name: string) => void;
+  syncState?: UseFirebaseSyncReturn;
 }
 
 export default function ProfileManager({
@@ -30,10 +32,13 @@ export default function ProfileManager({
   onAdd,
   onDelete,
   onRename,
+  syncState,
 }: ProfileManagerProps) {
   const [show, setShow] = useState(false);
   const [nm, setNm] = useState('');
   const [bd, setBd] = useState('');
+  const [familyCodeMode, setFamilyCodeMode] = useState<'none' | 'generate' | 'join'>('none');
+  const [joinCode, setJoinCode] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
   const [editNm, setEditNm] = useState('');
 
@@ -224,22 +229,122 @@ export default function ProfileManager({
           <div style={{ marginBottom: 8 }}>
             <Input type="date" value={bd} onChange={setBd} />
           </div>
+
+          {/* Family code — only show if sync is available and no code set yet */}
+          {syncState && !syncState.familyCode && (
+            <div style={{
+              marginBottom: 10, padding: 12, borderRadius: 10,
+              background: C.cd, border: '1px solid ' + C.b,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 6 }}>
+                <Icon n="cloud" s={14} c={C.s} /> Sync across devices
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, marginBottom: 10, lineHeight: 1.5 }}>
+                Link devices so both parents see the same data. Generate a new code or enter your partner's code.
+              </div>
+
+              {familyCodeMode === 'none' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setFamilyCodeMode('generate')}
+                    style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid ' + C.s, background: C.sl,
+                      fontSize: 12, fontWeight: 600, color: C.s, cursor: 'pointer',
+                    }}
+                  >
+                    New family
+                  </button>
+                  <button
+                    onClick={() => setFamilyCodeMode('join')}
+                    style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid ' + C.a, background: 'rgba(245,158,11,0.08)',
+                      fontSize: 12, fontWeight: 600, color: C.a, cursor: 'pointer',
+                    }}
+                  >
+                    Join partner
+                  </button>
+                </div>
+              )}
+
+              {familyCodeMode === 'generate' && (
+                <div style={{ fontSize: 12, color: C.ok, fontWeight: 600 }}>
+                  A new family code will be created when you add this profile.
+                </div>
+              )}
+
+              {familyCodeMode === 'join' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toLowerCase().trim())}
+                    placeholder="bloom-xxxxxxxx"
+                    style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 8,
+                      border: '1px solid ' + C.b, background: C.bg,
+                      fontSize: 13, fontFamily: 'monospace', color: C.t,
+                    }}
+                  />
+                </div>
+              )}
+
+              {familyCodeMode !== 'none' && (
+                <button
+                  onClick={() => { setFamilyCodeMode('none'); setJoinCode(''); }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 11, color: C.tl, marginTop: 6, padding: 0,
+                  }}
+                >
+                  ← Change
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8 }}>
             <Button
               label="Add"
-              onClick={() => {
+              onClick={async () => {
                 const name = cleanStr(nm, LIMITS.nameLen);
                 if (!name) { toast('Please enter a name'); return; }
                 const birthDate = bd || today();
                 if (!isValidBirthDate(birthDate)) { toast('Please enter a valid birth date (not in the future)'); return; }
+
+                // Handle family code before adding profile
+                if (syncState && !syncState.familyCode) {
+                  if (familyCodeMode === 'generate') {
+                    try {
+                      const code = await syncState.generateAndSaveFamilyCode();
+                      toast('Family code created: ' + code);
+                    } catch { toast('Could not create family code'); }
+                  } else if (familyCodeMode === 'join') {
+                    if (!joinCode || !joinCode.startsWith('bloom-') || joinCode.length < 14) {
+                      toast('Enter a valid family code (bloom-xxxxxxxx)');
+                      return;
+                    }
+                    await syncState.setFamilyCode(joinCode);
+                    toast('Joined family: ' + joinCode);
+                  }
+                }
+
                 onAdd({ id: Date.now(), name, birthDate });
                 setNm('');
                 setBd('');
+                setJoinCode('');
+                setFamilyCodeMode('none');
                 setShow(false);
+
+                // Trigger sync after profile is added
+                if (syncState && syncState.familyCode) {
+                  syncState.syncAll();
+                }
               }}
               color={C.s}
             />
-            <Button label="Cancel" onClick={() => setShow(false)} outline />
+            <Button label="Cancel" onClick={() => { setShow(false); setFamilyCodeMode('none'); setJoinCode(''); }} outline />
           </div>
         </Card>
       )}

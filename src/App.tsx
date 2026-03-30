@@ -723,6 +723,7 @@ function App() {
           firestoreSyncStatus={firebaseSyncState.syncStatus}
           firestoreLastSyncedAt={firebaseSyncState.lastSyncedAt}
           firestoreSyncError={firebaseSyncState.syncError}
+          syncState={firebaseSyncState}
         />
       ) : (
         <>
