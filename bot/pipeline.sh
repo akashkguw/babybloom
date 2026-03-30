@@ -281,6 +281,33 @@ fi
 
 echo "📋 Work found: $HAS_WORK actionable issue(s), $UNPUSHED_COUNT unpushed commit(s)"
 
+# ─── Auto-retry failed issues (max 3 attempts) ───
+# Failed+notified issues with retry_count < 3 get reset to pending.
+# The previous failure_reason is preserved as prev_failure so Claude can learn from it.
+RETRY_RESET=$(python3 -c "
+import json
+path = '$QUEUE_FILE'
+try:
+  q = json.load(open(path))
+  reset = 0
+  for i in q:
+    if i.get('status') == 'failed' and i.get('notified') and i.get('retry_count', 0) < 3:
+      i['prev_failure'] = i.get('failure_reason', '')
+      i['status'] = 'pending'
+      i.pop('notified', None)
+      i.pop('failure_reason', None)
+      i.pop('route', None)
+      reset += 1
+  if reset:
+    json.dump(q, open(path, 'w'), indent=2)
+  print(reset)
+except: print(0)
+" 2>/dev/null || echo 0)
+
+if [ "$RETRY_RESET" -gt 0 ]; then
+  echo "🔄 Auto-retrying $RETRY_RESET previously failed issue(s) (retry_count < 3)"
+fi
+
 # ─── Reset stale in_progress issues ───
 # Pipeline.sh is the sole orchestrator now. Any issues stuck at "in_progress" are stale
 # (from dead workers). Reset them to "triaged" so Claude processes new issues instead of
@@ -520,6 +547,40 @@ for i in q:
     fi
 
     # ═══ PHASE 2: SPECIALIST (route-dependent) ═══
+
+    # Check if this is a retry — include previous failure context
+    PREV_FAILURE=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        pf = i.get('prev_failure', '')
+        if pf:
+            print(pf[:1000])
+        break
+" 2>/dev/null || true)
+
+    RETRY_CONTEXT=""
+    if [ -n "$PREV_FAILURE" ]; then
+      RETRY_COUNT=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(i.get('retry_count', 0))
+        break
+" 2>/dev/null || echo 0)
+      RETRY_CONTEXT="
+## ⚠️ RETRY CONTEXT (attempt $RETRY_COUNT of 3)
+This issue FAILED on the previous attempt. Here is the error from last time:
+\`\`\`
+$PREV_FAILURE
+\`\`\`
+Learn from this error. Do NOT repeat the same mistake. If the failure was in tests,
+make sure your implementation and tests are compatible from the start.
+"
+    fi
+
     if [ "$ISSUE_ROUTE" = "implementation" ]; then
       # ── Implementation: split into 3 sub-phases for token visibility ──
 
@@ -527,7 +588,7 @@ for i in q:
       run_claude_phase "impl-core" "You are the BabyBloom implementation agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
-
+$RETRY_CONTEXT
 ## Instructions — CORE IMPLEMENTATION ONLY
 1. Read $REPO_DIR/bot/IMPL_SKILL.md for codebase map and conventions
 2. Process ONLY issue #$ISSUE_NUM (already triaged, route=implementation)
@@ -546,6 +607,7 @@ REPO_DIR=$REPO_DIR
 
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  impl-core failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
+        CORE_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-core.log" 2>/dev/null | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
         python3 -c "
 import json
 path = '$QUEUE_FILE'
@@ -553,7 +615,8 @@ q = json.load(open(path))
 for i in q:
     if i.get('number') == $ISSUE_NUM:
         i['status'] = 'failed'
-        i['failure_reason'] = 'impl-core failed with exit code $PHASE_EXIT'
+        i['retry_count'] = i.get('retry_count', 0) + 1
+        i['failure_reason'] = 'impl-core failed (exit $PHASE_EXIT). Log output:\\n$CORE_OUTPUT'
         break
 json.dump(q, open(path, 'w'), indent=2)
 " 2>/dev/null
@@ -597,6 +660,8 @@ Do NOT commit. Do NOT mark the issue as implemented. STOP after all tests pass (
 
       if [ $PHASE_EXIT -ne 0 ]; then
         echo "  ⚠️  impl-test failed (exit $PHASE_EXIT) — marking #$ISSUE_NUM as failed"
+        # Capture last 30 lines of test output for the failure report
+        TEST_OUTPUT=$(tail -30 "$BOT_DIR/claude-phase-impl-test.log" 2>/dev/null | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
         python3 -c "
 import json
 path = '$QUEUE_FILE'
@@ -605,7 +670,8 @@ for i in q:
     if i.get('number') == $ISSUE_NUM:
         if i.get('status') != 'failed':
             i['status'] = 'failed'
-            i['failure_reason'] = 'impl-test failed with exit code $PHASE_EXIT. Check bot/claude-phase-impl-test.log'
+            i['retry_count'] = i.get('retry_count', 0) + 1
+            i['failure_reason'] = 'impl-test failed (exit $PHASE_EXIT). Test output:\\n$TEST_OUTPUT'
         break
 json.dump(q, open(path, 'w'), indent=2)
 " 2>/dev/null
@@ -921,15 +987,33 @@ except: pass
     reason=$(echo "$reason" | xargs)
     [ -z "$num" ] && continue
 
+    # Build GitHub comment body with failure details via Python (handles escaping)
+    COMMENT_BODY=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == int('$num'):
+        reason = i.get('failure_reason', 'Unknown failure')
+        retries = i.get('retry_count', 0)
+        body = f'⚠️ **Implementation attempted but failed** (attempt {retries}/3)\n\n'
+        body += f'**Reason:** {reason[:500]}\n\n'
+        if retries < 3:
+            body += '_Pipeline will auto-retry on the next run with this error context._'
+        else:
+            body += '_Max retries reached. Manual intervention needed._'
+        print(json.dumps(body))
+        break
+" 2>/dev/null || echo '"⚠️ Implementation failed."')
+
     curl -s -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
-      -d "{\"body\":\"⚠️ Implementation attempted but failed.\\n\\n**Reason:** $reason\\n\\n_Will retry on next pipeline run if re-opened._\"}" \
-      "https://api.github.com/repos/$REPO/issues/$num/comments" > /dev/null 2>&1
+      -d "{\"body\":$COMMENT_BODY}" \
+      "https://api.github.com/repos/$REPO/issues/$num/comments" 2>&1 | head -2
 
     send_telegram "⚠️ *BabyBloom: Implementation Failed*
 
 🔢 Issue: #$num
 📌 Title: $title
-💥 Reason: $reason
+💥 Reason: $(echo "$reason" | head -c 200)
 
 The issue remains open on GitHub for manual review or retry.
 🔗 [View issue](https://github.com/$REPO/issues/$num)"
