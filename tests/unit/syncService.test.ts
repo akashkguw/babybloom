@@ -54,9 +54,9 @@ function resetMockStore() {
 // ── SYNC_CATEGORIES ───────────────────────────────────────────────────────────
 
 describe('SYNC_CATEGORIES', () => {
-  it('contains all 10 expected categories', () => {
-    const expected = ['feed', 'pump', 'diaper', 'sleep', 'bath', 'massage', 'growth', 'temp', 'meds', 'allergy'];
-    expect(SYNC_CATEGORIES).toHaveLength(10);
+  it('contains all 11 expected categories', () => {
+    const expected = ['feed', 'pump', 'diaper', 'sleep', 'tummy', 'bath', 'massage', 'growth', 'temp', 'meds', 'allergy'];
+    expect(SYNC_CATEGORIES).toHaveLength(11);
     for (const cat of expected) {
       expect(SYNC_CATEGORIES).toContain(cat);
     }
@@ -260,9 +260,9 @@ describe('pullAndMerge', () => {
     expect(saved.extra).toBe('preserved');
   });
 
-  it('calls getEntries for all 10 categories', async () => {
+  it('calls getEntries for all 11 categories', async () => {
     await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
-    expect(mockGetEntries).toHaveBeenCalledTimes(10);
+    expect(mockGetEntries).toHaveBeenCalledTimes(11);
   });
 
   it('returns 0 (not negative) when remote has fewer entries than local', async () => {
