@@ -31,7 +31,7 @@
   {
     "number": 30,
     "title": "issues resolved is not coming in telegram message",
-    "body": "## \ud83d\udc1b Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\nissues resolved is not coming in telegram message\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -45,7 +45,7 @@
   {
     "number": 31,
     "title": "Chicken is little hard",
-    "body": "## \ud83d\udcac Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 💬 Feedback\n\nChicken is little hard\n\n---\n\n**Category:** `general`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "feedback",
       "telegram"
@@ -59,7 +59,7 @@
   {
     "number": 34,
     "title": "identify all the unnecessary features and clutter and help add it as a commen...",
-    "body": "## \u2728 Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## ✨ Feature Request\n\nidentify all the unnecessary features and clutter and help add it as a comment to this issue\n\n---\n\n**Category:** `enhancement` `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -73,7 +73,7 @@
   {
     "number": 59,
     "title": "the arrows for the date navigation for browsing past days is v small and not ...",
-    "body": "## \ud83d\udc1b Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\nthe arrows for the date navigation for browsing past days is v small and not noticeable. Make it medium sized\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -82,12 +82,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/59",
     "created_at": "2026-03-24T08:45:33.058Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels \u2014 created 1 second apart). Will be addressed via #58."
+    "skip_reason": "Exact duplicate of issue #58 (same title, body, and labels — created 1 second apart). Will be addressed via #58."
   },
   {
     "number": 61,
     "title": "- I want dark mode as default",
-    "body": "## \u2728 Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## ✨ Feature Request\n\n- I want dark mode as default\n\n---\n\n**Category:** `enhancement` `ui`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "enhancement",
       "telegram",
@@ -96,7 +96,7 @@
     "url": "https://github.com/akashkguw/babybloom/issues/61",
     "created_at": "2026-03-24T08:47:25.646Z",
     "status": "skipped",
-    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels \u2014 created at the same second). Will be addressed via #60."
+    "skip_reason": "Exact duplicate of issue #60 (same title, body, and labels — created at the same second). Will be addressed via #60."
   },
   {
     "number": 80,
@@ -114,7 +114,7 @@
   {
     "number": 87,
     "title": "test do not do anything",
-    "body": "## \ud83d\udc1b Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -123,12 +123,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/87",
     "created_at": "2026-03-25T08:47:57.058Z",
     "status": "skipped",
-    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" \u2014 no feature, bug, or change to implement."
+    "skip_reason": "Test issue with no actionable request. Title and body both say \"test do not do anything\" — no feature, bug, or change to implement."
   },
   {
     "number": 89,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-25 16:44 PDT\n\nCI pipeline blocked the deploy.\n\n```\n\n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -136,12 +136,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/89",
     "created_at": "2026-03-25T23:44:30Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale \u2014 no action needed."
+    "skip_reason": "Deploy failure with empty CI output. Current CI log shows all stages passing (170 tests, build OK, smoke test OK). Issue is stale — no action needed."
   },
   {
     "number": 90,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-25 16:50 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -149,12 +149,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/90",
     "created_at": "2026-03-25T23:50:36Z",
     "status": "skipped",
-    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale \u2014 the failing tests have been fixed."
+    "skip_reason": "Deploy failure due to unit test failures. Current CI log shows all 170 unit tests passing. Issue is stale — the failing tests have been fixed."
   },
   {
     "number": 91,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-25 16:56 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -166,8 +166,8 @@
   },
   {
     "number": 92,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-25 16:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -180,7 +180,7 @@
   {
     "number": 93,
     "title": "GitHub issue not getting created from anshimitt telegram",
-    "body": "## \ud83d\udc1b Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## 🐛 Bug Report\n\nGitHub issue not getting created from anshimitt telegram\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram"
@@ -189,13 +189,13 @@
     "created_at": "2026-03-26T02:02:33Z",
     "status": "skipped",
     "route": "infrastructure",
-    "skip_reason": "MANUAL ONLY \u2014 Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
+    "skip_reason": "MANUAL ONLY — Infrastructure/security issue involving bot.js auth (isAllowed). Must be handled by owner via manual Claude request, not automated pipeline.",
     "enhanced_description": "The Telegram bot for user \"anshimitt\" is failing to create GitHub issues when commands are sent.\n- Affected component: bot.js or the GitHub issue creation pipeline\n- Expected: When a user sends a bug/feature request via Telegram, a GitHub issue should be created automatically\n- Current: Issues are not being created for this specific Telegram user\n- Edge cases: Could be a username/chat_id mapping issue, API auth issue, or rate limiting\n- Acceptance criteria: GitHub issues are successfully created when anshimitt sends requests via Telegram bot"
   },
   {
     "number": 129,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-28 22:31 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -203,12 +203,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/129",
     "created_at": "2026-03-29T05:31:33Z",
     "status": "skipped",
-    "skip_reason": "MANUAL ONLY \u2014 infrastructure/security changes require owner's manual Claude request."
+    "skip_reason": "MANUAL ONLY — infrastructure/security changes require owner's manual Claude request."
   },
   {
     "number": 132,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-28 22:45 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -216,12 +216,12 @@
     "url": "https://github.com/akashkguw/babybloom/issues/132",
     "created_at": "2026-03-29T05:45:34Z",
     "status": "skipped",
-    "skip_reason": "Deploy blocker already resolved \u2014 latest CI run (23:22 PDT) shows all 249 unit tests passing, TypeScript build OK, and smoke test OK. No action needed."
+    "skip_reason": "Deploy blocker already resolved — latest CI run (23:22 PDT) shows all 249 unit tests passing, TypeScript build OK, and smoke test OK. No action needed."
   },
   {
     "number": 133,
-    "title": "\ud83d\udea8 Deploy failure: Local CI failed \u2014 deploy blocked",
-    "body": "## Deploy Blocker \u2014 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  \u2705 index.html has title   \u2705 index.html has root div   \u2705 JS bundle built   \u2705 Manifest built   \u2705 SW built   \u2705 Server responds 200 (HTTP 200)   \u2705 Assets reachable (HTTP 200) \u2514\u2500 \u2705 Server Smoke Test passed   \u274c  Unit Tests   \u2705  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh \u2014 pick up and investigate.*",
+    "title": "🚨 Deploy failure: Local CI failed — deploy blocked",
+    "body": "## Deploy Blocker — 2026-03-28 22:58 PDT\n\nCI pipeline blocked the deploy.\n\n```\n  ✅ index.html has title   ✅ index.html has root div   ✅ JS bundle built   ✅ Manifest built   ✅ SW built   ✅ Server responds 200 (HTTP 200)   ✅ Assets reachable (HTTP 200) └─ ✅ Server Smoke Test passed   ❌  Unit Tests   ✅  TypeScript + Build \n```\n\nCheck `bot/ci.log` for full details. Fix the failing tests or build before the next deploy.\n\n---\n*Auto-filed by deploy.sh — pick up and investigate.*",
     "labels": [
       "bug",
       "deploy-failure"
@@ -229,6 +229,87 @@
     "url": "https://github.com/akashkguw/babybloom/issues/133",
     "created_at": "2026-03-29T05:58:12Z",
     "status": "skipped",
-    "skip_reason": "Duplicate of #132, and deploy blocker already resolved \u2014 latest CI run shows all stages passing."
+    "skip_reason": "Duplicate of #132, and deploy blocker already resolved — latest CI run shows all stages passing."
+  },
+  {
+    "number": 165,
+    "title": "login page is broken",
+    "body": "## 🐛 Bug Report\n\nlogin page is broken. After I click on I have code, it didn’t scroll & login icon became bad. Also I don’t see start via family code?\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/165",
+    "created_at": "2026-03-30T21:32:36.819Z",
+    "status": "failed",
+    "route": "implementation",
+    "enhanced_description": "The login/onboarding page has multiple UI bugs reported by the user:\n\n**What the user reported:**\n1. After clicking \"I have code\" (the existing-user / family-code entry flow), the page did not scroll to the code-entry section.\n2. The login icon displayed incorrectly (\"became bad\") after clicking that button.\n3. The \"Start via family code\" option is not visible at all on the page.\n\n**Component/area affected:**\n- Login / onboarding screen (likely src/components/Login.tsx or similar onboarding component)\n- The flow for joining an existing family using a shared/family code\n\n**Expected behaviour:**\n- Clicking \"I have code\" should smoothly scroll to a code-entry input field\n- The login icon should remain visually correct after the click\n- A \"Start via family code\" option should be clearly visible on the initial screen\n\n**Current behaviour:**\n- No scroll occurs after clicking \"I have code\"\n- Login icon renders incorrectly after click\n- \"Start via family code\" option is missing or hidden\n\n**Edge cases to handle:**\n- Ensure the scroll works on both mobile and desktop viewport sizes\n- Verify icon state is reset properly if the user clicks away and back\n- Check if \"start via family code\" was removed or conditionally hidden and needs to be restored/shown\n\n**Acceptance criteria:**\n- [ ] Clicking \"I have code\" scrolls smoothly to the family-code input section\n- [ ] The login icon displays correctly before, during, and after clicking \"I have code\"\n- [ ] \"Start via family code\" option is visible on the login/onboarding screen\n- [ ] All three items work correctly on mobile viewport\n\n**Testing:**\n- Add a unit/component test that verifies the \"I have code\" click handler triggers scroll and does not break icon state\n- Add a regression test for the presence and visibility of the \"start via family code\" UI element\n- Verify existing login flow tests still pass after the fix",
+    "retry_count": 1,
+    "failure_reason": "impl-core failed (exit 143). Log output:\n"
+  },
+  {
+    "number": 166,
+    "title": "wake up is still not syncing other device shows sleeping",
+    "body": "## 🐛 Bug Report\n\nwake up is still not syncing other device shows sleeping\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "sleep"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/166",
+    "created_at": "2026-03-30T21:32:53.661Z",
+    "status": "implemented",
+    "route": "implementation",
+    "implementation_notes": {
+      "files_changed": [
+        "src/tabs/HomeTab.tsx",
+        "src/hooks/useFirebaseSync.ts"
+      ],
+      "tests_added": [
+        "tests/unit/sleepSyncDetection.test.ts"
+      ],
+      "approach": "Fixed HomeTab.tsx lastSleepEntry detection to use reduce() scanning for max id instead of .find() which stopped at the first (oldest) match in the ascending-sorted array from mergeEntries. This ensures the most recent sleep entry wins regardless of array order. Also updated polling interval comment from 30s to 60s to match actual behavior. Added 12 unit tests covering empty logs, single entry types, cross-device sync scenarios, and the specific regression case of [Nap(T1), WakeUp(T2)] ascending order."
+    },
+    "enhanced_description": "Bug: Wake Up sync not updating sleep state on partner device.\n\n**What the user reported:**\nWhen one device logs a \"Wake Up\" event, the other paired device continues to show the baby as \"sleeping\" even after the Wake Up syncs via Firestore.\n\n**Root cause (identified during triage):**\nIn HomeTab.tsx (~line 163), lastSleepEntry is found using:\n  (logs.sleep || []).find(e => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up')\n\nThe syncService.mergeEntries() returns entries sorted ascending by id (oldest first). So .find() returns the OLDEST sleep entry — the \"Nap\" or \"Night Sleep\" — even if a newer \"Wake Up\" has been synced. The wake-up event is in the array but is never seen because .find() stops at the first match.\n\n**Component/area affected:**\n- src/tabs/HomeTab.tsx — lastSleepEntry detection (use most recent, not oldest)\n- src/utils/syncService.ts — mergeEntries sort order (ascending = oldest first), which compounds the HomeTab bug\n- Optionally: src/hooks/useFirebaseSync.ts — ensure requestSync is called after any sleep quick-log action\n\n**Expected behaviour:**\nAfter device A logs a Wake Up, device B syncs (within the polling interval) and correctly shows the baby as awake. The isSleeping flag reflects the MOST RECENT sleep-category entry, not the oldest.\n\n**Current behaviour:**\nDevice B shows \"sleeping\" indefinitely because lastSleepEntry resolves to the old Nap/Night Sleep entry (first in ascending-sorted array), ignoring the synced Wake Up entry.\n\n**Fix approach:**\n- Change lastSleepEntry to use the LAST matching element instead of the first, e.g. use [...].reverse().find(...) or [...].findLast(...) or pick the entry with the maximum id. The variable name \"lastSleepEntry\" already implies it should be the most recent.\n- Verify requestSync() is invoked after quick-logging a Wake Up on the source device, so the push happens promptly.\n\n**Edge cases to handle:**\n- If logs.sleep is empty, lastSleepEntry is undefined — isSleeping should be false (no change needed here, already works).\n- The 14-hour auto-expire logic should still apply to the most recent entry.\n- Multiple sleep sessions in one day — only the very last entry matters.\n\n**Acceptance criteria:**\n- [ ] After Device A logs Wake Up, Device B shows awake status within the next poll cycle (~30-60s).\n- [ ] isSleeping is computed from the most recent sleep entry, not the oldest.\n- [ ] All existing sleep-detection unit tests still pass.\n- [ ] The 14-hour auto-expire still functions correctly with the fix.\n\n**Testing:**\n- Unit test: logs.sleep with [Nap at T1, Wake Up at T2] → isSleeping should be false.\n- Unit test: logs.sleep with only [Nap at T1] → isSleeping should be true.\n- Unit test: mergeEntries with remote Wake Up entry arriving after local Nap → merged array has both, most-recent is Wake Up.\n- Regression test: Wake Up logged on device A, then mergeEntries run on device B — verify resulting isSleeping computation is false."
+  },
+  {
+    "number": 167,
+    "title": "the actual items - diaper, sleep etc is not encrypted",
+    "body": "## 🐛 Bug Report\n\nthe actual items - diaper, sleep etc is not encrypted.\n\n---\n\n**Category:** `bug` `diaper` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "diaper",
+      "sleep"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/167",
+    "created_at": "2026-03-30T21:33:09.712Z",
+    "status": "pending"
+  },
+  {
+    "number": 168,
+    "title": "all data in firebase should be encrypted",
+    "body": "## ✨ Feature Request\n\nall data in firebase should be encrypted\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/168",
+    "created_at": "2026-03-30T21:33:22.254Z",
+    "status": "pending"
+  },
+  {
+    "number": 169,
+    "title": "nurse left and nurse right are not maintaining order and are at different pla...",
+    "body": "## 🐛 Bug Report\n\nnurse left and nurse right are not maintaining order and are at different places even though it was implemented earlier\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/169",
+    "created_at": "2026-03-30T21:40:33.162Z",
+    "status": "pending"
   }
 ]
