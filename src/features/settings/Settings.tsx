@@ -319,8 +319,8 @@ export default function Settings({
           <SiriShortcutsSetup volumeUnit={volumeUnit} />
         </Section>
 
-        {/* ─── Group: Sync & Data ─── */}
-        <GroupLabel label="Sync & Data" />
+        {/* ─── Group: Data & Support ─── */}
+        <GroupLabel label="Data & Support" />
 
         <Section title="Firebase Autosync" iconName="database" iconColor={C.s}>
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>

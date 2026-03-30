@@ -642,7 +642,8 @@ function App() {
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <SyncStatusBadge status={firebaseSyncState.syncStatus} lastSyncedAt={firebaseSyncState.lastSyncedAt} />
             <button
               onClick={() => setDarkMode(!darkMode)}
               style={{
