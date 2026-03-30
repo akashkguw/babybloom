@@ -8,6 +8,7 @@ interface ButtonProps {
   outline?: boolean;
   full?: boolean;
   small?: boolean;
+  disabled?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -17,10 +18,12 @@ export const Button: React.FC<ButtonProps> = ({
   outline = false,
   full = false,
   small = false,
+  disabled = false,
 }) => {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       style={{
         width: full ? '100%' : 'auto',
         padding: small ? '8px 16px' : '14px 20px',
@@ -30,7 +33,8 @@ export const Button: React.FC<ButtonProps> = ({
         color: outline ? color : 'white',
         fontSize: small ? 13 : 15,
         fontWeight: 600,
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
         transition: 'transform 0.1s ease, opacity 0.15s ease',
       }}
     >

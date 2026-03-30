@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card as Cd,
   SectionHeader as SH,
@@ -126,6 +126,24 @@ const LogTab: React.FC<LogTabProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(today());
 
   const td = today();
+
+  // Derived: the open (unmatched) sleep session, used to guard Wake Up submissions.
+  // Computed at component level so the submit button can read it.
+  const unmatchedSleepForGuard = useMemo(() => {
+    if (sub !== 'sleep' || form.type !== 'Wake Up') return null;
+    return findUnmatchedSleep(
+      (logs.sleep || []).map((e) => ({
+        id: Number(e.id),
+        type: e.type || '',
+        date: e.date,
+        time: e.time,
+      }))
+    );
+  }, [sub, form.type, logs.sleep]);
+
+  // Wake Up submit is blocked when no open sleep session exists and this is not an edit.
+  const wakeUpBlocked =
+    sub === 'sleep' && form.type === 'Wake Up' && !editId && unmatchedSleepForGuard === null;
 
   const navigateDate = (dir: -1 | 1) => {
     const d = new Date(selectedDate + 'T00:00:00');
@@ -1892,6 +1910,7 @@ const LogTab: React.FC<LogTabProps> = ({
               onClick={addEntry}
               color={C.s}
               full={true}
+              disabled={wakeUpBlocked}
             />
           </div>
         </div>
