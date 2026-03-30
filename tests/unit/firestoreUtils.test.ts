@@ -205,14 +205,20 @@ describe('getEntries', () => {
   });
 
   it('returns empty array when db is null', async () => {
-    const result = await getEntries(null, 'profile_1', 'feed');
+    const result = await getEntries(null, 'bloom-abc123', 'profile_1', 'feed');
+    expect(result).toEqual([]);
+    expect(getDocs).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array when familyCode is empty', async () => {
+    const result = await getEntries(mockDb as never, '', 'profile_1', 'feed');
     expect(result).toEqual([]);
     expect(getDocs).not.toHaveBeenCalled();
   });
 
   it('returns empty array when collection is empty', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    const result = await getEntries(mockDb as never, 'profile_1', 'feed');
+    const result = await getEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed');
     expect(result).toEqual([]);
   });
 
@@ -226,16 +232,16 @@ describe('getEntries', () => {
       ],
     } as never);
 
-    const result = await getEntries(mockDb as never, 'profile_1', 'feed');
+    const result = await getEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed');
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual(entry1);
     expect(result[1]).toEqual(entry2);
   });
 
-  it('calls collection with correct path parts', async () => {
+  it('calls collection with correct path parts including familyCode', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getEntries(mockDb as never, 'profile_2', 'diaper');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'profiles', 'profile_2', 'diaper');
+    await getEntries(mockDb as never, 'bloom-xyz789', 'profile_2', 'diaper');
+    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-xyz789', 'profiles', 'profile_2', 'diaper');
   });
 });
 
@@ -247,19 +253,24 @@ describe('saveEntry', () => {
   });
 
   it('is a no-op when db is null', async () => {
-    await saveEntry(null, 'profile_1', 'feed', { id: 1, date: '2025-01-01' });
+    await saveEntry(null, 'bloom-abc123', 'profile_1', 'feed', { id: 1, date: '2025-01-01' });
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when familyCode is empty', async () => {
+    await saveEntry(mockDb as never, '', 'profile_1', 'feed', { id: 1, date: '2025-01-01' });
     expect(setDoc).not.toHaveBeenCalled();
   });
 
   it('calls setDoc with the entry data', async () => {
     const entry = { id: 5, date: '2025-02-10', time: '10:00', type: 'Formula', oz: 4 };
-    await saveEntry(mockDb as never, 'profile_1', 'feed', entry);
+    await saveEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', entry);
     expect(setDoc).toHaveBeenCalledWith(mockDocRef, toFirestoreDoc(entry));
   });
 
   it('uses entry id as the document id', async () => {
     const entry = { id: 42, date: '2025-03-01', time: '07:00' };
-    await saveEntry(mockDb as never, 'profile_1', 'sleep', entry);
+    await saveEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'sleep', entry);
     expect(doc).toHaveBeenCalledWith(mockCol, '42');
   });
 });
@@ -274,12 +285,12 @@ describe('saveEntries', () => {
   });
 
   it('is a no-op when db is null', async () => {
-    await saveEntries(null, 'profile_1', 'feed', [{ id: 1, date: '2025-01-01' }]);
+    await saveEntries(null, 'bloom-abc123', 'profile_1', 'feed', [{ id: 1, date: '2025-01-01' }]);
     expect(writeBatch).not.toHaveBeenCalled();
   });
 
   it('is a no-op when entries array is empty', async () => {
-    await saveEntries(mockDb as never, 'profile_1', 'feed', []);
+    await saveEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', []);
     expect(writeBatch).not.toHaveBeenCalled();
   });
 
@@ -288,7 +299,7 @@ describe('saveEntries', () => {
       { id: 1, date: '2025-01-01', time: '08:00', type: 'Formula' as const },
       { id: 2, date: '2025-01-01', time: '12:00', type: 'Breast L' as const },
     ];
-    await saveEntries(mockDb as never, 'profile_1', 'feed', entries);
+    await saveEntries(mockDb as never, 'bloom-abc123', 'profile_1', 'feed', entries);
     expect(mockBatch.set).toHaveBeenCalledTimes(2);
     expect(mockBatch.commit).toHaveBeenCalledTimes(1);
   });
@@ -302,12 +313,12 @@ describe('deleteEntry', () => {
   });
 
   it('is a no-op when db is null', async () => {
-    await deleteEntry(null, 'profile_1', 'feed', 1);
+    await deleteEntry(null, 'bloom-abc123', 'profile_1', 'feed', 1);
     expect(deleteDoc).not.toHaveBeenCalled();
   });
 
   it('calls deleteDoc with the correct doc ref', async () => {
-    await deleteEntry(mockDb as never, 'profile_1', 'diaper', 7);
+    await deleteEntry(mockDb as never, 'bloom-abc123', 'profile_1', 'diaper', 7);
     expect(doc).toHaveBeenCalledWith(mockCol, '7');
     expect(deleteDoc).toHaveBeenCalledWith(mockDocRef);
   });
@@ -320,20 +331,20 @@ describe('category-specific helpers', () => {
     vi.clearAllMocks();
   });
 
-  it('getFeedEntries passes "feed" as the category', async () => {
+  it('getFeedEntries passes "feed" as the category with familyCode', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getFeedEntries(mockDb as never, 'profile_1');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'profiles', 'profile_1', 'feed');
+    await getFeedEntries(mockDb as never, 'bloom-abc123', 'profile_1');
+    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-abc123', 'profiles', 'profile_1', 'feed');
   });
 
-  it('getDiaperEntries passes "diaper" as the category', async () => {
+  it('getDiaperEntries passes "diaper" as the category with familyCode', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({ docs: [] } as never);
-    await getDiaperEntries(mockDb as never, 'profile_1');
-    expect(collection).toHaveBeenCalledWith(mockDb, 'profiles', 'profile_1', 'diaper');
+    await getDiaperEntries(mockDb as never, 'bloom-abc123', 'profile_1');
+    expect(collection).toHaveBeenCalledWith(mockDb, 'families', 'bloom-abc123', 'profiles', 'profile_1', 'diaper');
   });
 
   it('all helpers return empty array when db is null', async () => {
-    expect(await getFeedEntries(null, 'p')).toEqual([]);
-    expect(await getDiaperEntries(null, 'p')).toEqual([]);
+    expect(await getFeedEntries(null, 'bloom-abc123', 'p')).toEqual([]);
+    expect(await getDiaperEntries(null, 'bloom-abc123', 'p')).toEqual([]);
   });
 });

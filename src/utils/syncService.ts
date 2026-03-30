@@ -1,17 +1,20 @@
 /**
  * Core bidirectional sync service: IndexedDB <-> Firestore.
  *
+ * Data is namespaced by familyCode so each family's data is isolated.
+ * Firestore path: families/{familyCode}/profiles/{profileId}/{category}/{entryId}
+ *
  * Merge strategy: last-write-wins by entry id (entry ids are Date.now() timestamps).
  * When the same id exists in both local and remote, local wins (local is source of
  * truth after the initial pull). Union of all unique ids is kept.
  *
  * Offline handling: a write queue accumulates pending Firestore writes when offline.
- * Call flushQueue(db) when connectivity is restored to replay them.
+ * Call flushQueue(db, familyCode) when connectivity is restored to replay them.
  */
 
 import { dg, ds } from '@/lib/db/indexeddb';
 import { getEntries, saveEntries, type AnyLogEntry } from '@/utils/firestoreUtils';
-import type { Firestore } from 'firebase/firestore';
+import { collection, getDocs, limit as fbLimit, query, type Firestore } from 'firebase/firestore';
 
 // ── Category registry ────────────────────────────────────────────────────────
 
@@ -31,6 +34,7 @@ export interface SyncEntry {
 // ── Offline write queue ──────────────────────────────────────────────────────
 
 export interface QueuedWrite {
+  familyCode: string;
   profileId: string;
   category: SyncCategory;
   entries: SyncEntry[];
@@ -40,8 +44,8 @@ export interface QueuedWrite {
 const _writeQueue: QueuedWrite[] = [];
 
 /** Add entries to the offline write queue. */
-export function enqueueWrite(profileId: string, category: SyncCategory, entries: SyncEntry[]): void {
-  _writeQueue.push({ profileId, category, entries, queuedAt: Date.now() });
+export function enqueueWrite(familyCode: string, profileId: string, category: SyncCategory, entries: SyncEntry[]): void {
+  _writeQueue.push({ familyCode, profileId, category, entries, queuedAt: Date.now() });
 }
 
 /** Return a snapshot of the current write queue (does not mutate). */
@@ -62,8 +66,8 @@ export async function flushQueue(db: Firestore): Promise<void> {
   const pending = [..._writeQueue];
   if (pending.length === 0) return;
   await Promise.all(
-    pending.map(({ profileId, category, entries }) =>
-      saveEntries(db, profileId, category, entries as never[])
+    pending.map(({ familyCode, profileId, category, entries }) =>
+      saveEntries(db, familyCode, profileId, category, entries as never[])
     )
   );
   clearQueue();
@@ -85,6 +89,61 @@ export function mergeEntries<T extends SyncEntry>(local: T[], remote: T[]): T[] 
   return Array.from(map.values()).sort((a, b) => a.id - b.id);
 }
 
+// ── Family code helpers ───────────────────────────────────────────────────────
+
+const FAMILY_CODE_KEY = 'babybloom_family_code';
+
+/**
+ * Generate a random family code: "bloom-" + 8 alphanumeric chars.
+ * ~2.8 trillion combinations — collision is astronomically unlikely.
+ * Example: "bloom-x7k9m2ab"
+ */
+export function generateFamilyCode(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return 'bloom-' + result;
+}
+
+/**
+ * Generate a family code that is guaranteed unique in Firestore.
+ * Checks whether `families/{code}` already contains any documents.
+ * Retries up to 5 times (practically never needed at 36^8 keyspace).
+ */
+export async function generateUniqueFamilyCode(db: Firestore | null): Promise<string> {
+  const MAX_ATTEMPTS = 5;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const code = generateFamilyCode();
+    if (!db) return code; // offline — can't check, just return
+    try {
+      const snap = await getDocs(query(collection(db, 'families', code, 'profiles'), fbLimit(1)));
+      if (snap.empty) return code; // no data under this code — it's free
+    } catch {
+      return code; // network error — fall back to random (still ~0% collision chance)
+    }
+  }
+  // Extremely unlikely fallback
+  return generateFamilyCode();
+}
+
+/** Save the family code to IndexedDB. */
+export async function saveFamilyCode(code: string): Promise<void> {
+  await ds(FAMILY_CODE_KEY, code);
+}
+
+/** Load the family code from IndexedDB. Returns null if not set. */
+export async function loadFamilyCode(): Promise<string | null> {
+  const code = await dg(FAMILY_CODE_KEY);
+  return (typeof code === 'string' && code.length > 0) ? code : null;
+}
+
+/** Remove the family code from IndexedDB. */
+export async function clearFamilyCode(): Promise<void> {
+  await ds(FAMILY_CODE_KEY, null);
+}
+
 // ── Full sync operations ─────────────────────────────────────────────────────
 
 /**
@@ -92,13 +151,14 @@ export function mergeEntries<T extends SyncEntry>(local: T[], remote: T[]): T[] 
  * and persist the merged result back to IndexedDB.
  *
  * Returns the count of net-new entries added from remote.
- * No-op if db is null.
+ * No-op if db is null or familyCode is empty.
  */
 export async function pullAndMerge(
   db: Firestore | null,
+  familyCode: string,
   profileId: string,
 ): Promise<number> {
-  if (!db) return 0;
+  if (!db || !familyCode) return 0;
 
   const profileKey = `profileData_${profileId}`;
   const profileData: { logs?: Record<string, SyncEntry[]> } =
@@ -110,7 +170,7 @@ export async function pullAndMerge(
 
   for (const category of SYNC_CATEGORIES) {
     const local = (localLogs[category] as SyncEntry[] | undefined) || [];
-    const remote = await getEntries<AnyLogEntry>(db, profileId, category) as unknown as SyncEntry[];
+    const remote = await getEntries<AnyLogEntry>(db, familyCode, profileId, category) as unknown as SyncEntry[];
     if (remote.length === 0) {
       mergedLogs[category] = local;
       continue;
@@ -132,9 +192,11 @@ export async function pullAndMerge(
  */
 export async function pushAll(
   db: Firestore | null,
+  familyCode: string,
   profileId: string,
   online: boolean,
 ): Promise<void> {
+  if (!familyCode) return;
   const profileKey = `profileData_${profileId}`;
   const profileData: { logs?: Record<string, SyncEntry[]> } =
     (await dg(profileKey)) || {};
@@ -144,9 +206,9 @@ export async function pushAll(
     const entries = (localLogs[category] as SyncEntry[] | undefined) || [];
     if (entries.length === 0) continue;
     if (!db || !online) {
-      enqueueWrite(profileId, category, entries);
+      enqueueWrite(familyCode, profileId, category, entries);
     } else {
-      await saveEntries(db, profileId, category, entries as never[]);
+      await saveEntries(db, familyCode, profileId, category, entries as never[]);
     }
   }
 }

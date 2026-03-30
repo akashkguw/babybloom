@@ -2,17 +2,12 @@
  * Firebase Firestore configuration and initialization.
  *
  * This module manages the Firestore db instance lifecycle.
- * Call initFirebaseConfig(config) once (e.g. from a settings UI) to activate sync.
+ * Firebase is a service provided by the app — credentials are bundled via
+ * VITE_ environment variables (VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID,
+ * VITE_FIREBASE_APP_ID). If env vars are not set, sync is gracefully disabled.
+ *
+ * Call initFirebaseWithBundledConfig() on app mount to activate sync automatically.
  * All firestoreUtils helpers accept db: Firestore | null and are no-ops when null.
- *
- * Manual setup steps (for users):
- * 1. Go to https://console.firebase.google.com/ and create a project.
- * 2. Build → Firestore Database → Create database (start in test mode).
- * 3. Project Settings → Your apps → Add web app → copy the firebaseConfig object.
- * 4. In BabyBloom Settings, paste the config to enable cross-device sync.
- *
- * NOTE: Do NOT commit real Firebase credentials to source control.
- *       Users provide their own project credentials at runtime.
  */
 
 import { initializeApp, getApps } from 'firebase/app';
@@ -78,4 +73,36 @@ export function getFirestoreDb(): Firestore | null {
  */
 export function resetFirebaseConfig(): void {
   _db = null;
+}
+
+/**
+ * Read Firebase credentials from VITE_ environment variables.
+ * Returns null if any required variable (apiKey, projectId, appId) is missing.
+ * Users never supply credentials — the app owner bundles them at build time.
+ */
+export function getBundledConfig(): FirestoreProjectConfig | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const env = (import.meta as any).env ?? {};
+  const apiKey = env.VITE_FIREBASE_API_KEY as string | undefined;
+  const projectId = env.VITE_FIREBASE_PROJECT_ID as string | undefined;
+  const appId = env.VITE_FIREBASE_APP_ID as string | undefined;
+  if (!apiKey || !projectId || !appId) return null;
+  return { apiKey, projectId, appId };
+}
+
+/**
+ * Initialize Firebase using bundled VITE_ env vars.
+ * Returns the Firestore db instance on success, or null if env vars are absent.
+ * Safe to call multiple times — reuses the existing instance.
+ * Never throws; if initialization fails the sync is silently disabled.
+ */
+export function initFirebaseWithBundledConfig(): Firestore | null {
+  if (_db) return _db;
+  const config = getBundledConfig();
+  if (!config) return null;
+  try {
+    return initFirebaseConfig(config);
+  } catch {
+    return null;
+  }
 }

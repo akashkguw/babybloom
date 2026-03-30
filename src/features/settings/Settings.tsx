@@ -6,12 +6,14 @@ import Icon from '@/components/shared/Icon';
 import ProfileManager from '@/features/profiles/ProfileManager';
 import SiriShortcutsSetup from '@/features/shortcuts/SiriShortcutsSetup';
 import HeroBackgroundPicker from '@/features/settings/HeroBackgroundPicker';
+import FirebaseSyncSection from '@/features/settings/FirebaseSyncSection';
 import { today } from '@/lib/utils/date';
 import { isValidBirthDate } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
 import { dcl } from '@/lib/db/indexeddb';
 import { getAvailableCountries } from '@/lib/constants/countries';
 import type { CountryCode, CountryConfig } from '@/lib/constants/countries';
+import type { SyncStatus } from '@/hooks/useFirebaseSync';
 
 interface SettingsProps {
   onClose: () => void;
@@ -37,6 +39,8 @@ interface SettingsProps {
   setCountry: (code: CountryCode) => void;
   countryConfig: CountryConfig;
   onHeroBgChange?: (bg: any) => void;
+  firestoreSyncStatus?: SyncStatus;
+  firestoreLastSyncedAt?: number | null;
 }
 
 /* Section with Icon-based header — professional, consistent iconography */
@@ -97,6 +101,8 @@ export default function Settings({
   setCountry,
   countryConfig,
   onHeroBgChange,
+  firestoreSyncStatus,
+  firestoreLastSyncedAt,
 }: SettingsProps) {
   const countries = getAvailableCountries();
 
@@ -313,8 +319,18 @@ export default function Settings({
           <SiriShortcutsSetup volumeUnit={volumeUnit} />
         </Section>
 
-        {/* ─── Group: Data & Support ─── */}
-        <GroupLabel label="Data & Support" />
+        {/* ─── Group: Sync & Data ─── */}
+        <GroupLabel label="Sync & Data" />
+
+        <Section title="Firebase Autosync" iconName="database" iconColor={C.s}>
+          <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>
+            Baby data syncs automatically across devices.
+          </div>
+          <FirebaseSyncSection
+            syncStatus={firestoreSyncStatus}
+            lastSyncedAt={firestoreLastSyncedAt}
+          />
+        </Section>
 
         <Section title="Guide" iconName="book" iconColor={C.s}>
           <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.4 }}>

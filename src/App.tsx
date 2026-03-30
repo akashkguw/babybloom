@@ -13,7 +13,8 @@ import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
-import { useFirebaseSync } from '@/features/sync/useFirebaseSync';
+import { useFirebaseSync } from '@/hooks/useFirebaseSync';
+import SyncStatusBadge from '@/components/SyncStatusBadge';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
@@ -232,9 +233,8 @@ function App() {
     spd('logs', v);
   };
 
-  // Firebase autosync — runs in background, syncs logs across devices when configured
-  // Declared after setLogs since it receives setLogs as a callback
-  const firebaseSyncState = useFirebaseSync({ logs, setLogs, profileId: activeProfile });
+  // Firebase autosync — uses bundled VITE_ env vars (no user config needed)
+  const firebaseSyncState = useFirebaseSync(activeProfile != null ? String(activeProfile) : null);
 
   const setTeeth = (fn: any) => {
     if (typeof fn === 'function') {
@@ -719,6 +719,8 @@ function App() {
           country={country}
           setCountry={setCountry}
           countryConfig={countryConfig}
+          firestoreSyncStatus={firebaseSyncState.syncStatus}
+          firestoreLastSyncedAt={firebaseSyncState.lastSyncedAt}
         />
       ) : (
         <>

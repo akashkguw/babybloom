@@ -19,8 +19,7 @@ import { toast } from '@/lib/utils/toast';
 import { today } from '@/lib/utils/date';
 import QRCode from '@/features/sync/QRCode';
 import QRScanner from '@/features/sync/QRScanner';
-import FirebaseSyncSetup from '@/features/sync/FirebaseSyncSetup';
-import type { FirebaseSyncState } from '@/features/sync/useFirebaseSync';
+import type { UseFirebaseSyncReturn, SyncStatus } from '@/hooks/useFirebaseSync';
 
 interface LogEntry {
   id: number;
@@ -52,7 +51,7 @@ interface PartnerSyncProps {
   babyName: string;
   birth: string | null;
   onClose: () => void;
-  syncState?: FirebaseSyncState;
+  syncState?: UseFirebaseSyncReturn;
 }
 
 interface SyncPayload {
@@ -143,6 +142,7 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose, s
   const [mergePreview, setMergePreview] = useState<{ incoming: SyncPayload; newCount: number } | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [joinCode, setJoinCode] = useState<string>('');
 
   const generateCode = useCallback(() => {
     const payload: SyncPayload = {
@@ -301,25 +301,27 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose, s
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ fontSize: 28 }}>
-                  {syncState?.configured ? (syncState.status === 'synced' ? '☁️' : '🔄') : '⚡'}
+                  {syncState?.syncStatus === 'synced' ? '☁️' : syncState?.syncStatus === 'error' ? '⚠️' : '🔄'}
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: C.t }}>Auto Sync</div>
-                    {syncState?.configured && (
+                    {syncState && syncState.syncStatus !== 'idle' && (
                       <div style={{
                         fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 6,
-                        background: syncState.status === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
-                        color: syncState.status === 'error' ? C.w : C.ok,
+                        background: syncState.syncStatus === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
+                        color: syncState.syncStatus === 'error' ? C.w : C.ok,
                       }}>
-                        {syncState.status === 'synced' ? 'ON' : syncState.status === 'error' ? 'ERR' : '...'}
+                        {syncState.syncStatus === 'synced' ? 'ON' : syncState.syncStatus === 'error' ? 'ERR' : '...'}
                       </div>
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: C.tl }}>
-                    {syncState?.configured
-                      ? `Firebase sync active · key: ${syncState.syncKey}`
-                      : 'Set up Firebase for real-time cross-device sync'}
+                    {syncState?.syncStatus === 'synced'
+                      ? 'Firebase sync active — all devices stay in sync automatically'
+                      : syncState?.syncStatus === 'error'
+                      ? 'Firebase sync error — check connection'
+                      : 'Real-time cross-device sync via Firebase'}
                   </div>
                 </div>
               </div>
@@ -337,14 +339,117 @@ export default function PartnerSync({ logs, setLogs, babyName, birth, onClose, s
             <div style={{ fontSize: 15, fontWeight: 700, color: C.t, marginBottom: 14 }}>
               Auto Sync via Firebase
             </div>
-            {syncState
-              ? <FirebaseSyncSetup syncState={syncState} />
-              : (
-                <div style={{ fontSize: 13, color: C.tl }}>
-                  Auto sync is not available. Please reload the app and try again.
-                </div>
-              )
-            }
+            {syncState ? (
+              <div>
+                {/* Family Code Section */}
+                <Cd style={{ padding: 16, marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 8 }}>
+                    Family Code
+                  </div>
+                  {syncState.familyCode ? (
+                    <div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: C.cd, borderRadius: 10, padding: '10px 14px',
+                        border: '1px solid ' + C.b,
+                      }}>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: C.s, fontFamily: 'monospace', letterSpacing: 1.5 }}>
+                          {syncState.familyCode}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(syncState.familyCode!).then(() => toast('Family code copied!')).catch(() => {});
+                          }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                        >
+                          <Ic n="copy" s={18} c={C.tl} />
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.tl, marginTop: 6, lineHeight: 1.5 }}>
+                        Share this code with your partner. They enter it on their device under Auto Sync to link your data.
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 12, color: C.tl, marginBottom: 10, lineHeight: 1.5 }}>
+                        Generate a family code to start syncing, or enter your partner's code to join their data.
+                      </div>
+                      <Btn
+                        label="Generate new family code"
+                        onClick={async () => {
+                          const code = await syncState.generateAndSaveFamilyCode();
+                          toast('Family code created: ' + code);
+                        }}
+                        color={C.s}
+                        full
+                      />
+                      <div style={{ textAlign: 'center', fontSize: 12, color: C.tl, margin: '10px 0' }}>or</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="text"
+                          value={joinCode}
+                          onChange={(e) => setJoinCode(e.target.value.toLowerCase().trim())}
+                          placeholder="bloom-xxxxxx"
+                          style={{
+                            flex: 1,
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            border: '1px solid ' + C.b,
+                            background: C.cd,
+                            fontSize: 14,
+                            fontFamily: 'monospace',
+                            color: C.t,
+                          }}
+                        />
+                        <Btn
+                          label="Join"
+                          onClick={async () => {
+                            if (!joinCode || !joinCode.startsWith('bloom-') || joinCode.length < 12) {
+                              toast('Enter a valid family code (bloom-xxxxxxxx)');
+                              return;
+                            }
+                            await syncState.setFamilyCode(joinCode);
+                            setJoinCode('');
+                            toast('Joined family: ' + joinCode);
+                            syncState.syncAll();
+                          }}
+                          color={C.a}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Cd>
+
+                {/* Sync Status */}
+                <Cd style={{ padding: 16, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Ic n="cloud" s={18} c={syncState.syncStatus === 'synced' ? C.ok : syncState.syncStatus === 'error' ? C.w : C.tl} />
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.t }}>Sync Status</span>
+                    </div>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: syncState.syncStatus === 'synced' ? C.ok : syncState.syncStatus === 'error' ? C.w : C.s,
+                    }}>
+                      {syncState.syncStatus === 'synced' ? 'Synced' : syncState.syncStatus === 'syncing' ? 'Syncing…' : syncState.syncStatus === 'error' ? 'Error' : syncState.familyCode ? 'Ready' : 'No family code'}
+                    </span>
+                  </div>
+                  {syncState.lastSyncedAt && (
+                    <div style={{ fontSize: 12, color: C.tl }}>
+                      Last synced: {new Date(syncState.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </Cd>
+
+                {syncState.familyCode && (
+                  <Btn label="Sync now" onClick={() => syncState.syncAll()} color={C.s} full />
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: C.tl }}>
+                Auto sync is not available. Please reload the app and try again.
+              </div>
+            )}
             <div style={{ marginTop: 16 }}>
               <Btn label="← Back" onClick={() => setMode('menu')} outline />
             </div>

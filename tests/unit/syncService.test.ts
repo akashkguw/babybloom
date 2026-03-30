@@ -14,12 +14,12 @@ vi.mock('@/lib/db/indexeddb', () => ({
 }));
 
 // ── Mock @/utils/firestoreUtils ───────────────────────────────────────────────
-const mockGetEntries = vi.fn(async (_db: unknown, _pid: unknown, _cat: unknown) => [] as { id: number; [key: string]: unknown }[]);
-const mockSaveEntries = vi.fn(async (_db: unknown, _pid: unknown, _cat: unknown, _entries: unknown) => undefined);
+const mockGetEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown) => [] as { id: number; [key: string]: unknown }[]);
+const mockSaveEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown, _entries: unknown) => undefined);
 
 vi.mock('@/utils/firestoreUtils', () => ({
-  getEntries: (db: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, pid, cat),
-  saveEntries: (db: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, pid, cat, entries),
+  getEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, fc, pid, cat),
+  saveEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
 }));
 
 // ── Mock firebase/firestore (needed by firestoreUtils types) ──────────────────
@@ -123,31 +123,32 @@ describe('offline write queue', () => {
   });
 
   it('enqueueWrite adds an item to the queue', () => {
-    enqueueWrite('p1', 'feed', [{ id: 1 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'feed', [{ id: 1 }]);
     const q = getQueue();
     expect(q).toHaveLength(1);
+    expect(q[0].familyCode).toBe('bloom-abc123');
     expect(q[0].profileId).toBe('p1');
     expect(q[0].category).toBe('feed');
     expect(q[0].entries).toEqual([{ id: 1 }]);
   });
 
   it('getQueue returns a snapshot — mutations do not affect the internal queue', () => {
-    enqueueWrite('p1', 'feed', [{ id: 1 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'feed', [{ id: 1 }]);
     const q = getQueue();
-    q.push({ profileId: 'x', category: 'diaper', entries: [], queuedAt: 0 });
+    q.push({ familyCode: 'bloom-x', profileId: 'x', category: 'diaper', entries: [], queuedAt: 0 });
     expect(getQueue()).toHaveLength(1);
   });
 
   it('clearQueue empties the queue', () => {
-    enqueueWrite('p1', 'feed', [{ id: 1 }]);
-    enqueueWrite('p1', 'diaper', [{ id: 2 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'feed', [{ id: 1 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'diaper', [{ id: 2 }]);
     clearQueue();
     expect(getQueue()).toEqual([]);
   });
 
   it('enqueueWrite records queuedAt timestamp', () => {
     const before = Date.now();
-    enqueueWrite('p1', 'sleep', [{ id: 100 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'sleep', [{ id: 100 }]);
     const after = Date.now();
     const item = getQueue()[0];
     expect(item.queuedAt).toBeGreaterThanOrEqual(before);
@@ -169,23 +170,23 @@ describe('flushQueue', () => {
   });
 
   it('calls saveEntries for each queued write', async () => {
-    enqueueWrite('p1', 'feed', [{ id: 1 }]);
-    enqueueWrite('p1', 'diaper', [{ id: 2 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'feed', [{ id: 1 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'diaper', [{ id: 2 }]);
     await flushQueue(mockDb);
     expect(mockSaveEntries).toHaveBeenCalledTimes(2);
   });
 
   it('clears the queue after flushing', async () => {
-    enqueueWrite('p1', 'feed', [{ id: 1 }]);
+    enqueueWrite('bloom-abc123', 'p1', 'feed', [{ id: 1 }]);
     await flushQueue(mockDb);
     expect(getQueue()).toEqual([]);
   });
 
-  it('passes correct arguments to saveEntries', async () => {
+  it('passes correct arguments to saveEntries including familyCode', async () => {
     const entries = [{ id: 42, date: '2025-01-01' }];
-    enqueueWrite('profile_1', 'sleep', entries);
+    enqueueWrite('bloom-xyz789', 'profile_1', 'sleep', entries);
     await flushQueue(mockDb);
-    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'profile_1', 'sleep', entries);
+    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'bloom-xyz789', 'profile_1', 'sleep', entries);
   });
 });
 
@@ -199,24 +200,24 @@ describe('pullAndMerge', () => {
   });
 
   it('returns 0 and does nothing when db is null', async () => {
-    const result = await pullAndMerge(null, 'p1');
+    const result = await pullAndMerge(null, 'bloom-abc123', 'p1');
     expect(result).toBe(0);
     expect(dg).not.toHaveBeenCalled();
   });
 
   it('returns 0 when all remote categories are empty', async () => {
-    const result = await pullAndMerge(mockDb, 'p1');
+    const result = await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     expect(result).toBe(0);
   });
 
   it('merges remote entries into empty local store', async () => {
     const remoteFeeds = [{ id: 100 }, { id: 200 }];
-    mockGetEntries.mockImplementation(async (_db: unknown, _pid: unknown, cat: unknown) => {
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
       if (cat === 'feed') return remoteFeeds;
       return [];
     });
 
-    const newCount = await pullAndMerge(mockDb, 'p1');
+    const newCount = await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     expect(newCount).toBe(2);
 
     const saved = mockStore['profileData_p1'] as { logs: Record<string, unknown[]> };
@@ -229,12 +230,12 @@ describe('pullAndMerge', () => {
     const remoteNewEntry = { id: 200, type: 'remote-new' };
 
     mockStore['profileData_p1'] = { logs: { feed: [localEntry] } };
-    mockGetEntries.mockImplementation(async (_db: unknown, _pid: unknown, cat: unknown) => {
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
       if (cat === 'feed') return [remoteEntry, remoteNewEntry];
       return [];
     });
 
-    const newCount = await pullAndMerge(mockDb, 'p1');
+    const newCount = await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     // 1 new (id:200); id:100 is deduplicated, local wins
     expect(newCount).toBe(1);
 
@@ -247,7 +248,7 @@ describe('pullAndMerge', () => {
   it('preserves non-logs fields in the profile data', async () => {
     mockStore['profileData_p1'] = { logs: {}, birthDate: '2024-01-01', extra: 'preserved' };
 
-    await pullAndMerge(mockDb, 'p1');
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
 
     const saved = mockStore['profileData_p1'] as Record<string, unknown>;
     expect(saved.birthDate).toBe('2024-01-01');
@@ -255,18 +256,18 @@ describe('pullAndMerge', () => {
   });
 
   it('calls getEntries for all 10 categories', async () => {
-    await pullAndMerge(mockDb, 'p1');
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     expect(mockGetEntries).toHaveBeenCalledTimes(10);
   });
 
   it('returns 0 (not negative) when remote has fewer entries than local', async () => {
     mockStore['profileData_p1'] = { logs: { feed: [{ id: 1 }, { id: 2 }, { id: 3 }] } };
-    mockGetEntries.mockImplementation(async (_db: unknown, _pid: unknown, cat: unknown) => {
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
       if (cat === 'feed') return [{ id: 1 }]; // subset of local
       return [];
     });
 
-    const newCount = await pullAndMerge(mockDb, 'p1');
+    const newCount = await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
     expect(newCount).toBe(0);
   });
 });
@@ -281,7 +282,7 @@ describe('pushAll', () => {
   });
 
   it('does nothing when there are no local entries', async () => {
-    await pushAll(mockDb, 'p1', true);
+    await pushAll(mockDb, 'bloom-abc123', 'p1', true);
     expect(mockSaveEntries).not.toHaveBeenCalled();
     expect(getQueue()).toEqual([]);
   });
@@ -294,14 +295,14 @@ describe('pushAll', () => {
       },
     };
 
-    await pushAll(mockDb, 'p1', true);
+    await pushAll(mockDb, 'bloom-abc123', 'p1', true);
     expect(mockSaveEntries).toHaveBeenCalledTimes(2);
   });
 
   it('enqueues writes when offline (online=false)', async () => {
     mockStore['profileData_p1'] = { logs: { feed: [{ id: 1 }] } };
 
-    await pushAll(mockDb, 'p1', false);
+    await pushAll(mockDb, 'bloom-abc123', 'p1', false);
     expect(mockSaveEntries).not.toHaveBeenCalled();
     expect(getQueue()).toHaveLength(1);
     expect(getQueue()[0].category).toBe('feed');
@@ -310,24 +311,24 @@ describe('pushAll', () => {
   it('enqueues writes when db is null (even if online=true)', async () => {
     mockStore['profileData_p1'] = { logs: { sleep: [{ id: 5 }] } };
 
-    await pushAll(null, 'p1', true);
+    await pushAll(null, 'bloom-abc123', 'p1', true);
     expect(mockSaveEntries).not.toHaveBeenCalled();
     expect(getQueue()).toHaveLength(1);
   });
 
-  it('passes correct profileId and category to saveEntries', async () => {
+  it('passes correct familyCode, profileId, and category to saveEntries', async () => {
     const entries = [{ id: 99 }];
     mockStore['profileData_profile_2'] = { logs: { growth: entries } };
 
-    await pushAll(mockDb, 'profile_2', true);
-    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'profile_2', 'growth', entries);
+    await pushAll(mockDb, 'bloom-xyz789', 'profile_2', true);
+    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'bloom-xyz789', 'profile_2', 'growth', entries);
   });
 
   it('skips categories with empty entry arrays', async () => {
     mockStore['profileData_p1'] = { logs: { feed: [], diaper: [{ id: 1 }] } };
 
-    await pushAll(mockDb, 'p1', true);
+    await pushAll(mockDb, 'bloom-abc123', 'p1', true);
     expect(mockSaveEntries).toHaveBeenCalledTimes(1);
-    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'p1', 'diaper', [{ id: 1 }]);
+    expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'bloom-abc123', 'p1', 'diaper', [{ id: 1 }]);
   });
 });
