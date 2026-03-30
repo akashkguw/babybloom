@@ -160,9 +160,13 @@ export default function HomeTab({
   }, []);
 
   // ═══ Sleep detection (move before quickLogWarnings so it can suppress sleep-time warnings) ═══
-  const lastSleepEntry = (logs.sleep || []).find(
-    (e) => e.type === 'Nap' || e.type === 'Night Sleep' || e.type === 'Wake Up'
-  );
+  // Use reduce to find the entry with the highest id (most recent), independent of array order.
+  // After sync, mergeEntries returns ascending order — .find() would return the oldest entry,
+  // so a synced Wake Up (higher id) would be ignored. Max-id scan fixes this for both devices.
+  const lastSleepEntry = (logs.sleep || []).reduce<LogEntry | undefined>((max, e) => {
+    if (e.type !== 'Nap' && e.type !== 'Night Sleep' && e.type !== 'Wake Up') return max;
+    return (!max || e.id > max.id) ? e : max;
+  }, undefined);
   let isSleeping =
     lastSleepEntry && (lastSleepEntry.type === 'Nap' || lastSleepEntry.type === 'Night Sleep') || false;
 

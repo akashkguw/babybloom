@@ -147,7 +147,7 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     return () => window.removeEventListener('online', handleOnline);
   }, [syncAll]);
 
-  // Poll for new data from partner every 30 seconds while app is open
+  // Poll for new data from partner every 60 seconds while app is open
   useEffect(() => {
     const interval = setInterval(() => {
       if (isMountedRef.current && familyCodeRef.current && navigator.onLine) {
