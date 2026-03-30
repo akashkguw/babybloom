@@ -16,7 +16,7 @@ vi.mock('@/lib/db/indexeddb', () => ({
 // ── Mock @/utils/firestoreUtils ───────────────────────────────────────────────
 const mockGetEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown) => [] as { id: number; [key: string]: unknown }[]);
 const mockSaveEntries = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown, _entries: unknown) => undefined);
-const mockDeleteEncryptedCategory = vi.fn(async () => undefined);
+const mockDeleteEncryptedCategory = vi.fn(async (_db: unknown, _fc: unknown, _pid: unknown, _cat: unknown) => undefined);
 
 vi.mock('@/utils/firestoreUtils', () => ({
   getEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown) => mockGetEntries(db, fc, pid, cat),
