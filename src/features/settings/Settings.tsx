@@ -41,6 +41,7 @@ interface SettingsProps {
   onHeroBgChange?: (bg: any) => void;
   firestoreSyncStatus?: SyncStatus;
   firestoreLastSyncedAt?: number | null;
+  firestoreSyncError?: string | null;
 }
 
 /* Section with Icon-based header — professional, consistent iconography */
@@ -103,6 +104,7 @@ export default function Settings({
   onHeroBgChange,
   firestoreSyncStatus,
   firestoreLastSyncedAt,
+  firestoreSyncError,
 }: SettingsProps) {
   const countries = getAvailableCountries();
 
@@ -329,6 +331,7 @@ export default function Settings({
           <FirebaseSyncSection
             syncStatus={firestoreSyncStatus}
             lastSyncedAt={firestoreLastSyncedAt}
+            syncError={firestoreSyncError}
           />
         </Section>
 

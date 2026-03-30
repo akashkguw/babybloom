@@ -35,6 +35,7 @@ export interface UseFirebaseSyncReturn {
   syncStatus: SyncStatus;
   lastSyncedAt: number | null;
   familyCode: string | null;
+  syncError: string | null;
   setFamilyCode: (code: string) => Promise<void>;
   generateAndSaveFamilyCode: () => Promise<string>;
 }
@@ -49,6 +50,7 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [familyCode, setFamilyCodeState] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const familyCodeRef = useRef<string | null>(null);
 
@@ -82,11 +84,31 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     // Auto-initialize from bundled env-var credentials if not yet done
     initFirebaseWithBundledConfig();
     const db = getFirestoreDb();
-    const code = familyCodeRef.current;
-    if (!db || !profileId || !code) return;
+
+    // Firebase not configured — stay idle (no env vars set)
+    if (!db || !profileId) return;
     if (!isMountedRef.current) return;
 
+    // Auto-generate a family code on first use if Firebase is configured
+    let code = familyCodeRef.current;
+    if (!code) {
+      try {
+        code = await generateUniqueFamilyCode(db);
+        await saveFamilyCode(code);
+        familyCodeRef.current = code;
+        if (isMountedRef.current) setFamilyCodeState(code);
+      } catch (err) {
+        if (isMountedRef.current) {
+          const msg = err instanceof Error ? err.message : 'Failed to generate family code';
+          setSyncError(msg);
+          setSyncStatus('error');
+        }
+        return;
+      }
+    }
+
     setSyncStatus('syncing');
+    setSyncError(null);
 
     try {
       if (navigator.onLine) {
@@ -101,10 +123,13 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
 
       if (isMountedRef.current) {
         setSyncStatus('synced');
+        setSyncError(null);
         setLastSyncedAt(Date.now());
       }
-    } catch {
+    } catch (err) {
       if (isMountedRef.current) {
+        const msg = err instanceof Error ? err.message : 'Sync failed';
+        setSyncError(msg);
         setSyncStatus('error');
       }
     }
@@ -113,12 +138,12 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
   // Initial sync on mount; cleanup marks component as unmounted
   useEffect(() => {
     isMountedRef.current = true;
-    // Wait for familyCode to load before first sync
+    // Load family code, then always attempt sync (syncAll auto-generates code if needed)
     loadFamilyCode().then((code) => {
       familyCodeRef.current = code;
       if (isMountedRef.current) {
         setFamilyCodeState(code);
-        if (code) syncAll();
+        syncAll();
       }
     });
     return () => {
@@ -133,5 +158,5 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     return () => window.removeEventListener('online', handleOnline);
   }, [syncAll]);
 
-  return { syncAll, syncStatus, lastSyncedAt, familyCode, setFamilyCode, generateAndSaveFamilyCode };
+  return { syncAll, syncStatus, lastSyncedAt, familyCode, syncError, setFamilyCode, generateAndSaveFamilyCode };
 }

@@ -6,6 +6,7 @@ import type { SyncStatus } from '@/hooks/useFirebaseSync';
 interface FirebaseSyncSectionProps {
   syncStatus?: SyncStatus;
   lastSyncedAt?: number | null;
+  syncError?: string | null;
 }
 
 /**
@@ -13,7 +14,7 @@ interface FirebaseSyncSectionProps {
  * Firebase credentials are bundled by the app at build time (VITE_ env vars) —
  * users never need to enter credentials.
  */
-export default function FirebaseSyncSection({ syncStatus, lastSyncedAt }: FirebaseSyncSectionProps) {
+export default function FirebaseSyncSection({ syncStatus, lastSyncedAt, syncError }: FirebaseSyncSectionProps) {
   const statusColor =
     syncStatus === 'synced' ? C.ok
     : syncStatus === 'error' ? '#FF5252'
@@ -46,6 +47,14 @@ export default function FirebaseSyncSection({ syncStatus, lastSyncedAt }: Fireba
           {statusLabel}
         </span>
       </div>
+      {syncStatus === 'error' && syncError && (
+        <div
+          data-testid="sync-error-detail"
+          style={{ fontSize: 11, color: '#FF5252', marginTop: 4, lineHeight: 1.4 }}
+        >
+          {syncError}
+        </div>
+      )}
     </div>
   );
 }

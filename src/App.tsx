@@ -722,6 +722,7 @@ function App() {
           countryConfig={countryConfig}
           firestoreSyncStatus={firebaseSyncState.syncStatus}
           firestoreLastSyncedAt={firebaseSyncState.lastSyncedAt}
+          firestoreSyncError={firebaseSyncState.syncError}
         />
       ) : (
         <>

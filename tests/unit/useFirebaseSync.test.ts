@@ -105,14 +105,6 @@ describe('useFirebaseSync', () => {
       expect(mockPullAndMerge).not.toHaveBeenCalled();
     });
 
-    it('does not call pullAndMerge when familyCode is null', async () => {
-      mockGetFirestoreDb.mockReturnValue(mockDb);
-      mockLoadFamilyCode.mockResolvedValue(null);
-      renderHook(() => useFirebaseSync('p1'));
-      await waitFor(() => {});
-      expect(mockPullAndMerge).not.toHaveBeenCalled();
-    });
-
     it('status stays idle when unconfigured', async () => {
       mockGetFirestoreDb.mockReturnValue(null);
       const { result } = renderHook(() => useFirebaseSync('p1'));
@@ -286,6 +278,83 @@ describe('useFirebaseSync', () => {
       expect(mockGenerateUniqueFamilyCode).toHaveBeenCalled();
       expect(mockSaveFamilyCode).toHaveBeenCalledWith('bloom-newcode1');
       expect(result.current.familyCode).toBe('bloom-newcode1');
+    });
+  });
+
+  describe('syncError', () => {
+    it('syncError starts as null', () => {
+      const { result } = renderHook(() => useFirebaseSync(null));
+      expect(result.current.syncError).toBeNull();
+    });
+
+    it('syncError is populated when pullAndMerge throws', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockPullAndMerge.mockRejectedValue(new Error('Firestore permission denied'));
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => {
+        expect(result.current.syncStatus).toBe('error');
+      });
+      expect(result.current.syncError).toBe('Firestore permission denied');
+    });
+
+    it('syncError is null after successful sync', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => {
+        expect(result.current.syncStatus).toBe('synced');
+      });
+      expect(result.current.syncError).toBeNull();
+    });
+
+    it('syncError captures flushQueue error message', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockFlushQueue.mockRejectedValue(new Error('Network unavailable'));
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => expect(result.current.syncStatus).toBe('error'));
+      expect(result.current.syncError).toBe('Network unavailable');
+    });
+  });
+
+  describe('auto-generate family code', () => {
+    it('auto-generates family code when db is configured but no code exists', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockLoadFamilyCode.mockResolvedValue(null);
+      mockGenerateUniqueFamilyCode.mockResolvedValue('bloom-autogen1');
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => {
+        expect(result.current.syncStatus).toBe('synced');
+      });
+      expect(mockGenerateUniqueFamilyCode).toHaveBeenCalled();
+      expect(mockSaveFamilyCode).toHaveBeenCalledWith('bloom-autogen1');
+      expect(result.current.familyCode).toBe('bloom-autogen1');
+    });
+
+    it('sets syncError when auto-generation throws', async () => {
+      mockGetFirestoreDb.mockReturnValue(mockDb);
+      mockLoadFamilyCode.mockResolvedValue(null);
+      mockGenerateUniqueFamilyCode.mockRejectedValue(new Error('Code gen failed'));
+
+      const { result } = renderHook(() => useFirebaseSync('p1'));
+
+      await waitFor(() => expect(result.current.syncStatus).toBe('error'));
+      expect(result.current.syncError).toBe('Code gen failed');
+    });
+
+    it('does not auto-generate when db is null', async () => {
+      mockGetFirestoreDb.mockReturnValue(null);
+      mockLoadFamilyCode.mockResolvedValue(null);
+
+      renderHook(() => useFirebaseSync('p1'));
+      await waitFor(() => {});
+
+      expect(mockGenerateUniqueFamilyCode).not.toHaveBeenCalled();
     });
   });
 
