@@ -14,7 +14,25 @@ echo "Repo: $REPO_DIR"
 
 ---
 
-## Step 1 — Pick the next implementation issue and mark in_progress
+## Step 1 — Identify the issue and mark in_progress
+
+**If the issue JSON was provided inline in the prompt:** Use it directly — do NOT read pending-issues.json to find the issue. Just mark it in_progress:
+
+```bash
+python3 -c "
+import json
+path = '$REPO_DIR/bot/pending-issues.json'
+q = json.load(open(path, encoding='utf-8'))
+for i in q:
+    if i.get('number') == ISSUE_NUMBER:
+        i['status'] = 'in_progress'
+        break
+json.dump(q, open(path, 'w', encoding='utf-8'), indent=2)
+print('Marked #ISSUE_NUMBER as in_progress')
+"
+```
+
+**If no issue was provided inline (standalone run):** Find the next triaged issue:
 
 ```bash
 python3 -c "

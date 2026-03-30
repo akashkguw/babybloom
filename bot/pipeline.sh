@@ -281,6 +281,57 @@ fi
 
 echo "📋 Work found: $HAS_WORK actionable issue(s), $UNPUSHED_COUNT unpushed commit(s)"
 
+# ─── Archive completed/skipped issues to reduce token usage ───
+# Moves terminal-state issues (implemented, skipped, failed+notified with 3+ retries)
+# to archived-issues.json. Strips verbose fields (enhanced_description, implementation_notes)
+# from the active file. This dramatically reduces tokens when Claude reads pending-issues.json.
+ARCHIVE_FILE="$BOT_DIR/archived-issues.json"
+ARCHIVED_COUNT=$(python3 -c "
+import json, os
+
+queue_path = '$QUEUE_FILE'
+archive_path = '$ARCHIVE_FILE'
+
+try:
+    queue = json.load(open(queue_path))
+except:
+    queue = []
+
+try:
+    archive = json.load(open(archive_path))
+except:
+    archive = []
+
+archive_nums = {i['number'] for i in archive}
+terminal = ('implemented', 'skipped', 'infra_implemented', 'documented', 'analyzed', 'rejected')
+
+active = []
+moved = 0
+for i in queue:
+    s = i.get('status', '')
+    is_terminal = s in terminal
+    is_dead_failed = s == 'failed' and i.get('notified') and i.get('retry_count', 0) >= 3
+    if is_terminal or is_dead_failed:
+        if i['number'] not in archive_nums:
+            archive.append(i)
+        moved += 1
+    else:
+        # Strip verbose fields from active issues to save tokens
+        i.pop('enhanced_description', None)
+        i.pop('implementation_notes', None)
+        active.append(i)
+
+if moved:
+    json.dump(active, open(queue_path, 'w'), indent=2)
+    json.dump(archive, open(archive_path, 'w'), indent=2)
+
+print(moved)
+" 2>/dev/null || echo 0)
+
+if [ "$ARCHIVED_COUNT" -gt 0 ]; then
+  echo "📦 Archived $ARCHIVED_COUNT completed issue(s) — active queue trimmed"
+fi
+
 # ─── Auto-retry failed issues (max 3 attempts) ───
 # Failed+notified issues with retry_count < 3 get reset to pending.
 # The previous failure_reason is preserved as prev_failure so Claude can learn from it.
@@ -506,19 +557,34 @@ except:
 
     # ═══ PHASE 1: TRIAGE (if pending) ═══
     if [ "$ISSUE_STATUS" = "pending" ]; then
+      # Extract current issue JSON inline so Claude doesn't read the whole pending-issues.json to find it
+      TRIAGE_ISSUE_JSON=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(json.dumps(i, indent=2))
+        break
+" 2>/dev/null)
+
       run_claude_phase "triage" "You are the BabyBloom triage agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 GITHUB_TOKEN=$GITHUB_TOKEN
 REPO=$REPO
 
+## Current Issue
+\`\`\`json
+$TRIAGE_ISSUE_JSON
+\`\`\`
+
 ## Instructions
 1. Read $REPO_DIR/bot/TRIAGE_SKILL.md
 2. SKIP the run-lock step — pipeline.sh handles serialization
 3. SKIP stale recovery — pipeline.sh already handled it
-4. Triage ONLY issue #$ISSUE_NUM: classify it, enrich the description, assign a route
+4. Triage ONLY issue #$ISSUE_NUM (details above): classify it, enrich the description, assign a route
 5. If route=implementation AND the issue is large (needs 3+ new files, external service integration, etc.), follow Step 3.5 to auto-split it into smaller sub-issues
-6. Update pending-issues.json with status=triaged (or split) and the route
+6. Update pending-issues.json with status=triaged (or split) and the route — do NOT read the full file to find the issue, just update by number
 7. Do NOT dispatch to a specialist — pipeline.sh will handle that separately
 8. STOP after triaging
 
@@ -618,15 +684,30 @@ make sure your implementation and tests are compatible from the start.
     if [ "$ISSUE_ROUTE" = "implementation" ]; then
       # ── Implementation: split into 3 sub-phases for token visibility ──
 
+      # Extract current issue JSON inline so Claude doesn't need to read the full pending-issues.json
+      ISSUE_JSON=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(json.dumps(i, indent=2))
+        break
+" 2>/dev/null)
+
       # Phase 2a: IMPL-CORE — read code, implement changes, write unit tests
       run_claude_phase "impl-core" "You are the BabyBloom implementation agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 $RETRY_CONTEXT
+## Current Issue
+\`\`\`json
+$ISSUE_JSON
+\`\`\`
+
 ## Instructions — CORE IMPLEMENTATION ONLY
 1. Read $REPO_DIR/bot/IMPL_SKILL.md for codebase map and conventions
-2. Process ONLY issue #$ISSUE_NUM (already triaged, route=implementation)
-3. Read the relevant source files (Step 2 of IMPL_SKILL.md)
+2. The issue details are above — do NOT read pending-issues.json to find the issue
+3. Read ONLY the source files relevant to this issue (Step 2 of IMPL_SKILL.md)
 4. Implement the code changes in src/ (Step 3 of IMPL_SKILL.md)
 5. Write unit tests in tests/unit/ for your changes
 6. Mark the issue as in_progress in pending-issues.json
@@ -748,17 +829,20 @@ for i in q:
 
 REPO_DIR=$REPO_DIR
 
+## Current Issue
+Issue #$ISSUE_NUM: $ISSUE_TITLE
+
 ## Instructions — COMMIT ONLY
 Code changes and tests for issue #$ISSUE_NUM have been implemented and verified. Your job is to commit.
 
-1. Read $REPO_DIR/bot/pending-issues.json to get issue #$ISSUE_NUM details
+1. Check git diff to see what files were changed
 2. Write implementation notes to the issue in pending-issues.json (list files changed, tests added, approach)
 3. Stage and commit:
    cd $REPO_DIR
    git config user.email \"akashgupta5384@gmail.com\"
    git config user.name \"Akash\"
    git add src/ tests/
-   git commit -m \"Implement: ISSUE_TITLE (closes #$ISSUE_NUM)
+   git commit -m \"Implement: $ISSUE_TITLE (closes #$ISSUE_NUM)
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\"
 4. Mark issue #$ISSUE_NUM as status=implemented in pending-issues.json
@@ -778,13 +862,28 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\"
         *)               SKILL_FILE="IMPL_SKILL.md" ;;
       esac
 
+      # Extract current issue JSON inline
+      SPECIALIST_ISSUE_JSON=$(python3 -c "
+import json
+q = json.load(open('$QUEUE_FILE'))
+for i in q:
+    if i.get('number') == $ISSUE_NUM:
+        print(json.dumps(i, indent=2))
+        break
+" 2>/dev/null)
+
       run_claude_phase "$ISSUE_ROUTE" "You are the BabyBloom $ISSUE_ROUTE agent running natively on macOS.
 
 REPO_DIR=$REPO_DIR
 
+## Current Issue
+\`\`\`json
+$SPECIALIST_ISSUE_JSON
+\`\`\`
+
 ## Instructions
 1. Read and follow $REPO_DIR/bot/$SKILL_FILE
-2. Process ONLY issue #$ISSUE_NUM
+2. The issue details are above — process ONLY issue #$ISSUE_NUM
 3. The issue has already been triaged (route=$ISSUE_ROUTE)
 4. Complete the work: implement, test, and commit (or analyze/document depending on route)
 5. STOP after completing this one issue
