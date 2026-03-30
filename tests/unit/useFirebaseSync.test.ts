@@ -320,41 +320,32 @@ describe('useFirebaseSync', () => {
     });
   });
 
-  describe('auto-generate family code', () => {
-    it('auto-generates family code when db is configured but no code exists', async () => {
+  describe('no-op when no family code', () => {
+    it('syncAll is a no-op when familyCode is null (user must explicitly generate/join)', async () => {
       mockGetFirestoreDb.mockReturnValue(mockDb);
       mockLoadFamilyCode.mockResolvedValue(null);
-      mockGenerateUniqueFamilyCode.mockResolvedValue('bloom-autogen1');
 
       const { result } = renderHook(() => useFirebaseSync('p1'));
 
       await waitFor(() => {
-        expect(result.current.syncStatus).toBe('synced');
+        expect(mockLoadFamilyCode).toHaveBeenCalled();
       });
-      expect(mockGenerateUniqueFamilyCode).toHaveBeenCalled();
-      expect(mockSaveFamilyCode).toHaveBeenCalledWith('bloom-autogen1');
-      expect(result.current.familyCode).toBe('bloom-autogen1');
+      // Should stay idle — no auto-generation, no sync attempt
+      expect(result.current.syncStatus).toBe('idle');
+      expect(mockPullAndMerge).not.toHaveBeenCalled();
+      expect(mockPushAll).not.toHaveBeenCalled();
+      expect(mockGenerateUniqueFamilyCode).not.toHaveBeenCalled();
     });
 
-    it('sets syncError when auto-generation throws', async () => {
+    it('does not auto-generate family code even when db is configured', async () => {
       mockGetFirestoreDb.mockReturnValue(mockDb);
-      mockLoadFamilyCode.mockResolvedValue(null);
-      mockGenerateUniqueFamilyCode.mockRejectedValue(new Error('Code gen failed'));
-
-      const { result } = renderHook(() => useFirebaseSync('p1'));
-
-      await waitFor(() => expect(result.current.syncStatus).toBe('error'));
-      expect(result.current.syncError).toBe('Code gen failed');
-    });
-
-    it('does not auto-generate when db is null', async () => {
-      mockGetFirestoreDb.mockReturnValue(null);
       mockLoadFamilyCode.mockResolvedValue(null);
 
       renderHook(() => useFirebaseSync('p1'));
       await waitFor(() => {});
 
       expect(mockGenerateUniqueFamilyCode).not.toHaveBeenCalled();
+      expect(mockSaveFamilyCode).not.toHaveBeenCalled();
     });
   });
 
