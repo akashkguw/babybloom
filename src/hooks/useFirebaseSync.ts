@@ -89,23 +89,9 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     if (!db || !profileId) return;
     if (!isMountedRef.current) return;
 
-    // Auto-generate a family code on first use if Firebase is configured
-    let code = familyCodeRef.current;
-    if (!code) {
-      try {
-        code = await generateUniqueFamilyCode(db);
-        await saveFamilyCode(code);
-        familyCodeRef.current = code;
-        if (isMountedRef.current) setFamilyCodeState(code);
-      } catch (err) {
-        if (isMountedRef.current) {
-          const msg = err instanceof Error ? err.message : 'Failed to generate family code';
-          setSyncError(msg);
-          setSyncStatus('error');
-        }
-        return;
-      }
-    }
+    // No family code yet — user must explicitly generate or join one via PartnerSync UI
+    const code = familyCodeRef.current;
+    if (!code) return;
 
     setSyncStatus('syncing');
     setSyncError(null);
