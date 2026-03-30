@@ -147,6 +147,16 @@ export function useFirebaseSync(profileId: string | null): UseFirebaseSyncReturn
     return () => window.removeEventListener('online', handleOnline);
   }, [syncAll]);
 
+  // Poll for new data from partner every 30 seconds while app is open
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isMountedRef.current && familyCodeRef.current && navigator.onLine) {
+        syncAll();
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [syncAll]);
+
   /**
    * Debounced sync trigger — coalesces rapid data changes into a single
    * sync cycle after 3 seconds of inactivity. Safe to call on every save.
