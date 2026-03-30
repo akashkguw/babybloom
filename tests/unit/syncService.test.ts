@@ -22,8 +22,13 @@ vi.mock('@/utils/firestoreUtils', () => ({
   saveEntries: (db: unknown, fc: unknown, pid: unknown, cat: unknown, entries: unknown) => mockSaveEntries(db, fc, pid, cat, entries),
 }));
 
-// ── Mock firebase/firestore (needed by firestoreUtils types) ──────────────────
-vi.mock('firebase/firestore', () => ({}));
+// ── Mock firebase/firestore (needed by firestoreUtils types + syncService imports) ──
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  getDocs: vi.fn(async () => ({ empty: true, docs: [] })),
+  query: vi.fn((...args: unknown[]) => args),
+  limit: vi.fn(),
+}));
 
 import {
   mergeEntries,
