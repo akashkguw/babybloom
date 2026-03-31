@@ -68,6 +68,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
       client_id: clientId,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
+      ...(getGoogleClientSecret() ? { client_secret: getGoogleClientSecret() } : {}),
     }),
   });
 
@@ -160,12 +161,14 @@ export async function exchangeCodeForTokens(
   redirectUri: string,
 ): Promise<void> {
   const clientId = getGoogleClientId();
+  const clientSecret = getGoogleClientSecret();
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code, client_id: clientId, redirect_uri: redirectUri,
       grant_type: 'authorization_code', code_verifier: codeVerifier,
+      ...(clientSecret ? { client_secret: clientSecret } : {}),
     }).toString(),
   });
   if (!response.ok) {
@@ -548,10 +551,19 @@ async function handleDriveError(resp: Response): Promise<void> {
 //   4. Set VITE_GOOGLE_CLIENT_ID in your CI/CD environment variables
 //
 const GOOGLE_CLIENT_ID_FALLBACK = '292704039059-2aqdvdicdf749e2ana47m7dd1b9s9ucc.apps.googleusercontent.com';
+// Client secret is required by Google for web app token exchange.
+// It is NOT truly secret for a public client (it's in the JS bundle) but Google requires it.
+// Get it from: console.cloud.google.com → Credentials → your OAuth 2.0 Client ID → Client secret
+const GOOGLE_CLIENT_SECRET_FALLBACK = ''; // paste your client secret here
 
 function getGoogleClientId(): string {
   return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID)
     || GOOGLE_CLIENT_ID_FALLBACK;
+}
+
+function getGoogleClientSecret(): string {
+  return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_SECRET)
+    || GOOGLE_CLIENT_SECRET_FALLBACK;
 }
 
 // ═══ ERROR CLASS ═══
