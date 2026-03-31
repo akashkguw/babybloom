@@ -21,6 +21,7 @@ import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 import { checkFeedNotification } from '@/lib/utils/feedNotification';
 import { handleOAuthCallback } from '@/lib/sync/googleDrive';
+import { isSyncEnabled, startSyncEngine } from '@/lib/sync/syncEngine';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -338,6 +339,15 @@ function App() {
     toast('Profile removed');
   };
 
+  // ── Sync engine startup ─────────────────────────────────────────────────
+  // If the user already enabled sync in a previous session, restart the engine
+  // on every app load (timers and event listeners are lost on page navigation).
+  useEffect(() => {
+    isSyncEnabled().then((enabled) => {
+      if (enabled) startSyncEngine().catch(() => {});
+    });
+  }, []); // run once on mount
+
   // ── Web OAuth callback handler ──────────────────────────────────────────
   // When Google redirects to /oauth?code=... (web PWA flow), this fires once
   // on mount and completes the token exchange before anything else renders.
@@ -369,7 +379,11 @@ function App() {
 
     handleOAuthCallback(callbackUrl)
       .then(() => {
-        window.dispatchEvent(new CustomEvent('babybloom:oauth', { detail: { url: callbackUrl } }));
+        // Tokens stored — start/restart sync engine now that we're authenticated,
+        // then signal the CloudSync UI to refresh its auth state.
+        startSyncEngine().catch(() => {});
+        // Signal without the callback URL — CloudSync should NOT re-exchange the code
+        window.dispatchEvent(new CustomEvent('babybloom:oauth'));
         setShowCloudSync(true);
       })
       .catch((err: any) => {

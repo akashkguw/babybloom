@@ -53,6 +53,7 @@ let currentState: SyncState = 'idle';
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let writeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
+let engineStarted = false;
 
 /** Listeners that receive SyncStatus updates */
 const statusListeners = new Set<(status: SyncStatus) => void>();
@@ -78,6 +79,9 @@ export function onSyncStatus(listener: (status: SyncStatus) => void): () => void
  * Called when the user enables cloud sync or the app starts with sync already enabled.
  */
 export async function startSyncEngine(): Promise<void> {
+  if (engineStarted) return; // prevent duplicate listeners / timers on re-mount
+  engineStarted = true;
+
   // Register on-open trigger (visibility change)
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -95,6 +99,7 @@ export async function startSyncEngine(): Promise<void> {
  * Stop the sync engine (called when sync is disabled).
  */
 export function stopSyncEngine(): void {
+  engineStarted = false;
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   stopTimer();
   if (writeDebounceTimer) clearTimeout(writeDebounceTimer);

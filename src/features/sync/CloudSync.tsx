@@ -37,7 +37,6 @@ import {
 } from '@/lib/sync/syncEngine';
 import {
   initiateGoogleSignIn,
-  handleOAuthCallback,
   isAuthenticated,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
@@ -126,15 +125,17 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       setIsSyncing(status.state !== 'idle' && status.state !== 'error');
     });
 
-    // Listen for OAuth callback (native deep link or web redirect)
-    const onOAuth = (e: Event) => {
-      const url = (e as CustomEvent).detail?.url as string;
-      handleOAuthCallback(url)
-        .then(() => { setGoogleAuthed(true); setView('main'); toast('Google Drive connected! Sync will start shortly.'); triggerSync('manual'); })
-        .catch((err: any) => {
-      toast('Sign-in failed: ' + (err?.message || 'unknown error'));
-      Sentry.captureException(err, { tags: { action: 'oauth_callback' } });
-    });
+    // Listen for OAuth callback (fired by App.tsx after successful token exchange).
+    // Tokens are already stored at this point — just refresh UI state and trigger sync.
+    const onOAuth = () => {
+      isAuthenticated().then((authed) => {
+        if (authed) {
+          setGoogleAuthed(true);
+          setView('main');
+          toast('Google Drive connected! Syncing now…');
+          triggerSync('manual').catch(() => {});
+        }
+      });
     };
     window.addEventListener('babybloom:oauth', onOAuth);
 
