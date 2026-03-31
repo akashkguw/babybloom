@@ -425,9 +425,19 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         <GoogleAuthView
           onAuth={async () => {
             try {
+              // Open a blank window SYNCHRONOUSLY (before any await) so the
+              // browser doesn't treat it as an unsolicited popup and block it.
+              // In standalone PWA mode we navigate the current window instead.
+              const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                || (window.navigator as any).standalone === true;
+              const popup = isStandalone ? null : window.open('', '_self');
               const url = await initiateGoogleSignIn();
-              // Open OAuth URL — works in both Capacitor (in-app browser) and web
-              window.open(url, '_blank', 'noopener');
+              if (popup) {
+                popup.location.href = url;
+              } else {
+                // Standalone PWA or popup was blocked — navigate current window
+                window.location.href = url;
+              }
             } catch (err: any) {
               const msg = err?.message || '';
               if (msg.includes('Client ID is not configured')) {
