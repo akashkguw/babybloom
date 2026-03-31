@@ -7,6 +7,8 @@ import Card from '@/components/shared/Card';
 import { today } from '@/lib/utils/date';
 import { isValidBirthDate, cleanStr, LIMITS } from '@/lib/utils/validate';
 import { toast } from '@/lib/utils/toast';
+
+export const MAX_FAMILY_MEMBERS = 3;
 interface Profile {
   id: number;
   name: string;
@@ -207,7 +209,21 @@ export default function ProfileManager({
         );
       })}
 
-      {!show ? (
+      {profiles.length >= MAX_FAMILY_MEMBERS ? (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: C.cd,
+            border: '1px solid ' + C.b,
+            fontSize: 13,
+            color: C.tl,
+            textAlign: 'center',
+          }}
+        >
+          Family is full — maximum {MAX_FAMILY_MEMBERS} members allowed
+        </div>
+      ) : !show ? (
         <Button
           label="+ Add Baby"
           onClick={() => setShow(true)}

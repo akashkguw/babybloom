@@ -13,6 +13,7 @@ import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
+import { MAX_FAMILY_MEMBERS } from '@/features/profiles/ProfileManager';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
@@ -311,6 +312,10 @@ function App() {
   };
 
   const addProfile = (p: Profile) => {
+    if (profiles.length >= MAX_FAMILY_MEMBERS) {
+      toast(`Family is full — maximum ${MAX_FAMILY_MEMBERS} members allowed`);
+      return;
+    }
     const newProfiles = profiles.concat([p]);
     setProfiles(newProfiles);
     toast('Profile added!');
