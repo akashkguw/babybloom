@@ -147,9 +147,10 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await storeFamilyKey(key);
       await enableSync();
       setSyncEnabled(true);
-      const qrString = await exportKeyForQR(key);
-      setFamilyKeyQR(qrString);
-      setView('setup_a');
+      // Go to main enabled view — user taps "Invite Family Member" separately if needed.
+      // Google Drive sign-in happens automatically on the first background sync cycle.
+      setView('main');
+      toast('Cloud sync enabled! Your data will back up to Google Drive automatically.');
     } catch (err: any) {
       toast('Failed to enable sync: ' + (err?.message || 'unknown error'));
     } finally {
@@ -289,9 +290,9 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
                 <strong style={{ color: C.t }}>How it works:</strong><br />
-                1️⃣ Tap <em>Enable</em> — you'll be asked to sign into Google.<br />
-                2️⃣ Your data is encrypted on your device, then backed up to your Google Drive.<br />
-                3️⃣ To sync with a partner, tap "Invite Family Member" and let them scan your QR.
+                1️⃣ Tap <em>Enable</em> — a secret key is created on your device.<br />
+                2️⃣ Your data is encrypted with that key and backed up to <strong>your</strong> Google Drive automatically (Google sign-in happens on first sync).<br />
+                3️⃣ To add a co-parent, tap "Invite Family Member" and share the QR code.
               </div>
               <Btn
                 label="Enable Cloud Sync (Google Drive)"
