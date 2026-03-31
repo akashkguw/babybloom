@@ -363,7 +363,7 @@ function App() {
         toast('Google sign-in failed: ' + (err?.message || 'unknown error'));
         console.error('[BabyBloom] Web OAuth callback error:', err);
       });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // run once on mount — intentionally no deps
 
   // Load data on mount
   useEffect(() => {
