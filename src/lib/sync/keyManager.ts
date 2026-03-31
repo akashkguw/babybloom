@@ -111,7 +111,7 @@ export async function exportKeyForQR(key: CryptoKey): Promise<string> {
 export async function importKeyFromQR(qrString: string): Promise<CryptoKey | null> {
   try {
     // Normalize: trim whitespace, handle full-width colons, zero-width chars
-    let cleaned = qrString.trim()
+    const cleaned = qrString.trim()
       .replace(/\u{FF1A}/gu, ':')
       .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
 
