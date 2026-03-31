@@ -81,17 +81,68 @@ export async function flushQueue(db: Firestore): Promise<void> {
 // ── Merge logic ──────────────────────────────────────────────────────────────
 
 /**
- * Merge two entry arrays by id using last-write-wins.
+ * Build a compound dedup key from an entry's date, time, and type fields.
+ * Returns null if the entry lacks the fields needed for compound dedup
+ * (entries without date/type cannot be deduplicated this way).
+ */
+export function entryCompoundKey(e: SyncEntry): string | null {
+  const date = e['date'];
+  const type = e['type'];
+  if (typeof date !== 'string' || !date) return null;
+  if (typeof type !== 'string' || !type) return null;
+  const time = e['time'];
+  return `${date}|${typeof time === 'string' ? time : ''}|${type}`;
+}
+
+/**
+ * Merge two entry arrays with full idempotency guarantees.
  *
- * Since entry ids are Date.now() timestamps, a higher id = more recently created.
- * When the same id appears in both arrays, local wins (local is truth after first pull).
+ * Dedup strategy (in priority order):
+ * 1. id-based: if two entries share the same id, local wins (last-write-wins).
+ * 2. compound-key (date + time + type): if two entries share the same real-world
+ *    event identity but have different ids (e.g. same event logged on two devices
+ *    with clocks a few ms apart), local wins. This prevents duplicate entries
+ *    from accumulating after repeated sync cycles.
+ *
+ * Entries without date/type fields bypass compound-key dedup and are always kept
+ * (id-based dedup still applies to them).
+ *
  * Returns entries sorted ascending by id.
  */
 export function mergeEntries<T extends SyncEntry>(local: T[], remote: T[]): T[] {
-  const map = new Map<number, T>();
-  for (const e of remote) map.set(e.id, e);
-  for (const e of local) map.set(e.id, e); // local overwrites remote on collision
-  return Array.from(map.values()).sort((a, b) => a.id - b.id);
+  // Step 1: id-based merge — local overwrites remote on id collision.
+  const byId = new Map<number, T>();
+  for (const e of remote) byId.set(e.id, e);
+  for (const e of local) byId.set(e.id, e);
+
+  const localIdSet = new Set(local.map((e) => e.id));
+
+  // Step 2: compound-key dedup (date + time + type).
+  // Process local entries first so they claim their compound keys with higher
+  // priority than remote entries.
+  const keyOwner = new Map<string, number>(); // compound key → winning entry id
+
+  for (const [, e] of byId) {
+    if (!localIdSet.has(e.id)) continue; // skip remote in this pass
+    const key = entryCompoundKey(e);
+    if (key !== null && !keyOwner.has(key)) keyOwner.set(key, e.id);
+  }
+  for (const [, e] of byId) {
+    if (localIdSet.has(e.id)) continue; // skip local (already processed)
+    const key = entryCompoundKey(e);
+    if (key !== null && !keyOwner.has(key)) keyOwner.set(key, e.id);
+  }
+
+  const winnerIds = new Set(keyOwner.values());
+
+  const result: T[] = [];
+  for (const [, e] of byId) {
+    const key = entryCompoundKey(e);
+    // Include if: no compound key (id-only dedup applies), or this id won its key.
+    if (key === null || winnerIds.has(e.id)) result.push(e);
+  }
+
+  return result.sort((a, b) => a.id - b.id);
 }
 
 // ── Family code helpers ───────────────────────────────────────────────────────

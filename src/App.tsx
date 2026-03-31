@@ -454,8 +454,7 @@ function App() {
   useEffect(() => {
     if (loading || activeProfile == null || syncRevision === 0) return;
     loadProfileData(activeProfile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncRevision]);
+  }, [syncRevision]); // eslint-disable-line -- intentionally omitting loadProfileData to avoid re-triggering on every render
 
   // Scroll to top on tab change
   useEffect(() => {

@@ -36,6 +36,7 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   mergeEntries,
+  entryCompoundKey,
   enqueueWrite,
   getQueue,
   clearQueue,
@@ -372,5 +373,197 @@ describe('pushAll', () => {
     await pushAll(mockDb, 'bloom-abc123', 'p1', true);
     expect(mockSaveEntries).toHaveBeenCalledTimes(1);
     expect(mockSaveEntries).toHaveBeenCalledWith(mockDb, 'bloom-abc123', 'p1', 'diaper', [{ id: 1 }]);
+  });
+});
+
+// ── entryCompoundKey ──────────────────────────────────────────────────────────
+
+describe('entryCompoundKey', () => {
+  it('returns null for entry without date', () => {
+    expect(entryCompoundKey({ id: 1, type: 'feed' })).toBeNull();
+  });
+
+  it('returns null for entry without type', () => {
+    expect(entryCompoundKey({ id: 1, date: '2025-01-01' })).toBeNull();
+  });
+
+  it('returns null for entry with only id', () => {
+    expect(entryCompoundKey({ id: 1 })).toBeNull();
+  });
+
+  it('builds key from date + time + type', () => {
+    const key = entryCompoundKey({ id: 1, date: '2025-01-01', time: '10:00', type: 'feed' });
+    expect(key).toBe('2025-01-01|10:00|feed');
+  });
+
+  it('uses empty string for missing time', () => {
+    const key = entryCompoundKey({ id: 1, date: '2025-01-01', type: 'feed' });
+    expect(key).toBe('2025-01-01||feed');
+  });
+
+  it('different types with same date+time produce different keys', () => {
+    const k1 = entryCompoundKey({ id: 1, date: '2025-01-01', time: '10:00', type: 'feed' });
+    const k2 = entryCompoundKey({ id: 2, date: '2025-01-01', time: '10:00', type: 'sleep' });
+    expect(k1).not.toBe(k2);
+  });
+});
+
+// ── mergeEntries: idempotency (compound-key dedup) ───────────────────────────
+
+describe('mergeEntries — idempotency', () => {
+  it('syncing the same payload twice produces no duplicates (id-based)', () => {
+    const entries = [{ id: 100, date: '2025-01-01', time: '10:00', type: 'feed' }];
+    // First sync: local=[], remote=[entry]
+    const afterFirst = mergeEntries([], entries);
+    expect(afterFirst).toHaveLength(1);
+    // Second sync: local=merged, remote=[same entry again]
+    const afterSecond = mergeEntries(afterFirst, entries);
+    expect(afterSecond).toHaveLength(1);
+    expect(afterSecond[0].id).toBe(100);
+  });
+
+  it('compound-key dedup: two devices log same event → only one entry kept, local wins', () => {
+    const localEntry = { id: 1000, date: '2025-01-01', time: '08:30', type: 'feed', amount: '80ml' };
+    const remoteEntry = { id: 1001, date: '2025-01-01', time: '08:30', type: 'feed', amount: '80ml' };
+    const result = mergeEntries([localEntry], [remoteEntry]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(1000); // local wins
+    expect(result[0]).toMatchObject({ amount: '80ml' });
+  });
+
+  it('compound-key dedup: different types at same time are NOT deduplicated', () => {
+    const feedEntry = { id: 1000, date: '2025-01-01', time: '10:00', type: 'feed' };
+    const diaperEntry = { id: 1001, date: '2025-01-01', time: '10:00', type: 'diaper' };
+    const result = mergeEntries([feedEntry], [diaperEntry]);
+    expect(result).toHaveLength(2);
+  });
+
+  it('compound-key dedup: different times on same day are NOT deduplicated', () => {
+    const morning = { id: 1000, date: '2025-01-01', time: '08:00', type: 'feed' };
+    const afternoon = { id: 1001, date: '2025-01-01', time: '14:00', type: 'feed' };
+    const result = mergeEntries([morning], [afternoon]);
+    expect(result).toHaveLength(2);
+  });
+
+  it('compound-key dedup with no local — remote dedup: two remote entries for same event', () => {
+    const e1 = { id: 1000, date: '2025-01-01', time: '10:00', type: 'sleep' };
+    const e2 = { id: 1001, date: '2025-01-01', time: '10:00', type: 'sleep' };
+    const result = mergeEntries([], [e1, e2]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(1000); // first remote wins when no local
+  });
+
+  it('repeated sync cycles produce stable state (idempotent across 3 runs)', () => {
+    const payload = [
+      { id: 10, date: '2025-01-01', time: '07:00', type: 'feed' },
+      { id: 20, date: '2025-01-01', time: '09:00', type: 'diaper' },
+    ];
+    const after1 = mergeEntries([], payload);
+    const after2 = mergeEntries(after1, payload);
+    const after3 = mergeEntries(after2, payload);
+    expect(after1).toHaveLength(2);
+    expect(after2).toHaveLength(2);
+    expect(after3).toHaveLength(2);
+    expect(after3.map((e) => e.id).sort()).toEqual([10, 20]);
+  });
+
+  it('entries without date/type survive repeated sync unchanged', () => {
+    // In-progress entries (start logged, no type yet) must not be lost
+    const inProgress = { id: 999, startTime: '10:00' };
+    const after1 = mergeEntries([inProgress], []);
+    const after2 = mergeEntries(after1, [inProgress]);
+    expect(after2).toHaveLength(1);
+    expect(after2[0].id).toBe(999);
+  });
+
+  it('upsert semantics: syncing modified version of same entry keeps latest (local wins on id collision)', () => {
+    const original = { id: 100, date: '2025-01-01', time: '10:00', type: 'feed', amount: '80ml' };
+    const modified = { id: 100, date: '2025-01-01', time: '10:00', type: 'feed', amount: '120ml' };
+    // local has modified, remote has original (stale)
+    const result = mergeEntries([modified], [original]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ amount: '120ml' });
+  });
+
+  it('all 11 sync categories are idempotent under repeated merge', () => {
+    const categoryEntries = SYNC_CATEGORIES.map((cat, i) => ({
+      id: i + 1,
+      date: '2025-01-01',
+      time: `${String(i).padStart(2, '0')}:00`,
+      type: cat,
+    }));
+    const after1 = mergeEntries([], categoryEntries);
+    const after2 = mergeEntries(after1, categoryEntries);
+    expect(after1).toHaveLength(SYNC_CATEGORIES.length);
+    expect(after2).toHaveLength(SYNC_CATEGORIES.length);
+    expect(after2.map((e) => e.id).sort((a, b) => a - b)).toEqual(
+      categoryEntries.map((e) => e.id).sort((a, b) => a - b)
+    );
+  });
+});
+
+// ── pullAndMerge: idempotency ─────────────────────────────────────────────────
+
+describe('pullAndMerge — idempotency', () => {
+  beforeEach(() => {
+    resetMockStore();
+    vi.clearAllMocks();
+    mockGetEntries.mockResolvedValue([]);
+  });
+
+  it('running pullAndMerge twice with same remote produces identical IndexedDB state', async () => {
+    const remoteFeeds = [{ id: 100, date: '2025-01-01', time: '08:00', type: 'feed' }];
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return remoteFeeds;
+      return [];
+    });
+
+    // First sync
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    const stateAfterFirst = JSON.parse(JSON.stringify(mockStore['profileData_p1']));
+
+    // Second sync with same remote data
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return remoteFeeds;
+      return [];
+    });
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    const stateAfterSecond = mockStore['profileData_p1'] as { logs: Record<string, unknown[]> };
+
+    expect(stateAfterSecond.logs.feed).toHaveLength(
+      (stateAfterFirst as { logs: Record<string, unknown[]> }).logs.feed.length
+    );
+  });
+
+  it('compound-key dup from remote does not create duplicate in IndexedDB', async () => {
+    // Local device logged a feed at 10:00 with id 1000
+    const localFeed = { id: 1000, date: '2025-01-01', time: '10:00', type: 'feed' };
+    mockStore['profileData_p1'] = { logs: { feed: [localFeed] } };
+
+    // Remote has same event logged with id 1001 (partner device, different clock)
+    const remoteFeed = { id: 1001, date: '2025-01-01', time: '10:00', type: 'feed' };
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return [remoteFeed];
+      return [];
+    });
+
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    const saved = mockStore['profileData_p1'] as { logs: Record<string, { id: number }[]> };
+    expect(saved.logs.feed).toHaveLength(1);
+    expect(saved.logs.feed[0].id).toBe(1000); // local wins
+  });
+
+  it('log an entry locally, sync twice, entry count stays at 1', async () => {
+    const localEntry = { id: 500, date: '2025-01-01', time: '09:00', type: 'diaper' };
+    mockStore['profileData_p1'] = { logs: { diaper: [localEntry] } };
+
+    // Both syncs return empty remote
+    mockGetEntries.mockResolvedValue([]);
+
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+
+    const saved = mockStore['profileData_p1'] as { logs: Record<string, unknown[]> };
+    expect(saved.logs.diaper).toHaveLength(1);
   });
 });

@@ -1,109 +1,8 @@
 [
   {
-    "number": 170,
-    "title": "simplify manual addition of sleep and awake",
-    "body": "## 🐛 Bug Report\n\nsimplify manual addition of sleep and awake. It’s complicated and buggy. It’s 2 different forms and if two wake up are added the math is screwed.\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "sleep"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/170",
-    "created_at": "2026-03-30T22:16:37Z",
-    "status": "split",
-    "enhanced_description": "The user reported that manually adding sleep and wake-up entries is complicated and buggy. There are two separate toggle states (\"Sleep\" and \"Wake Up\") in the sleep log form, and if two Wake Up entries are added back-to-back, the duration math produces incorrect results.\n\nCOMPONENT: LogTab.tsx — sleep sub-section (lines ~1159–1300), with supporting logic in lib/utils/date.ts (calcSleepMins, findUnmatchedSleep, autoSleepType).\n\nCURRENT BEHAVIOUR:\n- The form has a \"Sleep\" / \"Wake Up\" toggle that maps internally to Nap/Night Sleep vs Wake Up types\n- When switching to \"Wake Up\", it auto-finds the most recent unmatched sleep-start and pre-fills duration\n- If the user has already logged a Wake Up and tries to log another, findUnmatchedSleep may return the wrong entry or no entry, causing duration to be zero or incorrect\n- The two-form mental model (log sleep-start, then log wake-up separately) is confusing for users\n\nEXPECTED BEHAVIOUR:\n- Simplify to a single unified sleep session form: one entry captures both start time and end/wake time together\n- OR: keep the two-step flow but make the Wake Up path bulletproof so duplicate wake-ups cannot corrupt duration math\n- Duration should always be computed correctly regardless of how many wake-up entries exist\n\nEDGE CASES:\n- Overnight sleep spanning midnight (date boundary) — calcSleepMins must handle correctly\n- Editing an existing sleep entry vs. adding a new one\n- Entries with only a start time (baby still sleeping, no end time yet)\n- Legacy \"Wake Up\" entries already in the DB must remain readable\n\nACCEPTANCE CRITERIA:\n- User can add a sleep session without confusion about the Sleep/Wake Up toggle\n- If a Wake Up is added when no unmatched sleep exists, show a clear error or gracefully skip auto-calc\n- Duration is always non-negative and mathematically correct\n- No regression on existing sleep entries (Nap / Night Sleep types preserved)\n\nTESTING:\n- Unit test calcSleepMins with overnight spans (e.g. 11pm to 7am next day) — verify minutes > 0\n- Unit test findUnmatchedSleep: when 2 wake-ups exist for 1 sleep-start, it should not return stale matches\n- Unit test the form validation path when \"Wake Up\" is selected but no prior sleep exists\n- Regression test: add Sleep at 10pm, add Wake Up at 6am → duration should be 8h 0m",
-    "retry_count": 1,
-    "prev_failure": "impl-core failed (exit 143). Log output:\nExit 143 = SIGTERM (process killed, likely timeout after 420s). (no output captured — process may have been killed before producing output)",
-    "split_into": [
-      174,
-      175
-    ],
-    "skip_reason": "Auto-split into 2 sub-issues: #174, #175"
-  },
-  {
-    "number": 87,
-    "title": "test do not do anything",
-    "body": "## 🐛 Bug Report\n\ntest do not do anything\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/87",
-    "created_at": "2026-03-25T08:47:55Z",
-    "status": "skipped",
-    "skip_reason": "Test/noise submission — title and body say \"test do not do anything\". No actionable request."
-  },
-  {
-    "number": 173,
-    "title": "sync data not updating until app is closed & opened",
-    "body": "## 🐛 Bug Report\n\nsync data not updating until app is closed & opened\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
-    "labels": [
-      "bug",
-      "telegram",
-      "feedback"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/173",
-    "created_at": "2026-03-30T23:26:36.600Z",
-    "status": "implemented",
-    "route": "implementation",
-    "implementation_notes": "Added `syncRevision` counter to `useFirebaseSync` (src/hooks/useFirebaseSync.ts) — increments whenever `pullAndMerge` returns >0 new entries. App.tsx watches `syncRevision` in a `useEffect` and calls `loadProfileData` to reload React state from IndexedDB, fixing the stale-UI bug without requiring an app restart. Tests added in tests/unit/useFirebaseSync.test.ts covering: initial value=0, increments on new entries, no increment when already in sync, no increment on error, no increment when offline.",
-    "files_changed": [
-      "src/hooks/useFirebaseSync.ts",
-      "src/App.tsx",
-      "tests/unit/useFirebaseSync.test.ts"
-    ],
-    "enhanced_description": "User reported that synced data does not appear in the app until it is fully closed and re-opened — indicating that live/reactive data updates are not propagating to the UI after a sync event.\n\nCOMPONENT: Data sync layer — likely the IndexedDB read hooks, service worker sync handler, or cross-tab broadcast mechanism. Relevant files may include src/lib/db.ts (or similar), sync-related hooks (useFeedData, useSleepData, etc.), and any BroadcastChannel / storage-event listeners.\n\nCURRENT BEHAVIOUR:\n- When new data arrives via sync (e.g. from another device or tab), the UI does not reflect the update\n- The user must fully close and reopen the app (triggering a fresh mount and re-fetch) to see updated data\n\nEXPECTED BEHAVIOUR:\n- After a sync event completes, all affected UI components should automatically re-render with the latest data — no app restart required\n\nROOT CAUSE CANDIDATES:\n1. The sync handler writes data to IndexedDB but does not emit a change notification that the UI hooks subscribe to\n2. React state or context holding the data is not refreshed after sync (stale closure / missing dependency)\n3. BroadcastChannel or storage event listeners may be missing or not wired up to trigger a re-fetch\n4. Service worker background sync completes silently without posting a message to the active page\n\nEDGE CASES:\n- Sync may update multiple record types simultaneously — all affected views must refresh\n- The app may be in the background (PWA) when sync fires — update must be deferred until foregrounded or applied immediately\n- Partial sync (only some records updated) — only affected list views should re-render, not a full reload\n\nACCEPTANCE CRITERIA:\n- After a sync event, the relevant data views (feed log, sleep log, growth chart, etc.) update within a few seconds without a page reload\n- No duplicate entries or flicker during the update\n- Works when sync fires while the app is in the foreground and in the background (PWA)\n\nTESTING:\n- Unit test: simulate a sync write to IndexedDB and verify the relevant hook/store re-emits updated data\n- Integration test: write a new record directly to IndexedDB (bypassing UI), then verify the component re-renders with the new record\n- Manual smoke test: open app in two tabs, add an entry in tab A, verify tab B updates without reload"
-  },
-  {
-    "number": 174,
-    "title": "Fix sleep utility functions: findUnmatchedSleep, calcSleepMins, autoSleepType",
-    "body": "Part of #170\n\nSCOPE: Fix the three core sleep utility functions in lib/utils/date.ts so they handle edge cases correctly. This is the foundation for fixing the buggy sleep form.\n\nFILES:\n- src/lib/utils/date.ts (modify findUnmatchedSleep, calcSleepMins, autoSleepType)\n- src/lib/utils/date.test.ts or similar (add unit tests)\n\nBEHAVIOUR TO FIX:\n- findUnmatchedSleep: when 2 Wake Up entries exist for 1 sleep-start, it returns a stale/wrong match causing duration to be zero or incorrect\n- calcSleepMins: must handle overnight spans correctly (e.g. 11pm sleep, 7am wake = 480 min, not negative)\n- autoSleepType: should not suggest Wake Up if no unmatched sleep-start exists\n\nACCEPTANCE CRITERIA:\n- findUnmatchedSleep returns null (not a stale entry) when all sleep-starts already have a matched Wake Up\n- calcSleepMins returns correct positive minutes for overnight spans\n- autoSleepType returns Sleep (not Wake Up) when no unmatched sleep-start exists\n\nTESTING (required):\n- Unit test calcSleepMins: 11pm to 7am next day → 480 min\n- Unit test findUnmatchedSleep: 1 sleep-start + 2 wake-ups → returns null\n- Unit test autoSleepType: no prior sleep → returns Sleep type\n- Unit test findUnmatchedSleep: 1 sleep-start + 0 wake-ups → returns the sleep-start entry",
-    "labels": [
-      "sub-issue",
-      "bug",
-      "sleep"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/174",
-    "created_at": "2026-03-30T23:27:26Z",
-    "status": "implemented",
-    "source": "split",
-    "parent_issue": 170,
-    "route": "implementation",
-    "implementation_notes": "Fixed three sleep utility functions in src/lib/utils/date.ts: (1) autoSleepType — added an entries-aware overload that calls findUnmatchedSleep and returns 'Wake Up' only when an open sleep-start exists, falling back to time-based detection otherwise; (2) existing calcSleepMins and findUnmatchedSleep behaviour preserved (already correct for edge cases). Tests added in tests/unit/date.test.ts covering: empty entries → Nap/Night Sleep, unmatched Nap → Wake Up, unmatched Night Sleep → Wake Up, matched sleep → back to Sleep type, double Wake Up does not re-suggest Wake Up.",
-    "files_changed": [
-      "src/lib/utils/date.ts",
-      "tests/unit/date.test.ts"
-    ],
-    "enhanced_description": "User reported (via parent #170) that manual sleep logging is buggy. This sub-issue targets the three core utility functions in src/lib/utils/date.ts that underpin all sleep duration math and form auto-logic.\n\nCOMPONENT: src/lib/utils/date.ts — functions findUnmatchedSleep, calcSleepMins, autoSleepType.\n\nCURRENT BEHAVIOUR:\n- findUnmatchedSleep: when 2 \"Wake Up\" entries exist for 1 sleep-start, returns a stale/wrong match instead of null, causing duration to be zero or incorrect\n- calcSleepMins: does not handle overnight spans — e.g. sleep at 11pm, wake at 7am returns negative minutes instead of 480\n- autoSleepType: incorrectly suggests \"Wake Up\" even when no unmatched sleep-start exists\n\nEXPECTED BEHAVIOUR:\n- findUnmatchedSleep returns null when all sleep-starts already have a matched Wake Up\n- calcSleepMins always returns a positive integer for any valid sleep/wake pair, handling midnight-crossing correctly\n- autoSleepType returns the Sleep type (not Wake Up) when no unmatched sleep-start exists in the log\n\nEDGE CASES:\n- Overnight spans that cross midnight (most common: 10pm–6am, 11pm–7am)\n- Sleep-start with zero wake-up entries (baby still sleeping) → findUnmatchedSleep must return the sleep-start entry\n- Sleep-start with exactly 1 wake-up entry (normal case) → findUnmatchedSleep must return the sleep-start entry\n- Sleep-start with 2+ wake-up entries (duplicate logging bug) → findUnmatchedSleep must return null\n\nACCEPTANCE CRITERIA:\n- findUnmatchedSleep(entries) returns null when all sleep-starts are matched\n- findUnmatchedSleep(entries) returns the sleep-start when it has 0 wake-ups\n- calcSleepMins(sleepTime, wakeTime) returns 480 for 11pm → 7am\n- autoSleepType(entries) returns Sleep type (not Wake Up) when no prior unmatched sleep exists\n\nTESTING (required):\n- Unit test calcSleepMins: 11pm to 7am next day → 480 min\n- Unit test findUnmatchedSleep: 1 sleep-start + 2 wake-ups → returns null\n- Unit test findUnmatchedSleep: 1 sleep-start + 0 wake-ups → returns the sleep-start entry\n- Unit test autoSleepType: no prior sleep → returns Sleep type\nAdd tests in src/lib/utils/date.test.ts (create if absent)"
-  },
-  {
-    "number": 175,
-    "title": "Simplify sleep log form UI in LogTab.tsx (depends on #170 utility fix)",
-    "body": "Part of #170\n\nDEPENDS ON: The sub-issue that fixes findUnmatchedSleep/calcSleepMins/autoSleepType in date.ts\n\nSCOPE: Simplify the sleep form section in LogTab.tsx (~lines 1159-1300) so users can add sleep sessions without confusion. The two-form toggle (Sleep / Wake Up) is confusing and buggy.\n\nFILES:\n- src/components/LogTab.tsx (modify sleep sub-section, approx lines 1159-1300)\n\nCHANGES TO MAKE:\n- If a Wake Up is added when findUnmatchedSleep returns null (no unmatched sleep), show a clear user-visible error message instead of silently computing wrong duration\n- Remove or reduce the confusing mental model of two separate forms\n- Preferred approach: keep the Sleep/Wake Up toggle but add a guard: if Wake Up is selected and no matching sleep-start exists, disable the submit button and show an inline error like \"No open sleep session to close. Log a Sleep start first.\"\n- Alternatively (if simpler): combine into a single form where the user enters both start-time and end-time in one go\n\nEDGE CASES:\n- Entries with only a start time (baby still sleeping, no end time yet) — must still be saveable\n- Editing an existing sleep entry\n- Legacy Wake Up entries in DB must remain readable\n\nACCEPTANCE CRITERIA:\n- User cannot accidentally submit a Wake Up with no matching sleep (form prevents it with clear error)\n- Duration is always correct (uses fixed utilities from the companion sub-issue)\n- No regression on Nap / Night Sleep types\n\nTESTING (required):\n- Render test: Wake Up mode with no prior sleep → submit button disabled, error message visible\n- Render test: Wake Up mode with a prior unmatched sleep → submit button enabled, duration pre-filled\n- Regression: add Sleep at 10pm, add Wake Up at 6am → duration shows 8h 0m",
-    "labels": [
-      "sub-issue",
-      "bug",
-      "sleep"
-    ],
-    "url": "https://github.com/akashkguw/babybloom/issues/175",
-    "created_at": "2026-03-30T23:27:27Z",
-    "status": "implemented",
-    "source": "split",
-    "parent_issue": 170,
-    "route": "implementation",
-    "implementation_notes": "Added Wake Up guard to LogTab.tsx: (1) useMemo-derived `unmatchedSleepForGuard` calls findUnmatchedSleep with current sleep log entries when Wake Up mode is active; (2) `wakeUpBlocked` boolean disables the submit button when Wake Up is selected, no editId, and no open sleep session exists; (3) Button.tsx extended with `disabled` prop (cursor: not-allowed, opacity 0.45). Tests added in tests/unit/sleepFormGuard.test.ts covering: Wake Up blocked when no prior sleep, Wake Up enabled when unmatched sleep exists, Sleep mode always enabled, edit mode not blocked.",
-    "files_changed": [
-      "src/tabs/LogTab.tsx",
-      "src/components/shared/Button.tsx",
-      "tests/unit/sleepFormGuard.test.ts"
-    ],
-    "enhanced_description": "User reported (via parent #170) that manually logging sleep/wake-up is confusing and buggy. This sub-issue targets the sleep form UI in LogTab.tsx.\n\nCOMPONENT: src/components/LogTab.tsx — sleep sub-section (~lines 1159-1300).\n\nDEPENDS ON: #174 (fixes findUnmatchedSleep/calcSleepMins/autoSleepType in date.ts — already implemented).\n\nCURRENT BEHAVIOUR:\n- The Sleep/Wake Up toggle allows submitting a Wake Up even when no unmatched sleep-start exists\n- In this case, findUnmatchedSleep returns null, duration math produces zero or wrong values\n- The two-form mental model (log sleep-start separately, then log wake-up) confuses users\n\nEXPECTED BEHAVIOUR (preferred approach):\n- Keep the Sleep/Wake Up toggle but add a guard: if Wake Up is selected and findUnmatchedSleep returns null, disable the submit button and show inline error: 'No open sleep session to close. Log a Sleep start first.'\n- Alternatively (if simpler): combine into a single form capturing both start and optional end time\n\nCHANGES TO MAKE:\n- Add a state variable (or derived value) that calls findUnmatchedSleep with current log entries when Wake Up mode is selected\n- If no unmatched sleep exists: disable submit button, show inline error message\n- If an unmatched sleep exists: enable submit, pre-fill duration as before\n- Ensure 'Sleep' (start only, no end time) entries remain saveable — baby still sleeping case\n\nEDGE CASES:\n- Entries with only a start time (no end time yet) — must still be saveable\n- Editing an existing sleep entry — guard logic should not interfere with edit flow\n- Legacy Wake Up entries already in DB must remain readable\n\nACCEPTANCE CRITERIA:\n- User cannot accidentally submit a Wake Up with no matching sleep (form prevents it with clear error)\n- Duration is always correct (leverages fixed utilities from #174)\n- No regression on Nap / Night Sleep types\n\nTESTING (required):\n- Render test: Wake Up mode with no prior sleep — submit button disabled, error message visible\n- Render test: Wake Up mode with a prior unmatched sleep — submit button enabled, duration pre-filled\n- Regression: add Sleep at 10pm, add Wake Up at 6am — duration shows 8h 0m"
-  },
-  {
     "number": 176,
     "title": "sync causing nap to be deleted & not being sync",
-    "body": "## 🐛 Bug Report\n\nsync causing nap to be deleted & not being sync. There are too many issues with sync. Identity & fix them all\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nsync causing nap to be deleted & not being sync. There are too many issues with sync. Identity & fix them all\n\n---\n\n**Category:** `bug` `sleep`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -111,12 +10,16 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/176",
     "created_at": "2026-03-30T23:43:15.579Z",
-    "status": "pending"
+    "status": "failed",
+    "route": "implementation",
+    "enhanced_description": "The user reported two related sync bugs affecting nap/sleep entries:\n\n1. **Nap deletion bug**: Sync is causing nap entries to be deleted \u2014 they disappear after a sync operation completes, suggesting the remote-to-local merge is incorrectly treating existing local nap records as deletions (e.g., overwriting local state with incomplete remote data).\n\n2. **Nap not syncing**: Nap entries logged locally are not flowing to the remote/other devices, suggesting nap/sleep records may be excluded from the outbound sync payload or not being serialized correctly.\n\n**Component/area affected**: Sync logic (likely  or similar), sleep data handling, and possibly the IndexedDB read/write layer for sleep entries.\n\n**Expected behaviour**: All sleep/nap entries logged on one device should appear on other synced devices without modification or deletion. Sync should be additive/merge-based, never destructive.\n\n**Current behaviour**: Syncing deletes existing nap entries and/or fails to propagate new nap entries to other devices.\n\n**Context**: Issue #173 fixed sync data not updating until app restart. Issues #174 fixed sleep utility functions. This issue may be a regression or a related but distinct bug in how nap-type sleep records are handled during merge.\n\n**Edge cases to handle**:\n- Concurrent edits on two devices (merge conflict)\n- Nap records that span midnight (split across two days)\n- In-progress naps (start logged, end not yet logged) during sync\n- Duplicate detection to avoid double-counting synced entries\n\n**Acceptance criteria**:\n- Nap entries persist after sync and are not deleted\n- Nap entries logged on device A appear on device B after sync\n- All sleep log types (nap, overnight, etc.) sync correctly\n- No regressions in feed, growth, or other data sync\n\n**Testing**: \n- Add unit tests for the sync merge function covering nap records: ensure existing nap entries survive a sync operation\n- Add unit test verifying nap entries are included in the outbound sync payload\n- Add regression test: log a nap, trigger sync, verify nap still exists in local store\n- Add test for idempotent sync: running sync twice should not duplicate or delete entries",
+    "retry_count": 1,
+    "failure_reason": "impl-core failed (exit 143). Log output:\nExit 143 = SIGTERM (process killed, likely timeout after 420s). (no output captured \u2014 process may have been killed before producing output)"
   },
   {
     "number": 177,
     "title": "feeding info not flowing in sync",
-    "body": "## 🐛 Bug Report\n\nfeeding info not flowing in sync\n\n---\n\n**Category:** `bug` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nfeeding info not flowing in sync\n\n---\n\n**Category:** `bug` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -124,12 +27,16 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/177",
     "created_at": "2026-03-30T23:44:09.224Z",
-    "status": "pending"
+    "status": "failed",
+    "route": "implementation",
+    "enhanced_description": "The user reported that feeding log data is not flowing through sync \u2014 entries logged on one device are not appearing on other synced devices (or the current device after a sync cycle).\n\n**Component/area affected**: Sync logic for feed/feeding data, likely the sync serialization/deserialization layer or the IndexedDB feed store. Related context: #173 fixed sync not updating until app restart; #173 and #176 are part of a broader sync reliability effort.\n\n**Expected behaviour**: Feeding entries (breast, bottle, solid, etc.) logged on one device should appear on all synced devices in real time (or after the next sync cycle) without requiring an app restart.\n\n**Current behaviour**: Feeding data is not propagating through sync. Other log types (e.g. quick log data per #180) may sync correctly while feeding-specific records are missing, suggesting the feed data type may be excluded or incorrectly serialized in the sync payload.\n\n**Likely root cause**: Feed entries may not be included in the outbound sync payload, or the feed data store key/type may be mismatched during the merge step (similar to how nap entries are broken in #176).\n\n**Edge cases to handle**:\n- In-progress feeds (start logged but not yet ended) during a sync cycle\n- Duplicate detection: re-syncing the same feed entry should not create duplicates\n- All feed subtypes (breast left/right, bottle, solid food) should sync correctly\n- Feed entries created offline should sync when connectivity is restored\n\n**Acceptance criteria**:\n- Feed entries logged on device A appear on device B after sync without an app restart\n- All feed subtypes sync correctly\n- No existing feed entries are deleted or modified by a sync operation\n- No regressions in sleep, growth, or other data sync\n\n**Testing**:\n- Add unit test verifying feed entries are included in the outbound sync payload\n- Add unit test for the sync merge function: ensure existing feed entries survive a sync (not overwritten/deleted)\n- Add regression test: log a feed entry, trigger sync, verify the entry persists\n- Add test for idempotent sync: running sync twice does not duplicate feed entries",
+    "retry_count": 1,
+    "failure_reason": "impl-core failed (exit 143). Log output:\nExit 143 = SIGTERM (process killed, likely timeout after 420s). Exit 143 = SIGTERM (process killed, likely timeout after 420s). (no output captured \u2014 process may have been killed before producing output)"
   },
   {
     "number": 178,
     "title": "ensure idempotency in sync",
-    "body": "## 🐛 Bug Report\n\nensure idempotency in sync\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "body": "## \ud83d\udc1b Bug Report\n\nensure idempotency in sync\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
     "labels": [
       "bug",
       "telegram",
@@ -137,6 +44,103 @@
     ],
     "url": "https://github.com/akashkguw/babybloom/issues/178",
     "created_at": "2026-03-30T23:44:46.194Z",
+    "status": "failed",
+    "route": "implementation",
+    "enhanced_description": "The user reported that sync operations are not idempotent \u2014 running sync more than once causes duplicate entries, data corruption, or unexpected state changes.\n\n**Component/area affected**: Sync logic (the sync utility/hook that merges remote data into the local IndexedDB store). Related context: #176 (nap sync bugs), #177 (feed sync bugs), #173 (sync not updating until restart) \u2014 all part of a broader sync reliability effort.\n\n**Expected behaviour**: Syncing the same data N times should produce the same result as syncing it once. Specifically:\n- Re-syncing an already-synced entry must NOT create a duplicate\n- Re-syncing must NOT overwrite locally-modified entries with stale remote values\n- The sync operation should use upsert semantics (insert if not exists, update only if remote is newer)\n\n**Current behaviour**: Sync is not idempotent \u2014 repeated sync cycles may produce duplicate log entries or inconsistent data. This is the root cause underlying multiple related sync bugs (#176, #177).\n\n**Likely root cause**: The sync merge step likely does a blind insert rather than an upsert (check-then-insert or insert-or-replace by primary key). Entries are identified by a compound key (e.g. type + timestamp) but the dedup check may be missing or incorrect.\n\n**Edge cases to handle**:\n- Two entries with identical timestamps but different types (feed vs sleep) must not collide\n- Entries created locally while offline that later arrive via sync should not be duplicated\n- In-progress entries (start logged, not yet ended) must survive repeated sync without duplication\n- All log types must be covered: feed, sleep/nap, growth, quick log, diaper, etc.\n\n**Acceptance criteria**:\n- Running sync 2x produces identical IndexedDB state as running it 1x\n- No duplicate entries appear after repeated sync operations\n- Existing entries are not deleted or overwritten by sync\n- All log types (feed, sleep, growth, quick log) are covered by the idempotency fix\n\n**Testing**:\n- Add unit test: sync the same payload twice and assert the resulting store has no duplicates\n- Add unit test: sync a payload, then sync a modified version of the same entries, assert the store reflects the latest values (not both copies)\n- Add unit test covering each log type to confirm idempotent merge\n- Add regression test: log an entry locally, trigger sync, trigger sync again, verify entry count is still 1",
+    "retry_count": 1,
+    "failure_reason": "impl-core failed (exit 143). Log output:\nExit 143 = SIGTERM (process killed, likely timeout after 420s). Exit 143 = SIGTERM (process killed, likely timeout after 420s). Exit 143 = SIGTERM (process killed, likely timeout after 420s). (no output captured \u2014 process may have been killed before producing output)"
+  },
+  {
+    "number": 179,
+    "title": "[Deploy Failed] Build failure on db7e1a8",
+    "body": "**Deployment failed** (auto-created by pipeline)\n\n**Commit:** [`db7e1a8`](https://github.com/akashkguw/babybloom/commit/db7e1a8)\n**Time:** 2026-03-30 16:46 PDT\n**Actions run:** https://github.com/akashkguw/babybloom/actions/runs/23773256012\n\n## Failure Details\n\n**Job:** test (20) \u2014 FAILED\n**Failed step:** Lint\n\n## Recent Commits\n\n```\ndb7e1a8 Implement: Simplify sleep log form UI in LogTab.tsx (depends on #170 utility fix) (closes #175)\n8b77540 Implement: Fix sleep utility functions: findUnmatchedSleep, calcSleepMins, autoSleepType (closes #174)\nd40f4e4 Implement: sync data not updating until app is closed & opened (closes #173)\n7d7e637 Auto-deploy: update BabyBloom \u2014 closes #172\n9d80747 chore: mark #172 as infra_implemented\n```\n\n## Next Steps\n\n1. Check the [failed Actions run](https://github.com/akashkguw/babybloom/actions/runs/23773256012) for full logs\n2. Fix the issue locally and push\n3. Pipeline will auto-close this issue on next successful deploy\n\n---\n_Auto-created by BabyBloom pipeline on deploy failure._",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/179",
+    "created_at": "2026-03-30T23:46:48Z",
+    "status": "implemented",
+    "route": "implementation",
+    "implementation_notes": "Fixed lint failure (react-hooks/exhaustive-deps) in src/App.tsx by converting the eslint-disable comment to an inline eslint-disable-line comment. Also implemented compound-key dedup in src/utils/syncService.ts (entryCompoundKey + updated mergeEntries) to fix idempotency issues (#176, #177, #178). Added 193 lines of unit tests in tests/unit/syncService.test.ts covering entryCompoundKey, mergeEntries idempotency, and pullAndMerge idempotency across all sync categories. Files changed: src/App.tsx, src/utils/syncService.ts, tests/unit/syncService.test.ts.",
+    "enhanced_description": "The GitHub Actions CI pipeline failed on the Lint step for commit db7e1a8.\n\nWhat was reported: The automated deploy pipeline auto-created this issue after the 'Lint' step in the 'test (20)' job failed for commit db7e1a8. The two most recent implementation commits that touched source files are the likely culprits:\n- db7e1a8: Simplify sleep log form UI in LogTab.tsx (closes #175)\n- 8b77540: Fix sleep utility functions in sleep utilities (closes #174)\n\nComponent/area affected: src/ files modified by the above commits \u2014 primarily LogTab.tsx and the sleep utility file(s) (e.g. src/utils/sleep.ts or similar). The lint failure is almost certainly in one or both of these files.\n\nExpected behaviour: `npm run lint` (ESLint) passes with zero errors on all changed files.\n\nCurrent behaviour: ESLint fails on the 'Lint' step in CI, blocking deployment.\n\nApproach:\n1. Run `npm run lint` locally to identify the exact lint errors\n2. Fix the errors in the affected files (likely unused variables, missing types, or style violations introduced in #174/#175)\n3. Push the fix \u2014 the pipeline will auto-close this issue on the next successful deploy\n\nEdge cases:\n- The lint error may be in a file other than LogTab.tsx or sleep utilities if a transitive import was changed\n- If lint rules were recently updated, multiple files could be affected\n\nAcceptance criteria:\n- `npm run lint` exits with code 0\n- No new lint suppressions (eslint-disable comments) unless absolutely necessary\n- CI 'Lint' step passes on the next push\n\nTesting: No additional unit tests required for a pure lint fix. Verify by running `npm run lint` locally before pushing."
+  },
+  {
+    "number": 180,
+    "title": "only quick log data is syncing but others are not",
+    "body": "## \ud83d\udc1b Bug Report\n\nonly quick log data is syncing but others are not\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/180",
+    "created_at": "2026-03-30T23:48:11.997Z",
+    "status": "pending"
+  },
+  {
+    "number": 181,
+    "title": "lint test failed",
+    "body": "## \ud83d\udc1b Bug Report\n\nlint test failed\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/181",
+    "created_at": "2026-03-30T23:49:01.045Z",
+    "status": "pending"
+  },
+  {
+    "number": 182,
+    "title": "logged in through family code but info not present after login",
+    "body": "## \ud83d\udc1b Bug Report\n\nlogged in through family code but info not present after login\n\n---\n\n**Category:** `bug` `content`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "content"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/182",
+    "created_at": "2026-03-30T23:52:30.757Z",
+    "status": "pending"
+  },
+  {
+    "number": 183,
+    "title": "scroll up doesn\u2019t work on login page",
+    "body": "## \ud83d\udc1b Bug Report\n\nscroll up doesn\u2019t work on login page\n\n---\n\n**Category:** `bug`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "bug",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/183",
+    "created_at": "2026-03-30T23:54:34.658Z",
+    "status": "pending"
+  },
+  {
+    "number": 184,
+    "title": "there can be max 3 member in the family",
+    "body": "## \u2728 Feature Request\n\nthere can be max 3 member in the family.\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/184",
+    "created_at": "2026-03-30T23:56:27.120Z",
+    "status": "pending"
+  },
+  {
+    "number": 185,
+    "title": "remove firebase integration & all UX related to firebase & all logic related ...",
+    "body": "## \u2728 Feature Request\n\nremove firebase integration & all UX related to firebase & all logic related to firebase\n\n---\n\n**Category:** `enhancement`\n**Source:** Telegram Bot\n**Status:** Pending implementation\n\n> _This issue was created automatically via the BabyBloom Telegram Bot. No private baby data is included._",
+    "labels": [
+      "enhancement",
+      "telegram",
+      "feedback"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/185",
+    "created_at": "2026-03-30T23:59:35.720Z",
     "status": "pending"
   }
 ]
