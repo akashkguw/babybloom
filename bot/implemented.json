@@ -1,0 +1,107 @@
+[
+  {
+    "number": 142,
+    "title": "do not need timer feature in log tab",
+    "status": "implemented"
+  },
+  {
+    "number": 143,
+    "title": "back button for quick log experience when the is timer widget experience to c...",
+    "status": "implemented"
+  },
+  {
+    "number": 145,
+    "title": "Here is a strict, critical teardown of the UX and UI friction points visible in the app. When designing for exhausted, s",
+    "status": "implemented"
+  },
+  {
+    "number": 146,
+    "title": "when the go back to all actions is done from nurse view in quick log, the oth...",
+    "status": "implemented"
+  },
+  {
+    "number": 147,
+    "title": "when I upload my own image for hero widget, I would like to drag it a bit to ...",
+    "status": "implemented"
+  },
+  {
+    "number": 148,
+    "title": "top nav bar are not in vertical center",
+    "status": "implemented"
+  },
+  {
+    "number": 149,
+    "title": "the top nav looks right, but island area is not of the same color as nav, it\u2019...",
+    "status": "implemented"
+  },
+  {
+    "number": 151,
+    "title": "if something needs attention / risk in quick log, it should continue to remai...",
+    "status": "implemented"
+  },
+  {
+    "number": 152,
+    "title": "when I add old feed in old/previous date which I forgot to add, the i get ale...",
+    "status": "implemented"
+  },
+  {
+    "number": 153,
+    "title": "I cannot bath the baby while feeding, but the quick log shows it",
+    "status": "implemented"
+  },
+  {
+    "number": 155,
+    "title": "[Deploy Failed] Build failure on f865200",
+    "status": "infra_implemented"
+  },
+  {
+    "number": 156,
+    "title": "[Deploy Failed] Build failure on 8ecaf58",
+    "status": "implemented"
+  },
+  {
+    "number": 157,
+    "title": "Firebase setup: install SDK and create config/Firestore utilities (#154 pt 1)",
+    "status": "implemented"
+  },
+  {
+    "number": 158,
+    "title": "Firebase sync: core IndexedDB \u2194 Firestore bidirectional sync service (#154 pt 2)",
+    "status": "implemented"
+  },
+  {
+    "number": 159,
+    "title": "Firebase sync: UI integration \u2014 sync status indicator and settings (#154 pt 3)",
+    "status": "implemented"
+  },
+  {
+    "number": 160,
+    "title": "[Deploy Failed] Build failure on 457f6b0",
+    "status": "infra_implemented"
+  },
+  {
+    "number": 163,
+    "title": "firebase sync not working",
+    "status": "implemented"
+  },
+  {
+    "number": 164,
+    "title": "why firebase autosync info is present in setting other than in share / sync d...",
+    "status": "implemented"
+  },
+  {
+    "number": 165,
+    "title": "login page is broken",
+    "status": "implemented"
+  },
+  {
+    "number": 169,
+    "title": "nurse left and nurse right are not maintaining order and are at different pla...",
+    "status": "implemented"
+  },
+  {
+    "number": 171,
+    "title": "in the pipeline dashboard add tokens used dashboard for tracking",
+    "status": "infra_implemented"
+  }
+]
