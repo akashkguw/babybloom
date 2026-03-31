@@ -423,7 +423,13 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               // Open OAuth URL — works in both Capacitor (in-app browser) and web
               window.open(url, '_blank', 'noopener');
             } catch (err: any) {
-              toast('Could not open sign-in: ' + (err?.message || 'unknown error'));
+              const msg = err?.message || '';
+              if (msg.includes('VITE_GOOGLE_CLIENT_ID')) {
+                toast('Setup needed: add VITE_GOOGLE_CLIENT_ID to your .env.local file. See console for details.');
+                console.error('[BabyBloom] Google OAuth not configured.\n1. Go to console.cloud.google.com → APIs & Services → Credentials\n2. Create an OAuth 2.0 Client ID (Web application)\n3. Add VITE_GOOGLE_CLIENT_ID=<your-id> to .env.local\n4. Restart the dev server');
+              } else {
+                toast('Could not open sign-in: ' + msg);
+              }
             }
           }}
           onBack={() => setView('main')}
