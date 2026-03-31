@@ -41,6 +41,7 @@ import {
   isAuthenticated,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
+import { Sentry } from '@/lib/sentry';
 
 // ═══ TYPES ═══
 
@@ -130,7 +131,10 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       const url = (e as CustomEvent).detail?.url as string;
       handleOAuthCallback(url)
         .then(() => { setGoogleAuthed(true); setView('main'); toast('Google Drive connected! Sync will start shortly.'); triggerSync('manual'); })
-        .catch((err: any) => toast('Sign-in failed: ' + (err?.message || 'unknown error')));
+        .catch((err: any) => {
+      toast('Sign-in failed: ' + (err?.message || 'unknown error'));
+      Sentry.captureException(err, { tags: { action: 'oauth_callback' } });
+    });
     };
     window.addEventListener('babybloom:oauth', onOAuth);
 
@@ -174,6 +178,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       }
     } catch (err: any) {
       toast('Failed to enable sync: ' + (err?.message || 'unknown error'));
+      Sentry.captureException(err, { tags: { action: 'enable_sync' } });
     } finally {
       setLoading(false);
     }
@@ -195,6 +200,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       setView('main');
     } catch (err: any) {
       toast('Failed to join sync: ' + (err?.message || 'unknown error'));
+      Sentry.captureException(err, { tags: { action: 'join_sync' } });
     }
   }, []);
 
@@ -429,6 +435,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
                 console.error(msg);
               } else {
                 toast('Could not open sign-in: ' + msg);
+                Sentry.captureException(err, { tags: { action: 'oauth_initiate' } });
               }
             }
           }}

@@ -45,6 +45,7 @@ import {
   DB_KEY_SYNC_STATUS,
   CLOCK_SKEW_WARN_MS,
 } from './types';
+import { Sentry } from '@/lib/sentry';
 
 // ═══ SYNC ENGINE STATE ═══
 
@@ -125,8 +126,15 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
   try {
     await runSyncCycle(reason);
   } catch (err) {
-    const msg = err instanceof DriveError ? err.userMessage : 'Sync failed. Will retry.';
+    const isDriveError = err instanceof DriveError;
+    const msg = isDriveError ? err.userMessage : 'Sync failed. Will retry.';
     await setStatus({ state: 'error', errorMessage: msg });
+
+    // Report to Sentry — skip expected transient conditions (offline, auth, rate-limit)
+    const skipCodes = new Set(['not_authenticated', 'token_revoked', 'offline', 'rate_limited', 'timeout']);
+    if (!isDriveError || !skipCodes.has((err as DriveError).code)) {
+      Sentry.captureException(err, { tags: { sync_reason: reason } });
+    }
   } finally {
     isSyncing = false;
   }
