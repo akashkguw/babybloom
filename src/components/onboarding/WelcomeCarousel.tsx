@@ -736,7 +736,7 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
       position: 'fixed', inset: 0, zIndex: 9999,
       background: C.bg,
       display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
+      overflowX: 'hidden',
       animation: dismissing ? 'obDismissFade 0.6s 0.3s ease-out forwards' : 'obFadeUp 0.4s ease-out',
     }}>
       {/* Skip button — hidden on final hero slide */}
@@ -766,6 +766,7 @@ export default function WelcomeCarousel({ countryConfig, babyName, onDismiss }: 
           justifyContent: 'center',
           padding: '0 24px',
           overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
           animation: `${slideAnim} 0.4s cubic-bezier(0.22,1,0.36,1)`,
         }}
       >
