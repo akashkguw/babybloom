@@ -325,8 +325,9 @@ const LogTab: React.FC<LogTabProps> = ({
       ...(sub === 'tummy' ? { type: 'Tummy Time' } : {}),
     };
 
-    // For sleep entries: ensure type is Nap or Night Sleep (unified form no longer uses Wake Up)
-    if (sub === 'sleep' && (!entry.type || entry.type === 'Wake Up')) {
+    // For sleep entries with no explicit type: auto-detect Nap vs Night Sleep.
+    // Do NOT override Wake Up — that is a valid type the user can submit explicitly.
+    if (sub === 'sleep' && !entry.type) {
       entry.type = autoSleepType(entry.time);
     }
 
