@@ -287,6 +287,12 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
           {/* Actions */}
           {!syncEnabled ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
+                <strong style={{ color: C.t }}>How it works:</strong><br />
+                1️⃣ Tap <em>Enable</em> — you'll be asked to sign into Google.<br />
+                2️⃣ Your data is encrypted on your device, then backed up to your Google Drive.<br />
+                3️⃣ To sync with a partner, tap "Invite Family Member" and let them scan your QR.
+              </div>
               <Btn
                 label="Enable Cloud Sync (Google Drive)"
                 onClick={handleEnableSync}
@@ -294,8 +300,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
                 full
               />
               <Btn
-                label="Join Family Sync (scan partner's QR)"
-                onClick={() => { setView('setup_b'); setShowScanner(true); }}
+                label="Join partner's sync instead"
+                onClick={() => setView('setup_b')}
                 outline
                 full
               />
@@ -334,12 +340,25 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
           </div>
 
           {familyKeyQR ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', borderRadius: 16, padding: 20 }}>
-              <QRCode data={familyKeyQR} size={220} />
-              <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
-                Partner scans this to join family sync
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', borderRadius: 16, padding: 20 }}>
+                <QRCode data={familyKeyQR} size={220} />
+                <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
+                  Partner scans this with their camera
+                </div>
               </div>
-            </div>
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.5 }}>
+                📋 <strong>Camera not working?</strong> Tap the button below to copy your sync code, then paste it on your partner's device.
+              </div>
+              <Btn
+                label="Copy sync code"
+                onClick={() => {
+                  navigator.clipboard.writeText(familyKeyQR).then(() => toast('Sync code copied! Paste it on your partner\'s device.'));
+                }}
+                color={C.bl}
+                full
+              />
+            </>
           ) : (
             <div style={{ textAlign: 'center', padding: 40, color: C.tl, fontSize: 13 }}>
               QR code dismissed for security.
@@ -352,20 +371,12 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
 
       {/* ── SETUP B: Scan QR to join ── */}
       {view === 'setup_b' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 14, color: C.t, fontWeight: 600 }}>
-            Scan your partner's QR code
-          </div>
-          {showScanner ? (
-            <QRScanner
-              onScan={handleJoinFamily}
-              onClose={() => { setShowScanner(false); setView('main'); }}
-            />
-          ) : (
-            <Btn label="Open Camera" onClick={() => setShowScanner(true)} color={C.s} full />
-          )}
-          <Btn label="← Back" onClick={() => setView('main')} outline />
-        </div>
+        <SetupBView
+          showScanner={showScanner}
+          setShowScanner={setShowScanner}
+          onJoin={handleJoinFamily}
+          onBack={() => { setShowScanner(false); setView('main'); }}
+        />
       )}
 
       {/* ── KEY BACKUP ── */}
@@ -413,6 +424,73 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
 }
 
 // ═══ SUB-COMPONENTS ═══
+
+function SetupBView({ showScanner, setShowScanner, onJoin, onBack }: {
+  showScanner: boolean;
+  setShowScanner: (v: boolean) => void;
+  onJoin: (code: string) => void;
+  onBack: () => void;
+}) {
+  const [pasteCode, setPasteCode] = useState('');
+  const [showPaste, setShowPaste] = useState(false);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 14, color: C.t, fontWeight: 600 }}>
+        Join your partner's family sync
+      </div>
+      <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+        <strong>Step 1:</strong> Ask your partner to open Cloud Sync → "Invite Family Member".<br />
+        <strong>Step 2:</strong> Scan their QR code with the camera below, <em>or</em> ask them to tap "Copy sync code" and paste it here.
+      </div>
+
+      {/* Camera option */}
+      {!showPaste && (
+        showScanner ? (
+          <QRScanner
+            onScan={onJoin}
+            onClose={() => setShowScanner(false)}
+          />
+        ) : (
+          <Btn label="📷 Scan QR code" onClick={() => setShowScanner(true)} color={C.s} full />
+        )
+      )}
+
+      {/* Paste option */}
+      {!showScanner && (
+        showPaste ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 12, color: C.tl }}>
+              Paste the sync code your partner copied (starts with BK1:)
+            </div>
+            <textarea
+              value={pasteCode}
+              onChange={(e) => setPasteCode(e.target.value)}
+              placeholder="Paste BK1:… code here"
+              rows={3}
+              style={{
+                background: C.cd, border: '1px solid ' + C.b, borderRadius: 12,
+                padding: '10px 14px', fontSize: 13, color: C.t,
+                width: '100%', boxSizing: 'border-box', resize: 'none', fontFamily: 'monospace',
+              }}
+            />
+            <Btn
+              label="Join with pasted code"
+              onClick={() => { if (pasteCode.trim()) onJoin(pasteCode.trim()); }}
+              color={C.s}
+              full
+            />
+            <Btn label="← Use camera instead" onClick={() => { setShowPaste(false); setPasteCode(''); }} outline full />
+          </div>
+        ) : (
+          <Btn label="⌨️ Paste sync code instead" onClick={() => setShowPaste(true)} outline full />
+        )
+      )}
+
+      <Btn label="← Back" onClick={onBack} outline />
+    </div>
+  );
+}
 
 function PrivacyBadge() {
   return (
