@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "number": 187,
+    "title": "[Deploy Failed] Build failure on b8e6915",
+    "body": "**Deployment failed** (auto-created by pipeline)\n\n**Commit:** [`b8e6915`](https://github.com/akashkguw/babybloom/commit/b8e6915)\n**Time:** 2026-03-31 01:26 PDT\n**Actions run:** https://github.com/akashkguw/babybloom/actions/runs/23787805086\n\n## Failure Details\n\n**Job:** test (20) \u2014 FAILED\n**Failed step:** Lint\n\n## Recent Commits\n\n```\nb8e6915 fix(sync): use BASE_URL for OAuth redirect URI to match GitHub Pages deployment\n72df9cb chore(sync): set Google OAuth Client ID\nf52c4e9 fix(sync): handle web OAuth /oauth callback route in App.tsx\nfe296fe fix(monitoring): wire Sentry.captureException to sync and OAuth error paths\n19c7bca chore(sync): clarify Google Client ID is a developer build config, not user config\n```\n\n## Next Steps\n\n1. Check the [failed Actions run](https://github.com/akashkguw/babybloom/actions/runs/23787805086) for full logs\n2. Fix the issue locally and push\n3. Pipeline will auto-close this issue on next successful deploy\n\n---\n_Auto-created by BabyBloom pipeline on deploy failure._",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/187",
+    "created_at": "2026-03-31T08:26:33Z",
+    "status": "infra_implemented",
+    "route": "infrastructure",
+    "enhanced_description": "The CI pipeline's Lint step failed on commit b8e6915, auto-creating this issue.\n\nWhat was reported: GitHub Actions job 'test (20)' failed at the Lint step after a series of sync/OAuth commits. The pipeline auto-created this issue to track the failure.\n\nArea affected: GitHub Actions CI workflow \u2014 specifically the ESLint lint step.\n\nRoot cause (observed): Commit 0bbc8a1 (already merged to main) removed an ESLint disable comment referencing an unknown rule ('react-hooks/exhaustive-deps'), which was the likely cause of the lint failure. The fix is already in place.\n\nExpected behaviour: The Lint step should pass cleanly with no unknown ESLint rules or rule comments.\nCurrent behaviour: Lint step failed on b8e6915, blocking the deploy.\n\nEdge cases:\n- If the lint fix in 0bbc8a1 is sufficient, the pipeline should auto-close this issue on the next successful deploy.\n- If additional unknown ESLint rule references exist in the codebase, they need to be identified and removed or corrected.\n\nAcceptance criteria:\n1. The Lint step passes in GitHub Actions on the current HEAD.\n2. No references to unknown ESLint rules remain in the codebase.\n3. Pipeline auto-closes this issue after a successful deploy.\n\nTesting: Verify the lint step locally with 'npm run lint' (or equivalent). Confirm no ESLint errors or warnings about unknown rules. Check that CI passes end-to-end after the fix.",
+    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed: bot/pending-issues.json (status update only)\n- Approach taken: Verified the fix already landed in commit 0bbc8a1 (\"fix(lint): remove unknown react-hooks/exhaustive-deps eslint rule comment\"). That commit removed an eslint-disable comment referencing the unknown rule, which was causing the CI Lint step to fail on b8e6915.\n- Testing done: Ran npm run lint locally \u2014 0 errors, 41 warnings (no unknown ESLint rule references). No eslint-disable for react-hooks/exhaustive-deps remains in src/.\n- Any manual steps needed: None. Pipeline will auto-close the GitHub issue (#187) on next successful deploy."
+  }
+]
