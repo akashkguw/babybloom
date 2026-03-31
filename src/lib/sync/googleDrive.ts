@@ -105,7 +105,11 @@ export async function storeTokens(tokens: GoogleTokens): Promise<void> {
  */
 export async function buildAuthUrl(): Promise<{ url: string; codeVerifier: string }> {
   const clientId = getGoogleClientId();
-  if (!clientId) throw new Error('VITE_GOOGLE_CLIENT_ID is not set. Add it to your .env file.');
+  if (!clientId) throw new Error(
+    '[BabyBloom] Google OAuth Client ID is not configured.\n' +
+    'Set VITE_GOOGLE_CLIENT_ID in your CI/build environment, or hardcode it in GOOGLE_CLIENT_ID_FALLBACK in googleDrive.ts.\n' +
+    'This is a one-time developer setup — end users never manage this.'
+  );
 
   const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
   const codeVerifier = btoa(String.fromCharCode(...verifierBytes))
@@ -521,9 +525,23 @@ async function handleDriveError(resp: Response): Promise<void> {
   }
 }
 
+// ── Google OAuth Client ID ──────────────────────────────────────────────────
+//
+// The Client ID is NOT a secret. For PKCE flows there is no client secret.
+// Set VITE_GOOGLE_CLIENT_ID in your environment (CI / build config) once and
+// it's baked into every build. End users never see or manage this.
+//
+// To register a Client ID:
+//   1. console.cloud.google.com → APIs & Services → Credentials
+//   2. Create OAuth 2.0 Client ID → Web application
+//   3. Authorized redirect URIs: https://yourdomain.com/oauth  (+ babybloom://oauth for native)
+//   4. Set VITE_GOOGLE_CLIENT_ID in your CI/CD environment variables
+//
+const GOOGLE_CLIENT_ID_FALLBACK = ''; // replace with your registered client ID to hardcode it
+
 function getGoogleClientId(): string {
-  // Client ID is injected at build time via Vite environment variables
-  return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID) || '';
+  return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID)
+    || GOOGLE_CLIENT_ID_FALLBACK;
 }
 
 // ═══ ERROR CLASS ═══

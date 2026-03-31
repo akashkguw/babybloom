@@ -424,9 +424,9 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               window.open(url, '_blank', 'noopener');
             } catch (err: any) {
               const msg = err?.message || '';
-              if (msg.includes('VITE_GOOGLE_CLIENT_ID')) {
-                toast('Setup needed: add VITE_GOOGLE_CLIENT_ID to your .env.local file. See console for details.');
-                console.error('[BabyBloom] Google OAuth not configured.\n1. Go to console.cloud.google.com → APIs & Services → Credentials\n2. Create an OAuth 2.0 Client ID (Web application)\n3. Add VITE_GOOGLE_CLIENT_ID=<your-id> to .env.local\n4. Restart the dev server');
+              if (msg.includes('Client ID is not configured')) {
+                toast('Google sign-in is not configured in this build. See console.');
+                console.error(msg);
               } else {
                 toast('Could not open sign-in: ' + msg);
               }
