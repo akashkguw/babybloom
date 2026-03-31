@@ -537,7 +537,7 @@ async function handleDriveError(resp: Response): Promise<void> {
 //   3. Authorized redirect URIs: https://yourdomain.com/oauth  (+ babybloom://oauth for native)
 //   4. Set VITE_GOOGLE_CLIENT_ID in your CI/CD environment variables
 //
-const GOOGLE_CLIENT_ID_FALLBACK = ''; // replace with your registered client ID to hardcode it
+const GOOGLE_CLIENT_ID_FALLBACK = '292704039059-2aqdvdicdf749e2ana47m7dd1b9s9ucc.apps.googleusercontent.com';
 
 function getGoogleClientId(): string {
   return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID)
