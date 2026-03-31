@@ -126,9 +126,16 @@ export async function buildAuthUrl(): Promise<{ url: string; codeVerifier: strin
     ((window as any).__CAPACITOR_PLATFORM__ !== undefined ||
      navigator.userAgent.includes('Capacitor'));
 
+  // Web redirect URI must match exactly what's registered in Google Cloud Console.
+  // import.meta.env.BASE_URL is '/babybloom/' on GitHub Pages and '/' on native builds,
+  // so this produces the correct URL in every environment automatically:
+  //   PWA prod:  https://akashkguw.github.io/babybloom/oauth
+  //   Local dev: http://localhost:5173/babybloom/oauth
+  //   Native:    babybloom://oauth
+  const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
   const redirectUri = isNativeApp
     ? 'babybloom://oauth'
-    : `${window.location.origin}/oauth`;
+    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth`;
 
   const params = new URLSearchParams({
     client_id:             clientId,
@@ -198,7 +205,10 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<void> {
   if (!codeVerifier) throw new DriveError('not_authenticated', 'OAuth session expired. Please try signing in again.');
   sessionStorage.removeItem('bb_oauth_verifier');
   const isNativeApp = callbackUrl.startsWith('babybloom://');
-  const redirectUri = isNativeApp ? 'babybloom://oauth' : `${window.location.origin}/oauth`;
+  const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
+  const redirectUri = isNativeApp
+    ? 'babybloom://oauth'
+    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth`;
   await exchangeCodeForTokens(code, codeVerifier, redirectUri);
 }
 

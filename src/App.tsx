@@ -344,7 +344,9 @@ function App() {
   // Native deep links are handled separately in native.ts via appUrlOpen.
   useEffect(() => {
     if (isNative) return; // native uses deep link handler in native.ts
-    if (window.location.pathname !== '/oauth') return;
+    // BASE_URL is '/babybloom/' on GitHub Pages — callback lands at /babybloom/oauth
+    const oauthPath = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/oauth`;
+    if (window.location.pathname !== oauthPath) return;
 
     const callbackUrl = window.location.href;
     // Immediately clean the URL so a refresh doesn't re-trigger the flow
