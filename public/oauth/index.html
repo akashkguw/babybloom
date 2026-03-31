@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>BabyBloom — Signing in…</title>
+  <meta name="robots" content="noindex" />
+</head>
+<body>
+  <script>
+    // GitHub Pages serves this static file at /babybloom/oauth/
+    // Google redirects here after OAuth with ?code=...&state=...
+    //
+    // sessionStorage persists across same-tab navigation, so the PKCE
+    // code_verifier (stored by the main app before redirect) is still here.
+    // We stash the full callback URL and bounce back to the main app.
+    try {
+      sessionStorage.setItem('bb_oauth_callback', window.location.href);
+    } catch (e) {
+      // sessionStorage blocked — fall back to hash param
+    }
+    window.location.replace('/babybloom/');
+  </script>
+</body>
+</html>

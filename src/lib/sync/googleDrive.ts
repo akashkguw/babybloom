@@ -135,7 +135,7 @@ export async function buildAuthUrl(): Promise<{ url: string; codeVerifier: strin
   const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
   const redirectUri = isNativeApp
     ? 'babybloom://oauth'
-    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth`;
+    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth/`;
 
   const params = new URLSearchParams({
     client_id:             clientId,
@@ -208,7 +208,7 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<void> {
   const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
   const redirectUri = isNativeApp
     ? 'babybloom://oauth'
-    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth`;
+    : `${window.location.origin}${base.replace(/\/$/, '')}/oauth/`;
   await exchangeCodeForTokens(code, codeVerifier, redirectUri);
 }
 

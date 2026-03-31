@@ -344,20 +344,33 @@ function App() {
   // Native deep links are handled separately in native.ts via appUrlOpen.
   useEffect(() => {
     if (isNative) return; // native uses deep link handler in native.ts
-    // BASE_URL is '/babybloom/' on GitHub Pages — callback lands at /babybloom/oauth
-    const oauthPath = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/oauth`;
-    if (window.location.pathname !== oauthPath) return;
 
-    const callbackUrl = window.location.href;
-    // Immediately clean the URL so a refresh doesn't re-trigger the flow
-    window.history.replaceState({}, '', '/');
+    // Two ways to land here with an OAuth code:
+    //
+    // 1. Direct path match — local dev (Vite handles /babybloom/oauth as a SPA route)
+    //    URL: http://localhost:5173/babybloom/oauth?code=...
+    //
+    // 2. sessionStorage bounce — GitHub Pages (static host can't serve /oauth as a route).
+    //    public/oauth/index.html stores the callback URL in sessionStorage then
+    //    redirects to /babybloom/, where we pick it up here.
+    //    URL after bounce: https://akashkguw.github.io/babybloom/
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const oauthPath = `${base}/oauth`;
+    const storedCallback = sessionStorage.getItem('bb_oauth_callback');
+
+    const isDirectPath = window.location.pathname === oauthPath
+      || window.location.pathname === oauthPath + '/';
+    const callbackUrl = storedCallback || (isDirectPath ? window.location.href : null);
+    if (!callbackUrl) return;
+
+    // Clean up before any async work
+    sessionStorage.removeItem('bb_oauth_callback');
+    if (isDirectPath) window.history.replaceState({}, '', import.meta.env.BASE_URL);
 
     handleOAuthCallback(callbackUrl)
       .then(() => {
-        // Dispatch the same event CloudSync listens for — opens modal if it's mounted,
-        // otherwise the tokens are already stored and sync will work on next trigger.
         window.dispatchEvent(new CustomEvent('babybloom:oauth', { detail: { url: callbackUrl } }));
-        setShowCloudSync(true); // bring CloudSync back into view so user sees confirmation
+        setShowCloudSync(true);
       })
       .catch((err: any) => {
         toast('Google sign-in failed: ' + (err?.message || 'unknown error'));
