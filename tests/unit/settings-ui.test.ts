@@ -93,13 +93,10 @@ describe('Settings page — professional layout (#136)', () => {
     expect(settingsTsx).toContain('Data & Support');
   });
 
-  it('Firebase sync is inside Share & Sync Data section (not a standalone section)', () => {
-    // There should be no standalone "Firebase Autosync" section
-    expect(settingsTsx).not.toContain('Firebase Autosync');
-    // Firebase sync should appear under "Share & Sync Data"
-    expect(settingsTsx).toContain('Share & Sync Data');
-    // FirebaseSyncSection should still be rendered
-    expect(settingsTsx).toContain('FirebaseSyncSection');
+  it('has Share & Reports section (no Firebase)', () => {
+    expect(settingsTsx).toContain('Share & Reports');
+    expect(settingsTsx).not.toContain('Firebase');
+    expect(settingsTsx).not.toContain('FirebaseSyncSection');
   });
 
   it('uses Icon components for all section headers', () => {

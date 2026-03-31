@@ -13,8 +13,6 @@ import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
-import { useFirebaseSync } from '@/hooks/useFirebaseSync';
-import SyncStatusBadge from '@/components/SyncStatusBadge';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
@@ -171,19 +169,14 @@ function App() {
     setTab(t);
   };
 
-  // Firebase autosync — uses bundled VITE_ env vars (no user config needed)
-  const firebaseSyncState = useFirebaseSync(activeProfile != null ? String(activeProfile) : null);
-
-  // Save field to both global and profile-specific keys, then trigger debounced sync
+  // Save field to both global and profile-specific keys
   const spd = (field: string, val: any) => {
     ds(field, val);
     if (activeProfile) {
       dg(`profileData_${activeProfile}`).then((d: any) => {
         const data = d || {};
         data[field] = val;
-        ds(`profileData_${activeProfile}`, data).then(() => {
-          firebaseSyncState.requestSync();
-        });
+        ds(`profileData_${activeProfile}`, data);
       });
     }
   };
@@ -447,15 +440,6 @@ function App() {
     return () => clearTimeout(safetyTimer);
   }, []);
 
-  // Reload React state from IndexedDB after Firebase sync merges new remote entries.
-  // pullAndMerge() writes directly to IndexedDB; without this effect the UI stays
-  // stale until the app is restarted (the original bug: #173).
-  const syncRevision = firebaseSyncState.syncRevision;
-  useEffect(() => {
-    if (loading || activeProfile == null || syncRevision === 0) return;
-    loadProfileData(activeProfile);
-  }, [syncRevision]); // eslint-disable-line -- intentionally omitting loadProfileData to avoid re-triggering on every render
-
   // Scroll to top on tab change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -654,7 +638,6 @@ function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <SyncStatusBadge status={firebaseSyncState.syncStatus} lastSyncedAt={firebaseSyncState.lastSyncedAt} />
             <button
               onClick={() => setDarkMode(!darkMode)}
               style={{
@@ -731,10 +714,6 @@ function App() {
           country={country}
           setCountry={setCountry}
           countryConfig={countryConfig}
-          firestoreSyncStatus={firebaseSyncState.syncStatus}
-          firestoreLastSyncedAt={firebaseSyncState.lastSyncedAt}
-          firestoreSyncError={firebaseSyncState.syncError}
-          syncState={firebaseSyncState}
         />
       ) : (
         <>
@@ -817,7 +796,6 @@ function App() {
           babyName={babyName}
           birth={birth}
           onClose={() => setShowSync(false)}
-          syncState={firebaseSyncState}
         />
       ) : null}
 

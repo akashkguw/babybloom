@@ -52,11 +52,6 @@ export function cleanStr(v: string, maxLen = 200): string {
   return v.trim().slice(0, maxLen);
 }
 
-/** Validate a family sync code (bloom-xxxxxxxx format, 8+ alphanumeric suffix) */
-export function isValidFamilyCode(code: string): boolean {
-  return /^bloom-[a-z0-9]{8,}$/.test(code.trim().toLowerCase());
-}
-
 /** Reasonable ranges for baby health data */
 export const LIMITS = {
   feedMins: { min: 0, max: 120 },        // 0–120 min feeding

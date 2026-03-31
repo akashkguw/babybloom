@@ -9,8 +9,7 @@ import { MILESTONES } from '@/lib/constants/milestones';
 import type { CountryConfig, CountryCode } from '@/lib/constants/countries';
 import { getAvailableCountries } from '@/lib/constants/countries';
 import { toast } from '@/lib/utils/toast';
-import { isValidBirthDate, isValidFamilyCode } from '@/lib/utils/validate';
-import { saveFamilyCode } from '@/utils/syncService';
+import { isValidBirthDate } from '@/lib/utils/validate';
 import WelcomeCarousel from '@/components/onboarding/WelcomeCarousel';
 import MilestoneCarousel from '@/components/onboarding/MilestoneCarousel';
 import { getEncouragement } from '@/lib/constants/encouragements';
@@ -125,10 +124,7 @@ export default function HomeTab({
   const [revealStage, setRevealStage] = useState<number | null>(null);
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [joinCode, setJoinCode] = useState('');
-  const [showFamilyCode, setShowFamilyCode] = useState(false);
-  const [familyCodeInput, setFamilyCodeInput] = useState('');
   const joinSectionRef = useRef<HTMLDivElement>(null);
-  const familyCodeSectionRef = useRef<HTMLDivElement>(null);
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
   const [heroBg, setHeroBg] = useState<HeroBgSetting | null>(null);
 
@@ -138,13 +134,6 @@ export default function HomeTab({
       joinSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [showJoinCode]);
-
-  // Scroll family-code section into view when revealed
-  useEffect(() => {
-    if (showFamilyCode && familyCodeSectionRef.current) {
-      familyCodeSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [showFamilyCode]);
 
   // Load hero background setting
   useEffect(() => {
@@ -723,60 +712,6 @@ export default function HomeTab({
             )}
           </div>
 
-          {/* Start via family code — cloud sync entry point (always visible) */}
-          <div ref={familyCodeSectionRef} style={{ marginTop: 12 }}>
-            {!showFamilyCode ? (
-              <div
-                onClick={() => setShowFamilyCode(true)}
-                style={{ cursor: 'pointer', textAlign: 'center' }}
-              >
-                <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
-                  Start via family code
-                </span>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.t, marginBottom: 6 }}>
-                  Enter family code
-                </div>
-                <input
-                  type="text"
-                  value={familyCodeInput}
-                  onChange={(e) => setFamilyCodeInput(e.target.value.trim())}
-                  placeholder="bloom-xxxxxxxx"
-                  style={{
-                    width: '100%', background: C.bg, border: '1px solid ' + C.b,
-                    borderRadius: 12, padding: '10px 12px', fontSize: 13,
-                    fontFamily: 'monospace', color: C.t, boxSizing: 'border-box',
-                  }}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Btn
-                    label="Join family"
-                    onClick={async () => {
-                      const code = familyCodeInput.trim().toLowerCase();
-                      if (!isValidFamilyCode(code)) {
-                        toast('Invalid family code — should be bloom-xxxxxxxx');
-                        return;
-                      }
-                      await saveFamilyCode(code);
-                      setBirth(today());
-                      toast('Family code saved! Welcome to BabyBloom');
-                      setShowWelcome(true);
-                    }}
-                    color={C.s}
-                    full={true}
-                  />
-                </div>
-                <div
-                  onClick={() => { setShowFamilyCode(false); setFamilyCodeInput(''); }}
-                  style={{ cursor: 'pointer', textAlign: 'center', marginTop: 8 }}
-                >
-                  <span style={{ fontSize: 12, color: C.tl }}>Cancel</span>
-                </div>
-              </div>
-            )}
-          </div>
         </Cd>
 
         <div style={{ marginTop: 20, fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
