@@ -13,6 +13,7 @@ import SearchModal from '@/components/modals/SearchModal';
 import { Icon as Ic } from '@/components/shared/Icon';
 import { toast } from '@/lib/utils/toast';
 import PartnerSync from '@/features/sync/PartnerSync';
+import CloudSync from '@/features/sync/CloudSync';
 import { MAX_FAMILY_MEMBERS } from '@/features/profiles/ProfileManager';
 import PediatrReport from '@/features/reports/PediatrReport';
 import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
@@ -77,6 +78,7 @@ function App() {
   const [showSet, setShowSet] = useState<boolean>(false);
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [showSync, setShowSync] = useState<boolean>(false);
+  const [showCloudSync, setShowCloudSync] = useState<boolean>(false);
   const [showReport, setShowReport] = useState<boolean>(false);
   const [showGuideFromSettings, setShowGuideFromSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -715,6 +717,7 @@ function App() {
           setVolumeUnit={setVolumeUnit}
           onShowReport={() => { setShowReport(true); }}
           onSync={() => { setShowSet(false); setShowSync(true); }}
+          onCloudSync={() => { setShowSet(false); setShowCloudSync(true); }}
           onShowGuide={() => { setShowSet(false); setShowGuideFromSettings(true); setTab('home'); }}
           country={country}
           setCountry={setCountry}
@@ -802,6 +805,10 @@ function App() {
           birth={birth}
           onClose={() => setShowSync(false)}
         />
+      ) : null}
+
+      {showCloudSync ? (
+        <CloudSync onClose={() => setShowCloudSync(false)} />
       ) : null}
 
       {showReport ? (

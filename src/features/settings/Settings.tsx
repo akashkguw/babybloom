@@ -31,6 +31,7 @@ interface SettingsProps {
   setVolumeUnit: (unit: 'ml' | 'oz') => void;
   onShowReport?: () => void;
   onSync?: () => void;
+  onCloudSync?: () => void;
   onShowGuide?: () => void;
   country: CountryCode;
   setCountry: (code: CountryCode) => void;
@@ -91,6 +92,7 @@ export default function Settings({
   setVolumeUnit,
   onShowReport,
   onSync,
+  onCloudSync,
   onShowGuide,
   country,
   setCountry,
@@ -317,6 +319,12 @@ export default function Settings({
 
         <Section title="Share & Reports" iconName="database" iconColor={C.s}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Button
+              label="☁️ Google Drive Sync"
+              onClick={() => { if (onCloudSync) onCloudSync(); }}
+              color={C.bl}
+              full
+            />
             <Button
               label="Share Data with Partner"
               onClick={() => { if (onSync) onSync(); }}
