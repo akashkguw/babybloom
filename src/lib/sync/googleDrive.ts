@@ -100,6 +100,111 @@ export async function storeTokens(tokens: GoogleTokens): Promise<void> {
 }
 
 /**
+ * Build the Google OAuth2 authorization URL with PKCE.
+ * Redirect URI: babybloom://oauth (native) or {origin}/oauth (web)
+ */
+export async function buildAuthUrl(): Promise<{ url: string; codeVerifier: string }> {
+  const clientId = getGoogleClientId();
+  if (!clientId) throw new Error('VITE_GOOGLE_CLIENT_ID is not set. Add it to your .env file.');
+
+  const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
+  const codeVerifier = btoa(String.fromCharCode(...verifierBytes))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+  const challengeBuffer = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(codeVerifier),
+  );
+  const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(challengeBuffer)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+  const isNativeApp = typeof window !== 'undefined' &&
+    ((window as any).__CAPACITOR_PLATFORM__ !== undefined ||
+     navigator.userAgent.includes('Capacitor'));
+
+  const redirectUri = isNativeApp
+    ? 'babybloom://oauth'
+    : `${window.location.origin}/oauth`;
+
+  const params = new URLSearchParams({
+    client_id:             clientId,
+    redirect_uri:          redirectUri,
+    response_type:         'code',
+    scope:                 GOOGLE_DRIVE_SCOPE,
+    access_type:           'offline',
+    prompt:                'consent',
+    code_challenge:        codeChallenge,
+    code_challenge_method: 'S256',
+  });
+
+  return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}`, codeVerifier };
+}
+
+/**
+ * Exchange an OAuth authorization code for access + refresh tokens.
+ */
+export async function exchangeCodeForTokens(
+  code: string,
+  codeVerifier: string,
+  redirectUri: string,
+): Promise<void> {
+  const clientId = getGoogleClientId();
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code, client_id: clientId, redirect_uri: redirectUri,
+      grant_type: 'authorization_code', code_verifier: codeVerifier,
+    }).toString(),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new DriveError('token_refresh_failed', `OAuth exchange failed: ${err.error_description || response.status}`);
+  }
+  const data = await response.json();
+  await storeTokens({
+    access_token:  data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at:    Date.now() + data.expires_in * 1000,
+    scope:         data.scope || GOOGLE_DRIVE_SCOPE,
+  });
+}
+
+/**
+ * Initiate Google Sign-In — stores PKCE verifier and returns the auth URL.
+ * Caller is responsible for opening the URL (window.open or Capacitor Browser).
+ */
+export async function initiateGoogleSignIn(): Promise<string> {
+  const { url, codeVerifier } = await buildAuthUrl();
+  sessionStorage.setItem('bb_oauth_verifier', codeVerifier);
+  return url;
+}
+
+/**
+ * Handle the OAuth redirect callback URL.
+ * Exchanges the authorization code for tokens and stores them.
+ */
+export async function handleOAuthCallback(callbackUrl: string): Promise<void> {
+  const u = new URL(callbackUrl);
+  const code  = u.searchParams.get('code');
+  const error = u.searchParams.get('error');
+  if (error) throw new DriveError('not_authenticated', `Google sign-in denied: ${error}`);
+  if (!code)  throw new DriveError('not_authenticated', 'No authorization code in callback URL.');
+  const codeVerifier = sessionStorage.getItem('bb_oauth_verifier');
+  if (!codeVerifier) throw new DriveError('not_authenticated', 'OAuth session expired. Please try signing in again.');
+  sessionStorage.removeItem('bb_oauth_verifier');
+  const isNativeApp = callbackUrl.startsWith('babybloom://');
+  const redirectUri = isNativeApp ? 'babybloom://oauth' : `${window.location.origin}/oauth`;
+  await exchangeCodeForTokens(code, codeVerifier, redirectUri);
+}
+
+/**
+ * Check if the user is authenticated with Google Drive.
+ * Alias for hasValidTokens — used by CloudSync UI.
+ */
+export const isAuthenticated = hasValidTokens;
+
+/**
  * Clear stored Google tokens (when sync is disabled).
  */
 export async function clearTokens(): Promise<void> {

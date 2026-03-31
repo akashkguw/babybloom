@@ -35,12 +35,18 @@ import {
   triggerSync,
   onSyncStatus,
 } from '@/lib/sync/syncEngine';
+import {
+  initiateGoogleSignIn,
+  handleOAuthCallback,
+  isAuthenticated,
+} from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
 
 // ═══ TYPES ═══
 
 type CloudSyncView =
   | 'main'
+  | 'google_auth'    // Sign into Google to activate Drive backup
   | 'setup_a'        // Parent A: generating family key + QR
   | 'setup_b'        // Parent B: scanning QR to join
   | 'key_backup'     // Passphrase-based backup setup
@@ -94,6 +100,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle' });
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [googleAuthed, setGoogleAuthed] = useState(false);
 
   // Setup flow state
   const [familyKeyQR, setFamilyKeyQR] = useState('');
@@ -107,8 +114,9 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
 
   // ── Load initial state ──
   useEffect(() => {
-    isSyncEnabled().then((enabled) => {
+    Promise.all([isSyncEnabled(), isAuthenticated()]).then(([enabled, authed]) => {
       setSyncEnabled(enabled);
+      setGoogleAuthed(authed);
       setLoading(false);
     });
 
@@ -117,7 +125,16 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       setIsSyncing(status.state !== 'idle' && status.state !== 'error');
     });
 
-    return unsubscribe;
+    // Listen for OAuth callback (native deep link or web redirect)
+    const onOAuth = (e: Event) => {
+      const url = (e as CustomEvent).detail?.url as string;
+      handleOAuthCallback(url)
+        .then(() => { setGoogleAuthed(true); setView('main'); toast('Google Drive connected! Sync will start shortly.'); triggerSync('manual'); })
+        .catch((err: any) => toast('Sign-in failed: ' + (err?.message || 'unknown error')));
+    };
+    window.addEventListener('babybloom:oauth', onOAuth);
+
+    return () => { unsubscribe(); window.removeEventListener('babybloom:oauth', onOAuth); };
   }, []);
 
   // ── QR countdown timer ──
@@ -147,16 +164,20 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await storeFamilyKey(key);
       await enableSync();
       setSyncEnabled(true);
-      // Go to main enabled view — user taps "Invite Family Member" separately if needed.
-      // Google Drive sign-in happens automatically on the first background sync cycle.
-      setView('main');
-      toast('Cloud sync enabled! Your data will back up to Google Drive automatically.');
+      // If not yet signed into Google, send user there immediately.
+      if (!googleAuthed) {
+        setView('google_auth');
+        toast('Sync enabled! Connect Google Drive to start backing up.');
+      } else {
+        setView('main');
+        toast('Cloud sync enabled! Your data will back up to Google Drive automatically.');
+      }
     } catch (err: any) {
       toast('Failed to enable sync: ' + (err?.message || 'unknown error'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [googleAuthed]);
 
   // ── Join existing family (Parent B: scan QR) ──
   const handleJoinFamily = useCallback(async (qrData: string) => {
@@ -285,6 +306,19 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
           {/* Privacy guarantee */}
           <PrivacyBadge />
 
+          {/* Google Drive not connected banner */}
+          {syncEnabled && !googleAuthed && (
+            <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', fontSize: 12, color: '#1d4ed8', lineHeight: 1.7 }}>
+              <strong>⚠️ Google Drive not connected.</strong> Your data is encrypted locally but not yet backed up.{' '}
+              <button
+                onClick={() => setView('google_auth')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline' }}
+              >
+                Connect now →
+              </button>
+            </div>
+          )}
+
           {/* Actions */}
           {!syncEnabled ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -377,6 +411,22 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
           setShowScanner={setShowScanner}
           onJoin={handleJoinFamily}
           onBack={() => { setShowScanner(false); setView('main'); }}
+        />
+      )}
+
+      {/* ── GOOGLE AUTH ── */}
+      {view === 'google_auth' && (
+        <GoogleAuthView
+          onAuth={async () => {
+            try {
+              const url = await initiateGoogleSignIn();
+              // Open OAuth URL — works in both Capacitor (in-app browser) and web
+              window.open(url, '_blank', 'noopener');
+            } catch (err: any) {
+              toast('Could not open sign-in: ' + (err?.message || 'unknown error'));
+            }
+          }}
+          onBack={() => setView('main')}
         />
       )}
 
@@ -488,6 +538,33 @@ function SetupBView({ showScanner, setShowScanner, onJoin, onBack }: {
         )
       )}
 
+      <Btn label="← Back" onClick={onBack} outline />
+    </div>
+  );
+}
+
+function GoogleAuthView({ onAuth, onBack }: { onAuth: () => void; onBack: () => void }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
+        Connect Google Drive
+      </div>
+      <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
+        <strong>Why?</strong> Your encrypted baby data is stored in <strong>your own</strong> Google Drive.
+        BabyBloom cannot read any of it — only your device key can decrypt it.<br /><br />
+        Tap below, sign in with Google, and you'll be redirected back automatically.
+      </div>
+      <PrivacyBadge />
+      <Btn
+        label="Sign in with Google"
+        onClick={onAuth}
+        color={C.s}
+        full
+      />
+      <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.6 }}>
+        You'll be redirected to Google's sign-in page.<br />
+        After approving, you'll return here automatically.
+      </div>
       <Btn label="← Back" onClick={onBack} outline />
     </div>
   );

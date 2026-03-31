@@ -211,10 +211,15 @@ export async function initNativeApp() {
     }
   });
 
-  // Handle deep links (e.g., babybloom://quick?action=diaper)
+  // Handle deep links (e.g., babybloom://quick?action=diaper or babybloom://oauth?code=...)
   App.addListener('appUrlOpen', ({ url }: { url: string }) => {
     try {
       const u = new URL(url);
+      // OAuth callback — dispatch dedicated event for CloudSync to handle
+      if (u.host === 'oauth' || u.pathname === '/oauth') {
+        window.dispatchEvent(new CustomEvent('babybloom:oauth', { detail: { url } }));
+        return;
+      }
       const params = u.searchParams;
       // Dispatch a custom event that App.tsx can listen for
       window.dispatchEvent(
