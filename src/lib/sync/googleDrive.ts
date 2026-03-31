@@ -193,7 +193,7 @@ export async function uploadFile(fileName: string, data: Uint8Array): Promise<st
       Authorization: `Bearer ${token}`,
       'Content-Type': `multipart/related; boundary="${boundary}"`,
     },
-    body,
+    body: body as unknown as BodyInit,
   }, 60_000);
 
   await handleDriveError(resp);

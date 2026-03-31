@@ -319,7 +319,6 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
                 onClick={handleDisableSync}
                 outline
                 full
-                danger
               />
             </div>
           )}
