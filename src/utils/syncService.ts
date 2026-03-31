@@ -82,16 +82,23 @@ export async function flushQueue(db: Firestore): Promise<void> {
 
 /**
  * Build a compound dedup key from an entry's date, time, and type fields.
- * Returns null if the entry lacks the fields needed for compound dedup
- * (entries without date/type cannot be deduplicated this way).
+ * Returns null if the entry lacks the fields needed for reliable compound dedup.
+ *
+ * ALL THREE fields (date, time, type) must be non-empty strings. Without a
+ * specific time, two entries of the same type on the same day could be genuinely
+ * distinct events (e.g. two separate nap sessions logged without a clock time),
+ * so we fall back to id-only dedup rather than risk false-positive deduplication.
  */
 export function entryCompoundKey(e: SyncEntry): string | null {
   const date = e['date'];
   const type = e['type'];
+  const time = e['time'];
   if (typeof date !== 'string' || !date) return null;
   if (typeof type !== 'string' || !type) return null;
-  const time = e['time'];
-  return `${date}|${typeof time === 'string' ? time : ''}|${type}`;
+  // Without a time, compound-key dedup is too broad: it would match any two
+  // entries of the same type on the same day, destroying valid distinct events.
+  if (typeof time !== 'string' || !time) return null;
+  return `${date}|${time}|${type}`;
 }
 
 /**

@@ -396,9 +396,17 @@ describe('entryCompoundKey', () => {
     expect(key).toBe('2025-01-01|10:00|feed');
   });
 
-  it('uses empty string for missing time', () => {
+  it('returns null for entry without time (prevents false-positive dedup of distinct timeless events)', () => {
+    // Without a time, two entries of the same type on the same day could be genuinely
+    // distinct events (e.g. two separate bottle feedings). Returning null forces id-only
+    // dedup so both entries survive a sync, instead of being incorrectly merged.
     const key = entryCompoundKey({ id: 1, date: '2025-01-01', type: 'feed' });
-    expect(key).toBe('2025-01-01||feed');
+    expect(key).toBeNull();
+  });
+
+  it('returns null for entry with empty string time', () => {
+    const key = entryCompoundKey({ id: 1, date: '2025-01-01', time: '', type: 'feed' });
+    expect(key).toBeNull();
   });
 
   it('different types with same date+time produce different keys', () => {
@@ -565,5 +573,111 @@ describe('pullAndMerge — idempotency', () => {
 
     const saved = mockStore['profileData_p1'] as { logs: Record<string, unknown[]> };
     expect(saved.logs.diaper).toHaveLength(1);
+  });
+});
+
+// ── Feed sync: issue #177 — feeding info not flowing in sync ──────────────────
+//
+// Root cause: entryCompoundKey was building a compound key with empty string for
+// missing time (e.g. '2025-01-01||Bottle'). Multiple distinct bottle feedings on
+// the same day without a recorded time all shared the same compound key, so all
+// but the first were silently dropped during the mergeEntries dedup step.
+//
+// Fix: entryCompoundKey now returns null when time is absent, causing timeless
+// entries to use id-only dedup, which correctly preserves all distinct events.
+
+describe('feed sync — distinct timeless entries all survive', () => {
+  it('two distinct bottle feedings on the same day (no time) both survive merge', () => {
+    const feed1 = { id: 1000, date: '2025-01-15', type: 'Bottle', amount: '80ml' };
+    const feed2 = { id: 1001, date: '2025-01-15', type: 'Bottle', amount: '100ml' };
+    // Simulates Device B pulling both entries from Device A
+    const result = mergeEntries([], [feed1, feed2]);
+    expect(result).toHaveLength(2);
+    expect(result.map((e) => e.id).sort((a, b) => a - b)).toEqual([1000, 1001]);
+  });
+
+  it('three breast feedings on same day (no time) all survive merge', () => {
+    const feedings = [
+      { id: 2001, date: '2025-01-15', type: 'Breast L' },
+      { id: 2002, date: '2025-01-15', type: 'Breast L' },
+      { id: 2003, date: '2025-01-15', type: 'Breast R' },
+    ];
+    const result = mergeEntries([], feedings);
+    expect(result).toHaveLength(3);
+  });
+
+  it('local feed entries are not overwritten when remote also lacks time', () => {
+    // Device A has local feed entries; Device B pushes different entries back.
+    // Local should survive and remote new entries should be added.
+    const localFeeds = [
+      { id: 100, date: '2025-01-15', type: 'Formula' },
+      { id: 101, date: '2025-01-15', type: 'Formula' },
+    ];
+    const remoteFeeds = [
+      { id: 100, date: '2025-01-15', type: 'Formula' },  // same as local (id match)
+      { id: 200, date: '2025-01-15', type: 'Formula' },  // new from remote
+    ];
+    const result = mergeEntries(localFeeds, remoteFeeds);
+    // id:100 deduped (local wins), id:101 local kept, id:200 new from remote
+    expect(result).toHaveLength(3);
+    expect(result.map((e) => e.id).sort((a, b) => a - b)).toEqual([100, 101, 200]);
+  });
+
+  it('timeless feed entries are idempotent across multiple sync cycles', () => {
+    const feeds = [
+      { id: 300, date: '2025-01-16', type: 'Pumped Milk' },
+      { id: 301, date: '2025-01-16', type: 'Pumped Milk' },
+      { id: 302, date: '2025-01-16', type: 'Pumped Milk' },
+    ];
+    // Simulate 3 sync cycles
+    const after1 = mergeEntries(feeds, feeds);
+    const after2 = mergeEntries(after1, feeds);
+    const after3 = mergeEntries(after2, feeds);
+    // Id-based dedup: same ids, so count stays at 3
+    expect(after1).toHaveLength(3);
+    expect(after2).toHaveLength(3);
+    expect(after3).toHaveLength(3);
+  });
+
+  it('feed entries WITH time still use compound-key dedup (no regression)', () => {
+    // Entries with time should still be deduplicated by date+time+type
+    const local = { id: 400, date: '2025-01-16', time: '09:00', type: 'Bottle' };
+    const remote = { id: 401, date: '2025-01-16', time: '09:00', type: 'Bottle' }; // same event, diff id
+    const result = mergeEntries([local], [remote]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(400); // local wins
+  });
+
+  it('pullAndMerge preserves all timeless feed entries from remote', async () => {
+    resetMockStore();
+    vi.clearAllMocks();
+
+    const remoteFeeds = [
+      { id: 500, date: '2025-01-20', type: 'Formula' },
+      { id: 501, date: '2025-01-20', type: 'Formula' },
+      { id: 502, date: '2025-01-20', type: 'Bottle' },
+    ];
+    mockGetEntries.mockImplementation(async (_db: unknown, _fc: unknown, _pid: unknown, cat: unknown) => {
+      if (cat === 'feed') return remoteFeeds;
+      return [];
+    });
+
+    const newCount = await pullAndMerge(mockDb, 'bloom-abc123', 'p1');
+    expect(newCount).toBe(3);
+
+    const saved = mockStore['profileData_p1'] as { logs: Record<string, { id: number }[]> };
+    expect(saved.logs.feed).toHaveLength(3);
+    expect(saved.logs.feed.map((e) => e.id).sort((a, b) => a - b)).toEqual([500, 501, 502]);
+  });
+
+  it('pump entries (feed subtype) also survive sync without time', () => {
+    const pumpSessions = [
+      { id: 600, date: '2025-01-21', type: 'Pumped Milk', oz: 3 },
+      { id: 601, date: '2025-01-21', type: 'Pumped Milk', oz: 2.5 },
+    ];
+    const result = mergeEntries([], pumpSessions);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe(600);
+    expect(result[1].id).toBe(601);
   });
 });
