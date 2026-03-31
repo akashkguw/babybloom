@@ -98,6 +98,13 @@ android/app/build/
 android/build/
 android/local.properties
 
+# ─── Design docs (local reference only) ─────────────────────────
+*.docx
+*.pptx
+
+# ─── Vite timestamp artifacts ────────────────────────────────────
+vitest.config.ts.timestamp-*.mjs
+
 # ─── Misc ───────────────────────────────────────────────────────
 *.bak
 *.tmp

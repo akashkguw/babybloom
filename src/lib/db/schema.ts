@@ -3,9 +3,29 @@
  * Defines the structure of logs, profile, and other persistent data
  */
 
+// ═══ SYNC METADATA ═══
+// Added in Phase 1 of cloud sync (design §3.2).
+// Every mutable entry gains these two fields for conflict resolution.
+
+export interface SyncFields {
+  /**
+   * ISO 8601 timestamp — set on create and every edit.
+   * Used as the LWW (Last-Write-Wins) conflict resolution key during merge.
+   * Backfilled to entry's original date/time for pre-sync legacy entries.
+   */
+  modified_at?: string;
+  /**
+   * ISO 8601 timestamp — set when entry is soft-deleted.
+   * null / undefined = entry is active.
+   * Tombstone propagates deletion to all partner devices.
+   * Purged after 30 days (TOMBSTONE_PURGE_DAYS) during sync.
+   */
+  deleted_at?: string | null;
+}
+
 // ═══ LOG ENTRIES ═══
 
-export interface LogEntry {
+export interface LogEntry extends SyncFields {
   id: number;
   date: string; // YYYY-MM-DD
   time?: string; // HH:MM
@@ -87,7 +107,7 @@ export interface Logs {
 
 // ═══ PROFILE ═══
 
-export interface Profile {
+export interface Profile extends SyncFields {
   name?: string;
   dob?: string; // YYYY-MM-DD (baby's date of birth)
   gender?: string;
@@ -97,6 +117,7 @@ export interface Profile {
   feedingMethod?: "bottle" | "breast" | "both";
   volumeUnit?: "oz" | "ml"; // user's preferred unit
   temperatureUnit?: "F" | "C"; // user's preferred unit
+  // NOTE: theme and notifications are device-local — NOT synced (design §3.3)
   theme?: "light" | "dark" | "auto";
   notifications?: boolean;
 }
@@ -118,9 +139,10 @@ export interface Reminders {
 
 // ═══ MILESTONES & FIRSTS ═══
 
-export interface FirstEntry {
+export interface FirstEntry extends SyncFields {
   id?: number;
   date?: string;
+  label?: string;
   title?: string;
   notes?: string;
   emoji?: string;
@@ -128,7 +150,8 @@ export interface FirstEntry {
 
 // ═══ EMERGENCY CONTACTS ═══
 
-export interface EmergencyContact {
+export interface EmergencyContact extends SyncFields {
+  id?: number;
   name?: string;
   relationship?: string;
   phone?: string;
