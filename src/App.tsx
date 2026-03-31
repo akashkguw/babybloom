@@ -20,6 +20,7 @@ import { getCountryConfig, detectCountry } from '@/lib/constants/countries';
 import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 import { checkFeedNotification } from '@/lib/utils/feedNotification';
+import { handleOAuthCallback } from '@/lib/sync/googleDrive';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -336,6 +337,31 @@ function App() {
     ds(`profileData_${id}`, null);
     toast('Profile removed');
   };
+
+  // ── Web OAuth callback handler ──────────────────────────────────────────
+  // When Google redirects to /oauth?code=... (web PWA flow), this fires once
+  // on mount and completes the token exchange before anything else renders.
+  // Native deep links are handled separately in native.ts via appUrlOpen.
+  useEffect(() => {
+    if (isNative) return; // native uses deep link handler in native.ts
+    if (window.location.pathname !== '/oauth') return;
+
+    const callbackUrl = window.location.href;
+    // Immediately clean the URL so a refresh doesn't re-trigger the flow
+    window.history.replaceState({}, '', '/');
+
+    handleOAuthCallback(callbackUrl)
+      .then(() => {
+        // Dispatch the same event CloudSync listens for — opens modal if it's mounted,
+        // otherwise the tokens are already stored and sync will work on next trigger.
+        window.dispatchEvent(new CustomEvent('babybloom:oauth', { detail: { url: callbackUrl } }));
+        setShowCloudSync(true); // bring CloudSync back into view so user sees confirmation
+      })
+      .catch((err: any) => {
+        toast('Google sign-in failed: ' + (err?.message || 'unknown error'));
+        console.error('[BabyBloom] Web OAuth callback error:', err);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load data on mount
   useEffect(() => {
