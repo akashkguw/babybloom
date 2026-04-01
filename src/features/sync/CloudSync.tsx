@@ -1,14 +1,10 @@
 /**
  * BabyBloom Cloud Sync — Settings UI
  *
- * Provides the user-facing UI for managing cloud sync:
- *   - Enable/Disable sync (Google Sign-In)
- *   - Sync status indicator ("Synced just now", "Last synced: 3 min ago")
- *   - Family key QR code for partner pairing (BK2: format)
- *   - Join Family Sync (scan partner's QR)
- *   - Key backup (passphrase-protected)
- *   - Key rotation
- *   - Manual "Sync Now" button
+ * Simplified UX with minimal screens:
+ *   main → google_auth (if needed) → back to main
+ *   main → invite (email + QR in one screen) → back to main
+ *   main → join (scan/paste in one screen) → google_auth → main
  *
  * Design §7 — Happy Path Flows
  */
@@ -48,15 +44,7 @@ import { Sentry } from '@/lib/sentry';
 
 // ═══ TYPES ═══
 
-type CloudSyncView =
-  | 'main'
-  | 'google_auth'    // Sign into Google to activate Drive backup
-  // pick_folder removed — full drive scope makes Picker unnecessary
-  | 'invite'         // Parent A: share folder + show QR
-  | 'setup_a'        // Parent A: showing QR code to partner
-  | 'setup_b'        // Parent B: scanning QR to join
-  | 'key_backup'     // Passphrase-based backup setup
-  | 'key_restore';   // Passphrase-based key recovery
+type View = 'main' | 'google_auth' | 'invite' | 'join' | 'key_backup';
 
 interface CloudSyncProps {
   onClose: () => void;
@@ -88,7 +76,7 @@ function syncStateLabel(status: SyncStatus): string {
   }
 }
 
-const STATUS_COLOR = {
+const DOT_COLOR: Record<string, string> = {
   idle:        '#22c55e',
   uploading:   '#f59e0b',
   downloading: '#f59e0b',
@@ -97,27 +85,31 @@ const STATUS_COLOR = {
   error:       '#ef4444',
 };
 
-// ═══ QR AUTO-DISMISS TIMER ═══
+// QR auto-dismiss for security
 const QR_DISMISS_SECONDS = 60;
 
+// ═══ MAIN COMPONENT ═══
+
 export default function CloudSync({ onClose }: CloudSyncProps) {
-  const [view, setView] = useState<CloudSyncView>('main');
+  const [view, setView] = useState<View>('main');
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle' });
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [googleAuthed, setGoogleAuthed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Setup flow state
-  const [familyKeyQR, setFamilyKeyQR] = useState('');
-  const [qrCountdown, setQrCountdown] = useState(QR_DISMISS_SECONDS);
-  const [showScanner, setShowScanner] = useState(false);
-
-  // Invite flow state
+  // Invite flow
   const [partnerEmail, setPartnerEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [familyKeyQR, setFamilyKeyQR] = useState('');
+  const [qrCountdown, setQrCountdown] = useState(QR_DISMISS_SECONDS);
 
-  // Key backup state
+  // Join flow
+  const [showScanner, setShowScanner] = useState(false);
+  const [pasteCode, setPasteCode] = useState('');
+
+  // Key backup
   const [passphrase, setPassphrase] = useState('');
   const [passphraseError, setPassphraseError] = useState('');
   const [backupDone, setBackupDone] = useState(false);
@@ -130,20 +122,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       setLoading(false);
     });
 
-    const unsubscribe = onSyncStatus((status) => {
+    const unsub = onSyncStatus((status) => {
       setSyncStatus(status);
-      setIsSyncing(status.state !== 'idle' && status.state !== 'error');
-
-      // If sync hit an error (e.g. scope_insufficient cleared tokens),
-      // re-check auth state so the UI shows "Connect Google Drive" banner.
+      setSyncing(status.state !== 'idle' && status.state !== 'error');
       if (status.state === 'error') {
-        isAuthenticated().then((authed) => setGoogleAuthed(authed));
+        isAuthenticated().then((a) => setGoogleAuthed(a));
       }
     });
 
-    // Listen for OAuth callback (fired by App.tsx after successful token exchange).
-    // With full drive scope, the sync engine can find the shared folder
-    // automatically — no Picker or manual folder selection needed.
     const onOAuth = () => {
       isAuthenticated().then((authed) => {
         if (authed) {
@@ -155,454 +141,401 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       });
     };
     window.addEventListener('babybloom:oauth', onOAuth);
-
-    return () => { unsubscribe(); window.removeEventListener('babybloom:oauth', onOAuth); };
+    return () => { unsub(); window.removeEventListener('babybloom:oauth', onOAuth); };
   }, []);
 
-  // ── QR countdown timer ──
+  // ── QR countdown (invite screen) ──
   useEffect(() => {
-    if (view !== 'setup_a' || !familyKeyQR) return;
+    if (!familyKeyQR) return;
     setQrCountdown(QR_DISMISS_SECONDS);
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       setQrCountdown((n) => {
-        if (n <= 1) {
-          clearInterval(interval);
-          // Auto-dismiss QR code after 60 seconds for security
-          setFamilyKeyQR('');
-          setView('main');
-          return 0;
-        }
+        if (n <= 1) { clearInterval(iv); setFamilyKeyQR(''); return 0; }
         return n - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
-  }, [view, familyKeyQR]);
+    return () => clearInterval(iv);
+  }, [familyKeyQR]);
 
-  // ── Enable sync ──
-  // Reuses an existing family key if one exists (e.g. Parent B who previously
-  // joined via QR, disabled sync, and is re-enabling). Only creates a new key
-  // if none is found — this prevents accidentally switching from family sync
-  // to a personal-only backup.
-  const handleEnableSync = useCallback(async () => {
+  // ── Enable sync (reuses existing family key if present) ──
+  const handleEnable = useCallback(async () => {
     try {
       setLoading(true);
       let key = await loadFamilyKey();
-      const hadExistingKey = !!key;
-      if (!key) {
-        key = await createFamilyKey();
-        await storeFamilyKey(key);
-      }
+      const hadKey = !!key;
+      if (!key) { key = await createFamilyKey(); await storeFamilyKey(key); }
       await enableSync();
       setSyncEnabled(true);
-      // If not yet signed into Google, send user there immediately.
       if (!googleAuthed) {
         setView('google_auth');
-        toast(hadExistingKey
-          ? 'Sync re-enabled! Connect Google Drive to continue.'
-          : 'Sync enabled! Connect Google Drive to start backing up.');
+        toast(hadKey ? 'Sync re-enabled! Connect Google Drive.' : 'Sync enabled! Connect Google Drive.');
       } else {
         setView('main');
-        toast(hadExistingKey
-          ? 'Cloud sync re-enabled! Syncing now…'
-          : 'Cloud sync enabled! Your data will back up to Google Drive automatically.');
+        toast(hadKey ? 'Sync re-enabled!' : 'Cloud sync enabled!');
         triggerSync('manual').catch(() => {});
       }
     } catch (err: any) {
-      toast('Failed to enable sync: ' + (err?.message || 'unknown error'));
+      toast('Failed to enable sync: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'enable_sync' } });
     } finally {
       setLoading(false);
     }
   }, [googleAuthed]);
 
-  // ── Join existing family (Parent B: scan QR) ──
-  const handleJoinFamily = useCallback(async (qrData: string) => {
+  // ── Join partner (from QR or pasted code) ──
+  const handleJoin = useCallback(async (qrData: string) => {
     setShowScanner(false);
-
-    // Try BK2 first (key + folder ID), fall back to BK1 (key only)
     const result = await importKeyAndFolderFromQR(qrData);
-    if (!result) {
-      toast('Invalid family key QR code. Please scan again.');
-      return;
-    }
-
+    if (!result) { toast('Invalid sync code. Check and try again.'); return; }
     try {
       await storeFamilyKey(result.key);
-
-      // If we got a folder ID from BK2 format, store it for later use
-      if (result.folderId) {
-        await setSharedFolderId(result.folderId);
-      }
-
+      if (result.folderId) await setSharedFolderId(result.folderId);
       await enableSync();
       setSyncEnabled(true);
-
-      // Parent B needs Google auth to start syncing.
-      // With full drive scope, the sync engine finds the shared folder
-      // automatically — no manual folder selection needed.
       if (!googleAuthed) {
-        toast('Key imported! Now connect Google Drive to start syncing.');
+        toast('Key imported! Now sign in with Google.');
         setView('google_auth');
       } else {
-        toast('Key imported! Syncing now…');
+        toast('Joined family sync!');
         setView('main');
         triggerSync('manual').catch(() => {});
       }
     } catch (err: any) {
-      toast('Failed to join sync: ' + (err?.message || 'unknown error'));
+      toast('Failed to join: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'join_sync' } });
     }
   }, [googleAuthed]);
 
-  // ── Manual sync ──
-  const handleSyncNow = useCallback(async () => {
-    if (isSyncing) return;
-    await triggerSync('manual');
-  }, [isSyncing]);
-
-  // ── Show invite flow (share folder + QR) ──
-  const handleInvitePartner = useCallback(async () => {
-    setPartnerEmail('');
-    setView('invite');
-  }, []);
-
-  // ── Share folder with partner email and generate QR ──
-  const handleShareAndShowQR = useCallback(async () => {
+  // ── Invite: share folder + generate QR ──
+  const handleInvite = useCallback(async () => {
     if (!partnerEmail.trim() || !partnerEmail.includes('@')) {
-      toast('Please enter a valid email address.');
-      return;
+      toast('Enter a valid email address.'); return;
     }
     try {
       setInviteLoading(true);
-      // Ensure folder exists
       const folderId = await getOrCreateFolder();
-      // Share with partner
       await shareFolderWithPartner(partnerEmail.trim());
-
-      // Generate BK2 QR code with key + folder ID
       const key = await loadFamilyKey();
-      if (!key) {
-        toast('Family key not found. Please re-enable sync.');
-        return;
-      }
-      const qrString = await exportKeyAndFolderForQR(key, folderId);
-      setFamilyKeyQR(qrString);
-      setView('setup_a');
+      if (!key) { toast('Family key not found.'); return; }
+      const qr = await exportKeyAndFolderForQR(key, folderId);
+      setFamilyKeyQR(qr);
+      toast('Folder shared with ' + partnerEmail.trim());
     } catch (err: any) {
-      const msg = err?.message || 'unknown error';
-      if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('not found')) {
-        toast('Could not share with that email. Check the address and try again.');
-      } else {
-        toast('Failed to share folder: ' + msg);
-      }
+      toast('Failed: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'share_folder' } });
     } finally {
       setInviteLoading(false);
     }
   }, [partnerEmail]);
 
-  // ── Show QR without re-sharing (for already-shared partners) ──
+  // ── Show QR without re-sharing ──
   const handleShowQR = useCallback(async () => {
-    const key = await loadFamilyKey();
-    if (!key) {
-      toast('Family key not found. Please re-enable sync.');
-      return;
+    try {
+      const key = await loadFamilyKey();
+      if (!key) { toast('Family key not found.'); return; }
+      const folderId = await getOrCreateFolder();
+      setFamilyKeyQR(await exportKeyAndFolderForQR(key, folderId));
+    } catch (err: any) {
+      toast('Failed: ' + (err?.message || 'unknown'));
     }
-    const folderId = await getOrCreateFolder();
-    const qrString = await exportKeyAndFolderForQR(key, folderId);
-    setFamilyKeyQR(qrString);
-    setView('setup_a');
+  }, []);
+
+  // ── Google sign-in ──
+  const handleGoogleAuth = useCallback(async () => {
+    try {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as any).standalone === true;
+      const popup = isStandalone ? null : window.open('', '_self');
+      const url = await initiateGoogleSignIn();
+      if (popup) { popup.location.href = url; } else { window.location.href = url; }
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('Client ID is not configured')) {
+        toast('Google sign-in not configured.'); console.error(msg);
+      } else {
+        toast('Sign-in failed: ' + msg);
+        Sentry.captureException(err, { tags: { action: 'oauth_initiate' } });
+      }
+    }
   }, []);
 
   // ── Disable sync ──
-  const handleDisableSync = useCallback(async () => {
-    const keepData = window.confirm(
-      'Keep encrypted backup in Google Drive? Tap Cancel to delete cloud data.',
-    );
-    await disableSync(!keepData);
+  const handleDisable = useCallback(async () => {
+    if (!window.confirm('Disable cloud sync? Your local data will be kept.')) return;
+    await disableSync(false);
     setSyncEnabled(false);
-    toast('Cloud sync disabled. Your local data is safe.');
+    setShowAdvanced(false);
+    toast('Cloud sync disabled.');
     setView('main');
   }, []);
 
   // ── Key backup ──
-  const handleCreateBackup = useCallback(async () => {
-    const error = validatePassphrase(passphrase);
-    if (error) {
-      setPassphraseError(error);
-      return;
-    }
+  const handleBackup = useCallback(async () => {
+    const err = validatePassphrase(passphrase);
+    if (err) { setPassphraseError(err); return; }
     setPassphraseError('');
     try {
       const key = await loadFamilyKey();
       if (!key) throw new Error('No family key found');
-      const backupBlob = await createKeyBackup(key, passphrase);
-      // Upload the passphrase-encrypted backup to Google Drive
-      await uploadFile(KEY_BACKUP_FILE, backupBlob);
+      const blob = await createKeyBackup(key, passphrase);
+      await uploadFile(KEY_BACKUP_FILE, blob);
       setBackupDone(true);
-      toast('Key backup saved to Google Drive! Store your passphrase safely.');
-    } catch (err: any) {
-      toast('Backup failed: ' + (err?.message || 'unknown'));
+      toast('Backup saved to Google Drive!');
+    } catch (e: any) {
+      toast('Backup failed: ' + (e?.message || 'unknown'));
     }
   }, [passphrase]);
 
   // ── Render ──
   if (loading) {
-    return (
-      <ModalShell onClose={onClose}>
-        <div style={{ padding: 40, textAlign: 'center', color: C.tl }}>Loading…</div>
-      </ModalShell>
-    );
+    return <Shell onClose={onClose}><div style={{ padding: 40, textAlign: 'center', color: C.tl }}>Loading…</div></Shell>;
   }
 
   return (
-    <ModalShell onClose={onClose}>
+    <Shell onClose={onClose}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.t, margin: 0 }}>
-            ☁️ Cloud Sync
+            {view === 'main' ? '☁️ Cloud Sync' : view === 'invite' ? '👥 Invite Partner' : view === 'join' ? '🔗 Join Family' : view === 'google_auth' ? '🔑 Google Sign-In' : '💾 Key Backup'}
           </h3>
-          <div style={{ fontSize: 12, color: C.tl }}>Zero-knowledge encrypted backup</div>
+          {view === 'main' && <div style={{ fontSize: 12, color: C.tl }}>End-to-end encrypted</div>}
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
           <Ic n="x" s={22} c={C.tl} />
         </button>
       </div>
 
-      {/* ── MAIN VIEW ── */}
+      {/* ────────────────── MAIN ────────────────── */}
       {view === 'main' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Status card */}
+          {/* Sync status */}
           {syncEnabled && (
             <Cd style={{ padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
                   width: 10, height: 10, borderRadius: '50%',
-                  background: STATUS_COLOR[syncStatus.state] || '#22c55e',
-                  flexShrink: 0,
+                  background: DOT_COLOR[syncStatus.state] || '#22c55e', flexShrink: 0,
                 }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.t }}>
                     {syncStateLabel(syncStatus)}
                   </div>
-                  {syncStatus.deviceCount !== undefined && syncStatus.deviceCount > 0 && (
+                  {syncStatus.deviceCount != null && syncStatus.deviceCount > 0 && (
                     <div style={{ fontSize: 11, color: C.tl }}>
-                      {syncStatus.deviceCount} partner device{syncStatus.deviceCount !== 1 ? 's' : ''} connected
+                      {syncStatus.deviceCount} partner device{syncStatus.deviceCount !== 1 ? 's' : ''}
                     </div>
                   )}
                 </div>
-                <Btn
-                  label={isSyncing ? '…' : 'Sync Now'}
-                  onClick={handleSyncNow}
-                  outline
-                  small
-                />
+                <Btn label={syncing ? '…' : 'Sync'} onClick={() => { if (!syncing) triggerSync('manual'); }} outline small />
               </div>
             </Cd>
           )}
 
-          {/* Privacy guarantee */}
-          <PrivacyBadge />
-
-          {/* Google Drive not connected banner */}
+          {/* Not connected banner */}
           {syncEnabled && !googleAuthed && (
-            <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', fontSize: 12, color: '#1d4ed8', lineHeight: 1.7 }}>
-              <strong>⚠️ Google Drive not connected.</strong> Your data is encrypted locally but not yet backed up.{' '}
-              <button
-                onClick={() => setView('google_auth')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline' }}
-              >
-                Connect now →
-              </button>
-            </div>
+            <button
+              onClick={() => setView('google_auth')}
+              style={{
+                display: 'block', width: '100%', padding: '12px 14px', borderRadius: 10,
+                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                fontSize: 12, color: '#1d4ed8', lineHeight: 1.6, cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <strong>Google Drive not connected.</strong> Tap to sign in and start syncing.
+            </button>
           )}
 
-          {/* Actions */}
+          {/* Not yet enabled */}
           {!syncEnabled ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
-                <strong style={{ color: C.t }}>How it works:</strong><br />
-                1️⃣ Tap <em>Enable</em> — a secret key is created on your device.<br />
-                2️⃣ Your data is encrypted and backed up to a shared Google Drive folder (Google sign-in happens on first sync).<br />
-                3️⃣ To add a co-parent, tap "Invite Family Member", enter their Google email to share the folder, and show them the QR code.
+                Encrypted backup to Google Drive. Both parents can sync and see the same data in real time.
               </div>
-              <Btn
-                label="Enable Cloud Sync (Google Drive)"
-                onClick={handleEnableSync}
-                color={C.s}
-                full
-              />
-              <Btn
-                label="Join partner's sync instead"
-                onClick={() => setView('setup_b')}
-                outline
-                full
-              />
+              <Btn label="Enable Cloud Sync" onClick={handleEnable} color={C.s} full />
+              <button
+                onClick={() => setView('join')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, color: C.tl, padding: '6px 0', textAlign: 'center',
+                }}
+              >
+                Already have a partner code? <span style={{ color: '#3b82f6', fontWeight: 600 }}>Join their sync</span>
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Btn
-                label="Invite Family Member"
-                onClick={handleInvitePartner}
-                color={C.a}
-                full
-              />
-              <Btn
-                label="Create Key Backup (passphrase)"
-                onClick={() => setView('key_backup')}
-                outline
-                full
-              />
-              <Btn
-                label="Disable Cloud Sync"
-                onClick={handleDisableSync}
-                outline
-                full
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Btn label="Invite Partner" onClick={() => { setPartnerEmail(''); setFamilyKeyQR(''); setView('invite'); }} color={C.a} full />
+
+              {/* Advanced section — collapsed by default */}
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 11, color: C.tl, padding: '8px 0', textAlign: 'center',
+                }}
+              >
+                {showAdvanced ? 'Hide options ▲' : 'More options ▼'}
+              </button>
+              {showAdvanced && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Btn label="Key Backup (passphrase)" onClick={() => { setPassphrase(''); setBackupDone(false); setView('key_backup'); }} outline full />
+                  <Btn label="Disable Sync" onClick={handleDisable} outline full />
+                </div>
+              )}
             </div>
           )}
+
+          {/* Privacy */}
+          <div style={{
+            padding: '8px 12px', borderRadius: 10,
+            background: 'rgba(34,197,94,0.06)', fontSize: 10, color: C.tl, lineHeight: 1.5,
+          }}>
+            🔒 Zero-knowledge — your data is encrypted before leaving the device. Google never sees it.
+          </div>
         </div>
       )}
 
-      {/* ── INVITE: Share folder + generate QR ── */}
+      {/* ────────────────── INVITE ────────────────── */}
       {view === 'invite' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
-            Invite Your Partner
+          {/* If QR is already generated, show it */}
+          {familyKeyQR ? (
+            <>
+              <div style={{
+                padding: '8px 12px', borderRadius: 10,
+                background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)',
+                fontSize: 11, color: '#d97706', lineHeight: 1.5,
+              }}>
+                Show this to your partner only. Auto-hides in {qrCountdown}s.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', borderRadius: 16, padding: 20 }}>
+                <QRCode data={familyKeyQR} size={200} />
+                <div style={{ fontSize: 10, color: '#888', marginTop: 8 }}>Partner scans this to join</div>
+              </div>
+              <Btn
+                label="Copy code instead"
+                onClick={() => {
+                  navigator.clipboard.writeText(familyKeyQR).then(() => toast('Code copied!'));
+                }}
+                outline full
+              />
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+                Enter your partner's Google email to share the sync folder, then show them the QR code.
+              </div>
+              <input
+                type="email"
+                value={partnerEmail}
+                onChange={(e) => setPartnerEmail(e.target.value)}
+                placeholder="partner@gmail.com"
+                style={{
+                  background: C.cd, border: '1px solid ' + C.b,
+                  borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t,
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+              <Btn
+                label={inviteLoading ? 'Sharing…' : 'Share & Generate Code'}
+                onClick={handleInvite}
+                color={C.s} full
+              />
+              <button
+                onClick={handleShowQR}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 11, color: '#3b82f6', padding: '4px 0', textAlign: 'center',
+                }}
+              >
+                Already shared? Show code only
+              </button>
+            </>
+          )}
+          <Btn label="← Back" onClick={() => { setFamilyKeyQR(''); setView('main'); }} outline />
+        </div>
+      )}
+
+      {/* ────────────────── JOIN ────────────────── */}
+      {view === 'join' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+            Ask your partner to go to Cloud Sync → Invite Partner, then scan or paste the code below.
           </div>
-          <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
-            Enter your partner's <strong>Google email</strong> so they can access the shared sync folder.
-            After sharing, show them the QR code to complete setup.
+
+          {/* QR scanner */}
+          {showScanner ? (
+            <QRScanner onScan={handleJoin} onClose={() => setShowScanner(false)} />
+          ) : (
+            <Btn label="Scan QR Code" onClick={() => setShowScanner(true)} color={C.s} full />
+          )}
+
+          {/* Divider */}
+          {!showScanner && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, height: 1, background: C.b }} />
+              <span style={{ fontSize: 11, color: C.tl }}>or</span>
+              <div style={{ flex: 1, height: 1, background: C.b }} />
+            </div>
+          )}
+
+          {/* Paste code */}
+          {!showScanner && (
+            <>
+              <textarea
+                value={pasteCode}
+                onChange={(e) => setPasteCode(e.target.value)}
+                placeholder="Paste sync code here (BK2:…)"
+                rows={3}
+                style={{
+                  background: C.cd, border: '1px solid ' + C.b, borderRadius: 12,
+                  padding: '10px 14px', fontSize: 13, color: C.t,
+                  width: '100%', boxSizing: 'border-box', resize: 'none', fontFamily: 'monospace',
+                }}
+              />
+              <Btn
+                label="Join"
+                onClick={() => { if (pasteCode.trim()) handleJoin(pasteCode.trim()); }}
+                color={C.s} full
+              />
+            </>
+          )}
+
+          <Btn label="← Back" onClick={() => { setShowScanner(false); setPasteCode(''); setView('main'); }} outline />
+        </div>
+      )}
+
+      {/* ────────────────── GOOGLE AUTH ────────────────── */}
+      {view === 'google_auth' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+            Your encrypted data is stored in <strong>your own</strong> Google Drive. BabyBloom can't read it.
           </div>
-          <input
-            type="email"
-            value={partnerEmail}
-            onChange={(e) => setPartnerEmail(e.target.value)}
-            placeholder="partner@gmail.com"
-            style={{
-              background: C.cd, border: '1px solid ' + C.b,
-              borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t,
-              width: '100%', boxSizing: 'border-box',
-            }}
-          />
-          <Btn
-            label={inviteLoading ? 'Sharing…' : 'Share & Show QR Code'}
-            onClick={handleShareAndShowQR}
-            color={C.s}
-            full
-          />
-          <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.5 }}>
-            Already shared? <button
-              onClick={handleShowQR}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, fontSize: 11, padding: 0, textDecoration: 'underline' }}
-            >Show QR code only</button>
+          <Btn label="Sign in with Google" onClick={handleGoogleAuth} color={C.s} full />
+          <div style={{ fontSize: 11, color: C.tl, textAlign: 'center' }}>
+            You'll be redirected to Google, then back here automatically.
           </div>
           <Btn label="← Back" onClick={() => setView('main')} outline />
         </div>
       )}
 
-      {/* ── SETUP A: Show QR code to partner ── */}
-      {view === 'setup_a' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', fontSize: 12, color: '#d97706', lineHeight: 1.5 }}>
-            ⚠️ Only show this to your partner. This key gives access to all baby data.
-            Auto-dismisses in {qrCountdown}s.
-          </div>
-
-          {familyKeyQR ? (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', borderRadius: 16, padding: 20 }}>
-                <QRCode data={familyKeyQR} size={220} />
-                <div style={{ fontSize: 11, color: '#888', marginTop: 10, textAlign: 'center' }}>
-                  Partner scans this with their camera
-                </div>
-              </div>
-              <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.5 }}>
-                📋 <strong>Camera not working?</strong> Tap the button below to copy your sync code, then paste it on your partner's device.
-              </div>
-              <Btn
-                label="Copy sync code"
-                onClick={() => {
-                  navigator.clipboard.writeText(familyKeyQR).then(() => toast('Sync code copied! Paste it on your partner\'s device.'));
-                }}
-                color={C.bl}
-                full
-              />
-            </>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 40, color: C.tl, fontSize: 13 }}>
-              QR code dismissed for security.
-            </div>
-          )}
-
-          <Btn label="← Done" onClick={() => { setFamilyKeyQR(''); setView('main'); }} outline />
-        </div>
-      )}
-
-      {/* ── SETUP B: Scan QR to join ── */}
-      {view === 'setup_b' && (
-        <SetupBView
-          showScanner={showScanner}
-          setShowScanner={setShowScanner}
-          onJoin={handleJoinFamily}
-          onBack={() => { setShowScanner(false); setView('main'); }}
-        />
-      )}
-
-      {/* ── GOOGLE AUTH ── */}
-      {view === 'google_auth' && (
-        <GoogleAuthView
-          onAuth={async () => {
-            try {
-              // Open a blank window SYNCHRONOUSLY (before any await) so the
-              // browser doesn't treat it as an unsolicited popup and block it.
-              // In standalone PWA mode we navigate the current window instead.
-              const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-                || (window.navigator as any).standalone === true;
-              const popup = isStandalone ? null : window.open('', '_self');
-              const url = await initiateGoogleSignIn();
-              if (popup) {
-                popup.location.href = url;
-              } else {
-                // Standalone PWA or popup was blocked — navigate current window
-                window.location.href = url;
-              }
-            } catch (err: any) {
-              const msg = err?.message || '';
-              if (msg.includes('Client ID is not configured')) {
-                toast('Google sign-in is not configured in this build. See console.');
-                console.error(msg);
-              } else {
-                toast('Could not open sign-in: ' + msg);
-                Sentry.captureException(err, { tags: { action: 'oauth_initiate' } });
-              }
-            }
-          }}
-          onBack={() => setView('main')}
-        />
-      )}
-
-      {/* ── KEY BACKUP ── */}
+      {/* ────────────────── KEY BACKUP ────────────────── */}
       {view === 'key_backup' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
-            Create Key Backup
-          </div>
-          <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
-            If you lose your device, you can recover your data using this passphrase.
-            Choose something memorable but strong: at least 12 characters, or 4+ words.
-          </div>
           {backupDone ? (
             <Cd style={{ padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>Backup created!</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>Backup saved!</div>
               <div style={{ fontSize: 12, color: C.tl, marginTop: 4 }}>
-                Store your passphrase somewhere safe — it cannot be recovered if lost.
+                Keep your passphrase safe — it can't be recovered.
               </div>
             </Cd>
           ) : (
             <>
+              <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+                Create a passphrase to recover your data if you lose your device. At least 12 characters.
+              </div>
               <input
                 type="password"
                 value={passphrase}
@@ -610,137 +543,24 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
                 placeholder="Enter a strong passphrase…"
                 style={{
                   background: C.cd, border: '1px solid ' + (passphraseError ? '#ef4444' : C.b),
-                  borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t, width: '100%',
-                  boxSizing: 'border-box',
+                  borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t,
+                  width: '100%', boxSizing: 'border-box',
                 }}
               />
-              {passphraseError && (
-                <div style={{ fontSize: 12, color: '#ef4444' }}>{passphraseError}</div>
-              )}
-              <Btn label="Create Backup" onClick={handleCreateBackup} color={C.ok} full />
+              {passphraseError && <div style={{ fontSize: 12, color: '#ef4444' }}>{passphraseError}</div>}
+              <Btn label="Create Backup" onClick={handleBackup} color={C.ok} full />
             </>
           )}
-          <Btn label="← Back" onClick={() => { setView('main'); setPassphrase(''); setBackupDone(false); }} outline />
+          <Btn label="← Back" onClick={() => setView('main')} outline />
         </div>
       )}
-    </ModalShell>
+    </Shell>
   );
 }
 
-// ═══ SUB-COMPONENTS ═══
+// ═══ SHELL ═══
 
-function SetupBView({ showScanner, setShowScanner, onJoin, onBack }: {
-  showScanner: boolean;
-  setShowScanner: (v: boolean) => void;
-  onJoin: (code: string) => void;
-  onBack: () => void;
-}) {
-  const [pasteCode, setPasteCode] = useState('');
-  const [showPaste, setShowPaste] = useState(false);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 14, color: C.t, fontWeight: 600 }}>
-        Join your partner's family sync
-      </div>
-      <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
-        <strong>Step 1:</strong> Ask your partner to open Cloud Sync → "Invite Family Member".<br />
-        <strong>Step 2:</strong> Scan their QR code with the camera below, <em>or</em> ask them to tap "Copy sync code" and paste it here.
-      </div>
-
-      {/* Camera option */}
-      {!showPaste && (
-        showScanner ? (
-          <QRScanner
-            onScan={onJoin}
-            onClose={() => setShowScanner(false)}
-          />
-        ) : (
-          <Btn label="📷 Scan QR code" onClick={() => setShowScanner(true)} color={C.s} full />
-        )
-      )}
-
-      {/* Paste option */}
-      {!showScanner && (
-        showPaste ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 12, color: C.tl }}>
-              Paste the sync code your partner copied (starts with BK1: or BK2:)
-            </div>
-            <textarea
-              value={pasteCode}
-              onChange={(e) => setPasteCode(e.target.value)}
-              placeholder="Paste BK2:… or BK1:… code here"
-              rows={3}
-              style={{
-                background: C.cd, border: '1px solid ' + C.b, borderRadius: 12,
-                padding: '10px 14px', fontSize: 13, color: C.t,
-                width: '100%', boxSizing: 'border-box', resize: 'none', fontFamily: 'monospace',
-              }}
-            />
-            <Btn
-              label="Join with pasted code"
-              onClick={() => { if (pasteCode.trim()) onJoin(pasteCode.trim()); }}
-              color={C.s}
-              full
-            />
-            <Btn label="← Use camera instead" onClick={() => { setShowPaste(false); setPasteCode(''); }} outline full />
-          </div>
-        ) : (
-          <Btn label="⌨️ Paste sync code instead" onClick={() => setShowPaste(true)} outline full />
-        )
-      )}
-
-      <Btn label="← Back" onClick={onBack} outline />
-    </div>
-  );
-}
-
-function GoogleAuthView({ onAuth, onBack }: { onAuth: () => void; onBack: () => void }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
-        Connect Google Drive
-      </div>
-      <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
-        <strong>Why?</strong> Your encrypted baby data is stored in <strong>your own</strong> Google Drive.
-        BabyBloom cannot read any of it — only your device key can decrypt it.<br /><br />
-        Tap below, sign in with Google, and you'll be redirected back automatically.
-      </div>
-      <PrivacyBadge />
-      <Btn
-        label="Sign in with Google"
-        onClick={onAuth}
-        color={C.s}
-        full
-      />
-      <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.6 }}>
-        You'll be redirected to Google's sign-in page.<br />
-        After approving, you'll return here automatically.
-      </div>
-      <Btn label="← Back" onClick={onBack} outline />
-    </div>
-  );
-}
-
-function PrivacyBadge() {
-  return (
-    <div style={{
-      padding: '10px 14px',
-      borderRadius: 10,
-      background: 'rgba(34,197,94,0.08)',
-      border: '1px solid rgba(34,197,94,0.2)',
-      fontSize: 11,
-      color: C.tl,
-      lineHeight: 1.6,
-    }}>
-      🔒 <strong>Zero-knowledge encryption</strong> — Google Drive stores only unreadable encrypted data.
-      Your encryption key never leaves your devices. BabyBloom's servers never see any baby data.
-    </div>
-  );
-}
-
-function ModalShell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+function Shell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
     <div
       style={{
