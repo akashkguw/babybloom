@@ -4,7 +4,7 @@
  * Provides the user-facing UI for managing cloud sync:
  *   - Enable/Disable sync (Google Sign-In)
  *   - Sync status indicator ("Synced just now", "Last synced: 3 min ago")
- *   - Family key QR code for partner pairing (BK1: format)
+ *   - Family key QR code for partner pairing (BK2: format)
  *   - Join Family Sync (scan partner's QR)
  *   - Key backup (passphrase-protected)
  *   - Key rotation
@@ -40,7 +40,6 @@ import {
   getOrCreateFolder,
   shareFolderWithPartner,
   setSharedFolderId,
-  showFolderPicker,
   uploadFile,
   KEY_BACKUP_FILE,
 } from '@/lib/sync/googleDrive';
@@ -52,7 +51,7 @@ import { Sentry } from '@/lib/sentry';
 type CloudSyncView =
   | 'main'
   | 'google_auth'    // Sign into Google to activate Drive backup
-  | 'pick_folder'    // Parent B: select shared folder via Google Picker
+  // pick_folder removed — full drive scope makes Picker unnecessary
   | 'invite'         // Parent A: share folder + show QR
   | 'setup_a'        // Parent A: showing QR code to partner
   | 'setup_b'        // Parent B: scanning QR to join
@@ -179,21 +178,34 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     return () => clearInterval(interval);
   }, [view, familyKeyQR]);
 
-  // ── Enable sync (Parent A: create family key) ──
+  // ── Enable sync ──
+  // Reuses an existing family key if one exists (e.g. Parent B who previously
+  // joined via QR, disabled sync, and is re-enabling). Only creates a new key
+  // if none is found — this prevents accidentally switching from family sync
+  // to a personal-only backup.
   const handleEnableSync = useCallback(async () => {
     try {
       setLoading(true);
-      const key = await createFamilyKey();
-      await storeFamilyKey(key);
+      let key = await loadFamilyKey();
+      const hadExistingKey = !!key;
+      if (!key) {
+        key = await createFamilyKey();
+        await storeFamilyKey(key);
+      }
       await enableSync();
       setSyncEnabled(true);
       // If not yet signed into Google, send user there immediately.
       if (!googleAuthed) {
         setView('google_auth');
-        toast('Sync enabled! Connect Google Drive to start backing up.');
+        toast(hadExistingKey
+          ? 'Sync re-enabled! Connect Google Drive to continue.'
+          : 'Sync enabled! Connect Google Drive to start backing up.');
       } else {
         setView('main');
-        toast('Cloud sync enabled! Your data will back up to Google Drive automatically.');
+        toast(hadExistingKey
+          ? 'Cloud sync re-enabled! Syncing now…'
+          : 'Cloud sync enabled! Your data will back up to Google Drive automatically.');
+        triggerSync('manual').catch(() => {});
       }
     } catch (err: any) {
       toast('Failed to enable sync: ' + (err?.message || 'unknown error'));
@@ -571,23 +583,6 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         />
       )}
 
-      {/* ── PICK FOLDER (Parent B: select shared folder via Picker) ── */}
-      {view === 'pick_folder' && (
-        <PickFolderView
-          onFolderSelected={async (folderId) => {
-            try {
-              await setSharedFolderId(folderId);
-              toast('Folder selected! Syncing now…');
-              setView('main');
-              triggerSync('manual').catch(() => {});
-            } catch (err: any) {
-              toast('Failed to access folder: ' + (err?.message || 'unknown'));
-            }
-          }}
-          onBack={() => setView('main')}
-        />
-      )}
-
       {/* ── KEY BACKUP ── */}
       {view === 'key_backup' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -722,54 +717,6 @@ function GoogleAuthView({ onAuth, onBack }: { onAuth: () => void; onBack: () => 
       <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.6 }}>
         You'll be redirected to Google's sign-in page.<br />
         After approving, you'll return here automatically.
-      </div>
-      <Btn label="← Back" onClick={onBack} outline />
-    </div>
-  );
-}
-
-function PickFolderView({ onFolderSelected, onBack }: {
-  onFolderSelected: (folderId: string) => void;
-  onBack: () => void;
-}) {
-  const [picking, setPicking] = useState(false);
-
-  const handlePickFolder = useCallback(async () => {
-    setPicking(true);
-    try {
-      const folderId = await showFolderPicker();
-      if (folderId) {
-        onFolderSelected(folderId);
-      } else {
-        toast('No folder selected. Please try again.');
-      }
-    } catch (err: any) {
-      toast('Picker error: ' + (err?.message || 'unknown'));
-    } finally {
-      setPicking(false);
-    }
-  }, [onFolderSelected]);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
-        Select Shared Folder
-      </div>
-      <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
-        Your partner shared a <strong>"BabyBloom Sync"</strong> folder with you on Google Drive.
-        Tap the button below and select that folder to finish setup.<br /><br />
-        Look in <strong>"Shared with me"</strong> for the folder.
-      </div>
-      <PrivacyBadge />
-      <Btn
-        label={picking ? 'Opening…' : 'Select Shared Folder'}
-        onClick={handlePickFolder}
-        color={C.s}
-        full
-      />
-      <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.6 }}>
-        A Google file picker will open. Select the <strong>BabyBloom Sync</strong> folder<br />
-        your partner shared, then tap "Select".
       </div>
       <Btn label="← Back" onClick={onBack} outline />
     </div>
