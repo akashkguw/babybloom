@@ -55,6 +55,9 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
 let writeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
 let engineStarted = false;
+/** When true, a data write occurred while a sync was in progress.
+ *  The engine will start another sync cycle after the current one finishes. */
+let pendingWriteSync = false;
 
 /** Listeners that receive SyncStatus updates */
 const statusListeners = new Set<(status: SyncStatus) => void>();
@@ -122,6 +125,11 @@ export function notifyDataWrite(): void {
  */
 export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' = 'manual'): Promise<SyncStatus> {
   if (isSyncing) {
+    // A data write happened while sync is running — schedule a follow-up cycle
+    // so the newly written entry isn't lost if applySnapshot overwrites it.
+    if (reason === 'write') {
+      pendingWriteSync = true;
+    }
     return getCurrentStatus();
   }
 
@@ -153,6 +161,16 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
     }
   } finally {
     isSyncing = false;
+  }
+
+  // If a data write happened while we were syncing, run another cycle
+  // so the newly written entry gets properly uploaded and merged.
+  if (pendingWriteSync) {
+    pendingWriteSync = false;
+    // Small delay to let any in-flight IndexedDB writes settle
+    setTimeout(() => {
+      triggerSync('write').catch(() => {});
+    }, 500);
   }
 
   return getCurrentStatus();
@@ -261,8 +279,10 @@ async function runSyncCycle(reason: string): Promise<void> {
   // ── Step 4: APPLYING ──
   await setStatus({ state: 'applying' });
 
-  // Apply merged state atomically
-  await applySnapshot(mergeResult.snapshot);
+  // Apply merged state atomically.
+  // Pass the pre-sync local snapshot so applySnapshot can detect and preserve
+  // any entries the user added while the sync cycle was in progress.
+  await applySnapshot(mergeResult.snapshot, localSnapshot);
 
   // Notify the UI to reload data from IndexedDB so it reflects the merge
   // without requiring a full page reload. App.tsx listens for this event.

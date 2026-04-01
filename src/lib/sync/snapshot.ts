@@ -148,7 +148,14 @@ export async function buildSnapshot(
  *
  * Note: device-local settings (theme, notifications, timers) are NOT touched.
  */
-export async function applySnapshot(snapshot: StateSnapshot): Promise<void> {
+export async function applySnapshot(
+  snapshot: StateSnapshot,
+  /** The local snapshot taken at the START of the sync cycle. Used to detect
+   *  entries the user added while the sync was in progress (race condition).
+   *  Any entry in current IndexedDB that wasn't in this pre-sync snapshot
+   *  must have been added during the cycle and is preserved. */
+  preSyncLocal?: StateSnapshot,
+): Promise<void> {
   // Read existing logs to preserve any categories not yet included in the snapshot
   // (defensive: prevents data loss if a new category is added to the app but not yet
   // to the sync schema).
@@ -156,20 +163,37 @@ export async function applySnapshot(snapshot: StateSnapshot): Promise<void> {
 
   // Reconstruct the logs object in the format the app expects.
   // Start from existing logs, then overlay every synced category.
-  const logsToWrite = {
-    ...existingLogs,
-    feed:    snapshot.logs.feed    || [],
-    diaper:  snapshot.logs.diaper  || [],
-    sleep:   snapshot.logs.sleep   || [],
-    growth:  snapshot.logs.growth  || [],
-    temp:    snapshot.logs.temp    || [],
-    bath:    snapshot.logs.bath    || [],
-    massage: snapshot.logs.massage || [],
-    meds:    snapshot.logs.meds    || [],
-    allergy: snapshot.logs.allergy || [],
-    pump:    snapshot.logs.pump    || [],
-    tummy:   snapshot.logs.tummy   || [],
-  };
+  const syncedCategories = ['feed', 'diaper', 'sleep', 'growth', 'temp', 'bath', 'massage', 'meds', 'allergy', 'pump', 'tummy'] as const;
+
+  const logsToWrite: Record<string, any[]> = { ...existingLogs };
+
+  for (const cat of syncedCategories) {
+    const mergedEntries: any[] = (snapshot.logs as any)[cat] || [];
+
+    if (preSyncLocal) {
+      // Detect entries added locally DURING the sync cycle:
+      // present in current IndexedDB but absent from the pre-sync snapshot.
+      const preSyncIds = new Set(
+        ((preSyncLocal.logs as any)[cat] || [])
+          .filter((e: any) => e.id != null)
+          .map((e: any) => e.id),
+      );
+      const mergedIds = new Set(
+        mergedEntries.filter((e: any) => e.id != null).map((e: any) => e.id),
+      );
+      const currentEntries: any[] = existingLogs[cat] || [];
+      const addedDuringSync = currentEntries.filter(
+        (e: any) => e.id != null && !preSyncIds.has(e.id) && !mergedIds.has(e.id),
+      );
+
+      if (addedDuringSync.length > 0) {
+        logsToWrite[cat] = [...addedDuringSync, ...mergedEntries];
+        continue;
+      }
+    }
+
+    logsToWrite[cat] = mergedEntries;
+  }
 
   const birthDate = snapshot.profile?.dob || null;
 
