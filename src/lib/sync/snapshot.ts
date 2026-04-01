@@ -104,6 +104,7 @@ export async function buildSnapshot(
     meds:    normalizeLogs(logs.meds),
     allergy: normalizeLogs(logs.allergy),
     pump:    normalizeLogs(logs.pump),
+    tummy:   normalizeLogs(logs.tummy),
   };
 
   // ── Build profile from app state ──
@@ -148,8 +149,15 @@ export async function buildSnapshot(
  * Note: device-local settings (theme, notifications, timers) are NOT touched.
  */
 export async function applySnapshot(snapshot: StateSnapshot): Promise<void> {
-  // Reconstruct the logs object in the format the app expects
+  // Read existing logs to preserve any categories not yet included in the snapshot
+  // (defensive: prevents data loss if a new category is added to the app but not yet
+  // to the sync schema).
+  const existingLogs = (await dg('logs')) || {};
+
+  // Reconstruct the logs object in the format the app expects.
+  // Start from existing logs, then overlay every synced category.
   const logsToWrite = {
+    ...existingLogs,
     feed:    snapshot.logs.feed    || [],
     diaper:  snapshot.logs.diaper  || [],
     sleep:   snapshot.logs.sleep   || [],
@@ -160,6 +168,7 @@ export async function applySnapshot(snapshot: StateSnapshot): Promise<void> {
     meds:    snapshot.logs.meds    || [],
     allergy: snapshot.logs.allergy || [],
     pump:    snapshot.logs.pump    || [],
+    tummy:   snapshot.logs.tummy   || [],
   };
 
   const birthDate = snapshot.profile?.dob || null;
@@ -219,7 +228,7 @@ export async function migrateForSync(): Promise<void> {
   const rawLogs = await dg('logs');
   if (!rawLogs) return;
 
-  const categories = ['feed', 'diaper', 'sleep', 'growth', 'temp', 'bath', 'massage', 'meds', 'allergy', 'pump'];
+  const categories = ['feed', 'diaper', 'sleep', 'growth', 'temp', 'bath', 'massage', 'meds', 'allergy', 'pump', 'tummy'];
   let changed = false;
 
   for (const cat of categories) {

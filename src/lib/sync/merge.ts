@@ -399,6 +399,7 @@ export function mergeSnapshots(
     meds:    mergeLogEntries(...allLogs.map((s) => s.logs.meds)),
     allergy: mergeLogEntries(...allLogs.map((s) => s.logs.allergy)),
     pump:    mergeLogEntries(...allLogs.map((s) => s.logs.pump)),
+    tummy:   mergeLogEntries(...allLogs.map((s) => s.logs.tummy)),
   };
 
   // ── Merge profile ──

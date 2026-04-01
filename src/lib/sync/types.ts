@@ -72,6 +72,12 @@ export interface SyncMedsEntry extends SyncLogEntry {
   reason?: string;
 }
 
+export interface SyncTummyEntry extends SyncLogEntry {
+  type?: 'Tummy Time';
+  sleepMins?: string;
+  mins?: number;
+}
+
 export interface SyncAllergyEntry extends SyncLogEntry {
   food?: string;
   reaction?: string;
@@ -120,6 +126,7 @@ export interface SyncLogs {
   meds: SyncMedsEntry[];
   allergy: SyncAllergyEntry[];
   pump?: SyncFeedEntry[];
+  tummy?: SyncTummyEntry[];
 }
 
 export interface StateSnapshot {
