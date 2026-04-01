@@ -21,7 +21,8 @@ import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 import { checkFeedNotification } from '@/lib/utils/feedNotification';
 import { handleOAuthCallback } from '@/lib/sync/googleDrive';
-import { isSyncEnabled, startSyncEngine, notifyDataWrite } from '@/lib/sync/syncEngine';
+import { isSyncEnabled, startSyncEngine, notifyDataWrite, onSyncStatus } from '@/lib/sync/syncEngine';
+import type { SyncStatus } from '@/lib/sync/types';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -59,6 +60,14 @@ interface SiriResult {
   time: string;
 }
 
+function formatLastSync(ts?: string): string {
+  if (!ts) return 'Never';
+  const ms = Date.now() - new Date(ts).getTime();
+  if (ms < 60_000) return 'just now';
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
+  return `${Math.round(ms / 3_600_000)}h ago`;
+}
+
 function App() {
   const [tab, setTab] = useState<string>('home');
   const [birth, setBR] = useState<string | null>(null);
@@ -81,6 +90,7 @@ function App() {
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [showSync, setShowSync] = useState<boolean>(false);
   const [showCloudSync, setShowCloudSync] = useState<boolean>(false);
+  const [navSyncStatus, setNavSyncStatus] = useState<SyncStatus | null>(null);
   const [showReport, setShowReport] = useState<boolean>(false);
   const [showGuideFromSettings, setShowGuideFromSettings] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -348,7 +358,12 @@ function App() {
   // on every app load (timers and event listeners are lost on page navigation).
   useEffect(() => {
     isSyncEnabled().then((enabled) => {
-      if (enabled) startSyncEngine().catch(() => {});
+      if (enabled) {
+        startSyncEngine().catch(() => {});
+        // Subscribe to sync status for the nav dot indicator
+        const unsub = onSyncStatus((s) => setNavSyncStatus(s));
+        return () => unsub();
+      }
     });
   }, []); // run once on mount
 
@@ -731,6 +746,47 @@ function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Sync status dot */}
+            {navSyncStatus && (() => {
+              const s = navSyncStatus;
+              const isActive = s.state !== 'idle' && s.state !== 'error';
+              const isError = s.state === 'error';
+              const msSince = s.lastSyncAt ? Date.now() - new Date(s.lastSyncAt).getTime() : Infinity;
+              const minsSince = msSince / 60_000;
+
+              // Color logic:
+              // Blinking green = syncing in progress
+              // Solid green = synced < 2 min ago
+              // Orange = synced 2–4 min ago
+              // Red = synced > 4 min ago
+              // Blinking red = > 5 min OR error
+              let color: string;
+              let blink = false;
+              if (isActive) {
+                color = '#4ade80'; blink = true;            // syncing → blink green
+              } else if (isError || minsSince > 5) {
+                color = '#f87171'; blink = true;            // error / stale > 5m → blink red
+              } else if (minsSince > 4) {
+                color = '#f87171';                          // > 4 min → solid red
+              } else if (minsSince > 2) {
+                color = '#fb923c';                          // > 2 min → orange
+              } else {
+                color = '#4ade80';                          // fresh → green
+              }
+
+              return (
+                <div
+                  title={isError ? 'Sync error' : isActive ? 'Syncing…' : s.lastSyncAt ? `Synced ${formatLastSync(s.lastSyncAt)}` : 'Sync ready'}
+                  style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: color,
+                    boxShadow: `0 0 6px ${color}`,
+                    flexShrink: 0,
+                    ...(blink ? { animation: 'syncBlink 1.2s ease-in-out infinite' } : {}),
+                  }}
+                />
+              );
+            })()}
             <button
               onClick={() => setDarkMode(!darkMode)}
               style={{

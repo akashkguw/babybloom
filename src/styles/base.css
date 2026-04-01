@@ -188,6 +188,11 @@ button,
   66% { transform: translate(-5px, 5px) scale(0.95); opacity: 0.06; }
 }
 
+@keyframes syncBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
 /* Slider thumb styling */
 .ql-expand input[type="range"] {
   -webkit-appearance: none;

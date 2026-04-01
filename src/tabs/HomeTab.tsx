@@ -18,8 +18,6 @@ import type { HeroBgSetting } from '@/features/settings/HeroBackgroundPicker';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
-import { onSyncStatus, isSyncEnabled as checkSyncEnabled } from '@/lib/sync/syncEngine';
-import type { SyncStatus } from '@/lib/sync/types';
 
 
 // Map internal DB type names to user-friendly display names
@@ -129,20 +127,6 @@ export default function HomeTab({
   const joinSectionRef = useRef<HTMLDivElement>(null);
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
   const [heroBg, setHeroBg] = useState<HeroBgSetting | null>(null);
-
-  // ── Sync status for home page indicator ──
-  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    checkSyncEnabled().then((enabled) => {
-      if (!enabled || !mounted) return;
-      // Subscribe to live status updates
-      const unsub = onSyncStatus((s) => { if (mounted) setSyncStatus(s); });
-      // Cleanup on unmount
-      return unsub;
-    });
-    return () => { mounted = false; };
-  }, []);
 
   // Scroll share-code section into view when revealed
   useEffect(() => {
@@ -1223,40 +1207,6 @@ export default function HomeTab({
                 <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>{ageStr}</span>
                 {ms && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>· {ms.l}</span>}
               </div>
-
-              {/* Sync status badge — only shown when sync is enabled */}
-              {syncStatus && (
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  background: syncStatus.state === 'error'
-                    ? 'rgba(239,68,68,0.2)'
-                    : 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(8px)',
-                  borderRadius: 20, padding: '4px 10px', marginTop: 6,
-                }}>
-                  <span style={{
-                    width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                    background: syncStatus.state === 'idle' ? '#4ade80'
-                      : syncStatus.state === 'error' ? '#f87171'
-                      : '#fbbf24',
-                    ...(syncStatus.state !== 'idle' && syncStatus.state !== 'error'
-                      ? { animation: 'heroOrbFloat 1.5s ease-in-out infinite' }
-                      : {}),
-                  }} />
-                  <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 500 }}>
-                    {syncStatus.state === 'idle' && syncStatus.lastSyncAt
-                      ? (() => {
-                          const ms = Date.now() - new Date(syncStatus.lastSyncAt!).getTime();
-                          if (ms < 60_000) return 'Synced just now';
-                          if (ms < 3_600_000) return `Synced ${Math.round(ms / 60_000)}m ago`;
-                          return `Synced ${Math.round(ms / 3_600_000)}h ago`;
-                        })()
-                      : syncStatus.state === 'idle' ? 'Sync ready'
-                      : syncStatus.state === 'error' ? 'Sync error'
-                      : 'Syncing…'}
-                  </span>
-                </div>
-              )}
 
               {/* Re-open 2yr milestone carousel */}
               {age >= 24 && (
