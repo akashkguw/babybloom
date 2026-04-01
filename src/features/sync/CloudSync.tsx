@@ -138,6 +138,12 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     const unsubscribe = onSyncStatus((status) => {
       setSyncStatus(status);
       setIsSyncing(status.state !== 'idle' && status.state !== 'error');
+
+      // If sync hit an error (e.g. scope_insufficient cleared tokens),
+      // re-check auth state so the UI shows "Connect Google Drive" banner.
+      if (status.state === 'error') {
+        isAuthenticated().then((authed) => setGoogleAuthed(authed));
+      }
     });
 
     // Listen for OAuth callback (fired by App.tsx after successful token exchange).

@@ -64,11 +64,14 @@ export async function getAccessToken(): Promise<string> {
   if (!tokens) throw new DriveError('not_authenticated', 'No Google tokens found. Please sign in.');
 
   // Validate that the stored token scope covers Drive file access.
-  // Tokens granted with only drive.appdata (no drive.file) will fail all file ops.
+  // Tokens granted with only drive.appdata (old version) will fail all file ops.
+  // Auto-clear stale tokens so the UI shows the "Connect Google Drive" prompt
+  // instead of silently failing on every sync attempt.
   if (tokens.scope && !hasRequiredDriveScope(tokens.scope)) {
+    await clearTokens();
     throw new DriveError(
       'scope_insufficient',
-      'Google Drive permission was granted with an incompatible scope. Please re-connect Google Drive.',
+      'Google Drive permissions need updating. Please re-connect Google Drive.',
     );
   }
 
