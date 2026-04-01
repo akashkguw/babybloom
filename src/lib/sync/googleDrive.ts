@@ -318,9 +318,10 @@ export async function getOrCreateFolder(): Promise<string> {
 
   const files = searchResp.files || [];
   if (files.length > 0) {
-    cachedFolderId = files[0].id;
-    await setSharedFolderId(cachedFolderId);
-    return cachedFolderId;
+    const id: string = files[0].id;
+    cachedFolderId = id;
+    await setSharedFolderId(id);
+    return id;
   }
 
   // No folder found — create a new one (Parent A path)
@@ -334,9 +335,10 @@ export async function getOrCreateFolder(): Promise<string> {
     token,
   );
 
-  cachedFolderId = createResp.id;
-  await setSharedFolderId(cachedFolderId);
-  return cachedFolderId;
+  const newId: string = createResp.id;
+  cachedFolderId = newId;
+  await setSharedFolderId(newId);
+  return newId;
 }
 
 /**
