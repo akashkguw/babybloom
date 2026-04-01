@@ -386,9 +386,12 @@ function App() {
         // Tokens stored — start/restart sync engine now that we're authenticated,
         // then signal the CloudSync UI to refresh its auth state.
         startSyncEngine().catch(() => {});
-        // Signal without the callback URL — CloudSync should NOT re-exchange the code
-        window.dispatchEvent(new CustomEvent('babybloom:oauth'));
+        // Mount CloudSync FIRST, then dispatch the event on the next tick
+        // so CloudSync's useEffect listener is registered before the event fires.
         setShowCloudSync(true);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('babybloom:oauth'));
+        }, 0);
       })
       .catch((err: any) => {
         toast('Google sign-in failed: ' + (err?.message || 'unknown error'));

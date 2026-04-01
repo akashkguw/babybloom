@@ -40,7 +40,6 @@ import {
   getOrCreateFolder,
   shareFolderWithPartner,
   setSharedFolderId,
-  getSharedFolderId,
   showFolderPicker,
   uploadFile,
   KEY_BACKUP_FILE,
@@ -144,24 +143,15 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     });
 
     // Listen for OAuth callback (fired by App.tsx after successful token exchange).
-    // Tokens are already stored at this point — just refresh UI state and trigger sync.
+    // With full drive scope, the sync engine can find the shared folder
+    // automatically — no Picker or manual folder selection needed.
     const onOAuth = () => {
-      isAuthenticated().then(async (authed) => {
+      isAuthenticated().then((authed) => {
         if (authed) {
           setGoogleAuthed(true);
-
-          // Check if this user already has a folder ID (Parent A, or Parent B with BK2 QR).
-          // If not, Parent B needs to select the shared folder via Google Picker.
-          const folderId = await getSharedFolderId();
-          if (folderId) {
-            setView('main');
-            toast('Google Drive connected! Syncing now…');
-            triggerSync('manual').catch(() => {});
-          } else {
-            // Parent B: no folder ID yet — show folder picker
-            setView('pick_folder');
-            toast('Google Drive connected! Now select the shared folder.');
-          }
+          setView('main');
+          toast('Google Drive connected! Syncing now…');
+          triggerSync('manual').catch(() => {});
         }
       });
     };
@@ -235,15 +225,16 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await enableSync();
       setSyncEnabled(true);
 
-      // Parent B needs Google auth, then must select shared folder via Picker
-      // to grant the app drive.file access to it.
+      // Parent B needs Google auth to start syncing.
+      // With full drive scope, the sync engine finds the shared folder
+      // automatically — no manual folder selection needed.
       if (!googleAuthed) {
         toast('Key imported! Now connect Google Drive to start syncing.');
         setView('google_auth');
       } else {
-        // Already authed — go straight to folder picker
-        toast('Key imported! Now select the shared folder.');
-        setView('pick_folder');
+        toast('Key imported! Syncing now…');
+        setView('main');
+        triggerSync('manual').catch(() => {});
       }
     } catch (err: any) {
       toast('Failed to join sync: ' + (err?.message || 'unknown error'));
