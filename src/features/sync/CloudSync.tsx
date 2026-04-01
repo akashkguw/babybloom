@@ -197,13 +197,20 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await storeFamilyKey(key);
       await enableSync();
       setSyncEnabled(true);
-      toast('Joined family sync! Data is being merged…');
-      setView('main');
+
+      // Parent B also needs Google auth to upload/download from Drive
+      if (!googleAuthed) {
+        toast('Key imported! Now connect Google Drive to start syncing.');
+        setView('google_auth');
+      } else {
+        toast('Joined family sync! Data is being merged…');
+        setView('main');
+      }
     } catch (err: any) {
       toast('Failed to join sync: ' + (err?.message || 'unknown error'));
       Sentry.captureException(err, { tags: { action: 'join_sync' } });
     }
-  }, []);
+  }, [googleAuthed]);
 
   // ── Manual sync ──
   const handleSyncNow = useCallback(async () => {

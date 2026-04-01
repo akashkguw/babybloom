@@ -21,7 +21,7 @@ import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 import { checkFeedNotification } from '@/lib/utils/feedNotification';
 import { handleOAuthCallback } from '@/lib/sync/googleDrive';
-import { isSyncEnabled, startSyncEngine } from '@/lib/sync/syncEngine';
+import { isSyncEnabled, startSyncEngine, notifyDataWrite } from '@/lib/sync/syncEngine';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -117,11 +117,13 @@ function App() {
       setECR((prev: EmergencyContact[]) => {
         const next = v(prev);
         ds('emergencyContacts', next);
+        notifyDataWrite();
         return next;
       });
     } else {
       setECR(v);
       ds('emergencyContacts', v);
+      notifyDataWrite();
     }
   };
 
@@ -174,7 +176,7 @@ function App() {
     setTab(t);
   };
 
-  // Save field to both global and profile-specific keys
+  // Save field to both global and profile-specific keys, then notify sync engine
   const spd = (field: string, val: any) => {
     ds(field, val);
     if (activeProfile) {
@@ -184,6 +186,8 @@ function App() {
         ds(`profileData_${activeProfile}`, data);
       });
     }
+    // Notify sync engine so changes are uploaded promptly (debounced 2s in engine)
+    notifyDataWrite();
   };
 
   const setBirth = (v: string) => {

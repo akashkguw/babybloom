@@ -61,23 +61,30 @@ export async function buildSnapshot(
   deviceId: string,
   deviceName: string,
 ): Promise<StateSnapshot> {
-  // Read all data from IndexedDB
+  // Read all data from IndexedDB using the ACTUAL key names that App.tsx writes.
+  // App.tsx `spd()` helper writes every field to both a generic top-level key
+  // (e.g. ds('logs', v)) and the profile-specific key (profileData_${id}).
+  // We read the generic keys here since they always reflect the active profile.
   const [
     rawLogs,
-    profileData,
+    birthDate,
     firsts,
     teeth,
-    checked,       // milestones
-    vDoneAll,      // vaccines by country
+    milestones,
+    vaccines,
     emergencyContacts,
+    profiles,
+    activeProfileId,
   ] = await Promise.all([
     dg('logs'),
-    dg('profile'),
+    dg('birthDate'),
     dg('firsts'),
     dg('teeth'),
-    dg('checked'),
-    dg('vDoneAll'),
+    dg('milestones'),    // App.tsx writes via spd('milestones', ...)
+    dg('vaccines'),      // App.tsx writes via spd('vaccines', ...)
     dg('emergencyContacts'),
+    dg('profiles'),
+    dg('activeProfile'),
   ]);
 
   // ── Normalize logs — backfill modified_at for legacy entries ──
@@ -99,17 +106,16 @@ export async function buildSnapshot(
     pump:    normalizeLogs(logs.pump),
   };
 
-  // ── Normalize profile ──
-  const profile = profileData || {};
+  // ── Build profile from app state ──
+  // App.tsx stores baby name in profiles[] array and birthDate as a standalone key.
+  const activeProfile = Array.isArray(profiles)
+    ? profiles.find((p: any) => p.id === activeProfileId)
+    : null;
   const syncProfile: SyncProfile = {
-    ...profile,
-    // Backfill modified_at if not present (legacy device)
-    modified_at: profile.modified_at || new Date(0).toISOString(),
-    // Exclude device-local fields (theme, notifications)
+    name: activeProfile?.name || undefined,
+    dob: birthDate || undefined,
+    modified_at: new Date().toISOString(),
   };
-  // Remove non-synced profile fields
-  delete (syncProfile as any).theme;
-  delete (syncProfile as any).notifications;
 
   // ── Normalize firsts ──
   const syncFirsts = backfillModifiedAt(firsts || []) as any[];
@@ -126,8 +132,8 @@ export async function buildSnapshot(
     logs: syncLogs,
     firsts: syncFirsts,
     teeth: teeth || {},
-    milestones: checked || {},
-    vaccines: vDoneAll || {},
+    milestones: milestones || {},
+    vaccines: vaccines || {},
     emergency_contacts: syncContacts,
   };
 }
@@ -156,16 +162,50 @@ export async function applySnapshot(snapshot: StateSnapshot): Promise<void> {
     pump:    snapshot.logs.pump    || [],
   };
 
-  // Write all sync'd data in parallel
-  await Promise.all([
+  const birthDate = snapshot.profile?.dob || null;
+
+  // Write all sync'd data in parallel using the ACTUAL key names App.tsx reads.
+  // App.tsx `spd()` writes to both generic keys and profileData_${id}.
+  // We must write to both so the app sees merged data immediately AND on next load.
+  const activeProfileId = await dg('activeProfile');
+
+  const writes: Promise<void>[] = [
+    // Generic top-level keys (used by spd() and the app's initial load fallback)
     ds('logs', logsToWrite),
-    ds('profile', snapshot.profile),
+    ds('birthDate', birthDate),
     ds('firsts', snapshot.firsts),
     ds('teeth', snapshot.teeth),
-    ds('checked', snapshot.milestones),
-    ds('vDoneAll', snapshot.vaccines),
+    ds('milestones', snapshot.milestones),     // NOT 'checked'
+    ds('vaccines', snapshot.vaccines),          // NOT 'vDoneAll'
     ds('emergencyContacts', snapshot.emergency_contacts),
-  ]);
+  ];
+
+  // Also update the profile-specific bundle so loadProfileData() sees merged data
+  if (activeProfileId) {
+    writes.push(
+      ds(`profileData_${activeProfileId}`, {
+        logs: logsToWrite,
+        milestones: snapshot.milestones,
+        vaccines: snapshot.vaccines,
+        teeth: snapshot.teeth,
+        firsts: snapshot.firsts,
+        birthDate,
+      }),
+    );
+
+    // Update the baby name in the profiles array if the snapshot has one
+    if (snapshot.profile?.name) {
+      const profiles = await dg('profiles');
+      if (Array.isArray(profiles)) {
+        const updated = profiles.map((p: any) =>
+          p.id === activeProfileId ? { ...p, name: snapshot.profile.name, birthDate } : p,
+        );
+        writes.push(ds('profiles', updated));
+      }
+    }
+  }
+
+  await Promise.all(writes);
 }
 
 // ═══ MIGRATION ═══
@@ -215,10 +255,21 @@ export async function migrateForSync(): Promise<void> {
     }
   }
 
-  // Ensure profile has modified_at
-  const profile = await dg('profile');
-  if (profile && !profile.modified_at) {
-    await ds('profile', { ...profile, modified_at: new Date(0).toISOString() });
+  // Also mirror generic keys → profileData bundle if not already consistent
+  const activeProfileId = await dg('activeProfile');
+  if (activeProfileId) {
+    const milestones = await dg('milestones');
+    const vaccines = await dg('vaccines');
+    const teeth = await dg('teeth');
+    const birthDate = await dg('birthDate');
+    await ds(`profileData_${activeProfileId}`, {
+      logs: rawLogs,
+      milestones: milestones || {},
+      vaccines: vaccines || {},
+      teeth: teeth || {},
+      firsts: firsts || [],
+      birthDate: birthDate || null,
+    });
   }
 }
 
