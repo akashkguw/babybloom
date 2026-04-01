@@ -43,12 +43,34 @@ export async function hasValidTokens(): Promise<boolean> {
 }
 
 /**
+ * Check if a token scope string covers the required Drive access.
+ * Accepts either drive.file (per-file) or drive (full) scope.
+ */
+function hasRequiredDriveScope(tokenScope: string): boolean {
+  const scopes = tokenScope.split(/[\s,]+/);
+  return scopes.some(
+    (s) =>
+      s === 'https://www.googleapis.com/auth/drive.file' ||
+      s === 'https://www.googleapis.com/auth/drive',
+  );
+}
+
+/**
  * Get the current access token, refreshing if needed.
- * Throws if no tokens are stored or refresh fails.
+ * Throws if no tokens are stored, scope is insufficient, or refresh fails.
  */
 export async function getAccessToken(): Promise<string> {
   const tokens: GoogleTokens | null = await dg(DB_KEY_GOOGLE_TOKENS);
   if (!tokens) throw new DriveError('not_authenticated', 'No Google tokens found. Please sign in.');
+
+  // Validate that the stored token scope covers Drive file access.
+  // Tokens granted with only drive.appdata (no drive.file) will fail all file ops.
+  if (tokens.scope && !hasRequiredDriveScope(tokens.scope)) {
+    throw new DriveError(
+      'scope_insufficient',
+      'Google Drive permission was granted with an incompatible scope. Please re-connect Google Drive.',
+    );
+  }
 
   // If token is still valid, return it
   if (tokens.expires_at > Date.now() + 60 * 1000) {
@@ -304,12 +326,15 @@ export async function getOrCreateFolder(): Promise<string> {
 
   const token = await getAccessToken();
 
-  // Search for an existing "BabyBloom Sync" folder owned by or shared with this user
+  // Search for an existing "BabyBloom Sync" folder owned by or shared with this user.
+  // Explicitly set spaces=drive to avoid the "granted scopes do not give access to all
+  // of the requested spaces" error that occurs when the API infers an incompatible space.
   const searchResp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
       q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
       fields: 'files(id, name, ownedByMe, shared)',
       orderBy: 'createdTime',
+      spaces: 'drive',
     }),
     'GET',
     null,
@@ -474,6 +499,7 @@ export async function listDeviceFiles(): Promise<Array<{ name: string; id: strin
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
       q: `'${folderId}' in parents and name contains 'device_' and name contains '_state.enc' and trashed = false`,
       fields: 'files(id, name, modifiedTime)',
+      spaces: 'drive',
     }),
     'GET',
     null,
@@ -558,6 +584,7 @@ async function findFileId(
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
       q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
       fields: 'files(id, name)',
+      spaces: 'drive',
     }),
     'GET',
     null,
@@ -637,6 +664,9 @@ async function handleDriveError(resp: Response): Promise<void> {
     case 403:
       if (msg.toLowerCase().includes('storage')) {
         throw new DriveError('storage_full', 'Google Drive storage is full. Free up space to resume sync.');
+      }
+      if (msg.toLowerCase().includes('granted scopes') || msg.toLowerCase().includes('requested spaces')) {
+        throw new DriveError('scope_insufficient', `Google Drive access denied: ${msg}`);
       }
       throw new DriveError('forbidden', `Google Drive access denied: ${msg}`);
     case 404:
@@ -787,6 +817,7 @@ export type DriveErrorCode =
   | 'not_authenticated'
   | 'token_revoked'
   | 'token_refresh_failed'
+  | 'scope_insufficient'
   | 'storage_full'
   | 'forbidden'
   | 'not_found'
@@ -812,6 +843,8 @@ export class DriveError extends Error {
         return 'Please sign into Google to enable cloud sync.';
       case 'token_revoked':
         return 'Google Drive access was revoked. Re-enable sync in Settings.';
+      case 'scope_insufficient':
+        return 'Google Drive permissions need to be updated. Please re-connect Google Drive in Settings → Cloud Sync.';
       case 'storage_full':
         return 'Google Drive is full. Free up space or continue offline.';
       case 'offline':

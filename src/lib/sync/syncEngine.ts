@@ -136,8 +136,16 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
     const msg = isDriveError ? err.userMessage : 'Sync failed. Will retry.';
     await setStatus({ state: 'error', errorMessage: msg });
 
-    // Report to Sentry — skip expected transient conditions (offline, auth, rate-limit)
-    const skipCodes = new Set(['not_authenticated', 'token_revoked', 'offline', 'rate_limited', 'timeout']);
+    // Report to Sentry — skip expected transient conditions (offline, auth, rate-limit, scope)
+    // scope_insufficient is a known user-action-required state, not a code bug.
+    const skipCodes = new Set([
+      'not_authenticated',
+      'token_revoked',
+      'scope_insufficient',
+      'offline',
+      'rate_limited',
+      'timeout',
+    ]);
     if (!isDriveError || !skipCodes.has((err as DriveError).code)) {
       Sentry.captureException(err, { tags: { sync_reason: reason } });
     }
