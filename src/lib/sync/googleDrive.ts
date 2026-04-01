@@ -92,7 +92,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
   // The client ID and token endpoint — in production these come from env vars
   const clientId = getGoogleClientId();
 
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -100,8 +100,8 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
       ...(getGoogleClientSecret() ? { client_secret: getGoogleClientSecret() } : {}),
-    }),
-  });
+    }) as unknown as BodyInit,
+  }, 30_000);
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -193,7 +193,7 @@ export async function exchangeCodeForTokens(
 ): Promise<void> {
   const clientId = getGoogleClientId();
   const clientSecret = getGoogleClientSecret();
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -201,7 +201,7 @@ export async function exchangeCodeForTokens(
       grant_type: 'authorization_code', code_verifier: codeVerifier,
       ...(clientSecret ? { client_secret: clientSecret } : {}),
     }).toString(),
-  });
+  }, 30_000);
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new DriveError('token_refresh_failed', `OAuth exchange failed: ${err.error_description || response.status}`);
@@ -852,6 +852,8 @@ export class DriveError extends Error {
         return 'Google Drive is full. Free up space or continue offline.';
       case 'offline':
         return 'Offline — will sync when connected.';
+      case 'network':
+        return 'Sync unavailable — check your connection. Will retry automatically.';
       case 'timeout':
         return 'Sync timed out. Will retry shortly.';
       default:

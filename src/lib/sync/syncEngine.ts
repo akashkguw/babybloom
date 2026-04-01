@@ -138,6 +138,7 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
 
     // Report to Sentry — skip expected transient conditions (offline, auth, rate-limit, scope)
     // scope_insufficient is a known user-action-required state, not a code bug.
+    // network errors ('Load failed' on iOS/Safari) are transient connectivity issues, not bugs.
     const skipCodes = new Set([
       'not_authenticated',
       'token_revoked',
@@ -145,6 +146,7 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
       'offline',
       'rate_limited',
       'timeout',
+      'network',
     ]);
     if (!isDriveError || !skipCodes.has((err as DriveError).code)) {
       Sentry.captureException(err, { tags: { sync_reason: reason } });
