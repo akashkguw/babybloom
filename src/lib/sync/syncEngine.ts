@@ -264,6 +264,12 @@ async function runSyncCycle(reason: string): Promise<void> {
   // Apply merged state atomically
   await applySnapshot(mergeResult.snapshot);
 
+  // Notify the UI to reload data from IndexedDB so it reflects the merge
+  // without requiring a full page reload. App.tsx listens for this event.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('babybloom:sync-applied'));
+  }
+
   // ── Done ──
   const lastSyncAt = new Date().toISOString();
   await ds(DB_KEY_LAST_SYNC, lastSyncAt);

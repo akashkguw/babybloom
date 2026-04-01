@@ -506,6 +506,30 @@ function App() {
     return () => clearTimeout(safetyTimer);
   }, []);
 
+  // Reload data from IndexedDB after cloud sync applies a merged snapshot.
+  // Without this, users must reload the page to see partner's data.
+  useEffect(() => {
+    const onSyncApplied = () => {
+      dg('activeProfile').then((apId: any) => {
+        const pid = apId || activeProfile;
+        if (!pid) return;
+        dg(`profileData_${pid}`).then((pData: any) => {
+          if (!pData) return;
+          setLgR(pData.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
+          setCkR(pData.milestones || {});
+          setVDAllR(migrateVDone(pData.vaccines));
+          setThR(pData.teeth || {});
+          setFiR(pData.firsts || []);
+          if (pData.birthDate) setBR(pData.birthDate);
+        });
+        // Also refresh emergency contacts (not profile-scoped)
+        dg('emergencyContacts').then((ec: any) => { if (ec) setECR(ec); });
+      });
+    };
+    window.addEventListener('babybloom:sync-applied', onSyncApplied);
+    return () => window.removeEventListener('babybloom:sync-applied', onSyncApplied);
+  }, [activeProfile]);
+
   // Scroll to top on tab change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

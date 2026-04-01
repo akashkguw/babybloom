@@ -96,17 +96,25 @@ function isExpiredTombstone(deleted_at?: string | null): boolean {
  * Algorithm:
  *   1. Collect all entries from all device snapshots into a pool.
  *   2. Deduplicate by ID: for same ID, keep latest modified_at (LWW).
- *   3. Fuzzy dedup: same date + type + time within 2 min → keep latest modified_at.
+ *   3. Fuzzy dedup (cross-device only): same date + type + time within 2 min
+ *      → keep latest modified_at. Entries from the same device are NEVER
+ *      fuzzy-deduped against each other, because a single parent may
+ *      legitimately log multiple events close together.
  *   4. Apply tombstones: deleted_at set → hidden (purge if > 30 days old).
  *   5. Sort: date desc, time desc.
  */
 export function mergeLogEntries<T extends SyncLogEntry>(
   ...deviceArrays: Array<T[] | undefined>
 ): T[] {
-  // Step 1: Collect all entries, keyed by ID
+  // Step 1: Collect all entries, keyed by ID.
+  // Also track which device array each entry came from so we can skip
+  // fuzzy dedup within the same device (two entries from one parent
+  // on the same date within 2 min are valid, not duplicates).
   const byId = new Map<number, T>();
+  const entrySource = new Map<number, number>(); // entry.id → deviceArrayIndex
 
-  for (const arr of deviceArrays) {
+  for (let deviceIdx = 0; deviceIdx < deviceArrays.length; deviceIdx++) {
+    const arr = deviceArrays[deviceIdx];
     if (!arr) continue;
     for (const entry of arr) {
       if (entry.id == null) continue;
@@ -114,23 +122,28 @@ export function mergeLogEntries<T extends SyncLogEntry>(
       const existing = byId.get(entry.id);
       if (!existing) {
         byId.set(entry.id, { ...entry });
+        entrySource.set(entry.id, deviceIdx);
       } else {
         // LWW: keep latest modified_at
         if (cmpTime(entry.modified_at, existing.modified_at) > 0) {
           byId.set(entry.id, { ...entry });
+          entrySource.set(entry.id, deviceIdx);
         } else if (
           cmpTime(entry.modified_at, existing.modified_at) === 0 &&
           entry.deleted_at && !existing.deleted_at
         ) {
           // Same modified_at but this one has a delete — delete wins for safety
           byId.set(entry.id, { ...entry });
+          entrySource.set(entry.id, deviceIdx);
         }
       }
     }
   }
 
-  // Step 2: Fuzzy dedup — group entries by fuzzy key, keep latest modified_at
-  // Process entries in insertion order; mark dominated entries
+  // Step 2: Fuzzy dedup — ONLY across different devices.
+  // Two entries from the same parent are always distinct events.
+  // Two entries from different parents on the same date + type + ~time
+  // are likely the same event logged by both parents.
   const entries = Array.from(byId.values());
   const dominated = new Set<number>();
 
@@ -138,6 +151,8 @@ export function mergeLogEntries<T extends SyncLogEntry>(
     if (dominated.has(entries[i].id)) continue;
     for (let j = i + 1; j < entries.length; j++) {
       if (dominated.has(entries[j].id)) continue;
+      // Never fuzzy-dedup entries that originated from the same device
+      if (entrySource.get(entries[i].id) === entrySource.get(entries[j].id)) continue;
       if (isFuzzyDuplicate(entries[i], entries[j])) {
         // Keep the one with later modified_at; dominate the other
         if (cmpTime(entries[i].modified_at, entries[j].modified_at) >= 0) {
