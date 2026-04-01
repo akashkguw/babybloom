@@ -22,6 +22,7 @@ import {
   importKeyAndFolderFromQR,
   validatePassphrase,
   createKeyBackup,
+  restoreKeyFromBackup,
 } from '@/lib/sync/keyManager';
 import {
   enableSync,
@@ -37,6 +38,7 @@ import {
   shareFolderWithPartner,
   setSharedFolderId,
   uploadFile,
+  downloadFile,
   KEY_BACKUP_FILE,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
@@ -44,7 +46,7 @@ import { Sentry } from '@/lib/sentry';
 
 // ═══ TYPES ═══
 
-type View = 'main' | 'google_auth' | 'invite' | 'join' | 'key_backup';
+type View = 'main' | 'google_auth' | 'invite' | 'join' | 'key_backup' | 'key_restore';
 
 interface CloudSyncProps {
   onClose: () => void;
@@ -113,6 +115,12 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   const [passphrase, setPassphrase] = useState('');
   const [passphraseError, setPassphraseError] = useState('');
   const [backupDone, setBackupDone] = useState(false);
+
+  // Key restore
+  const [restorePassphrase, setRestorePassphrase] = useState('');
+  const [restoreError, setRestoreError] = useState('');
+  const [restoreDone, setRestoreDone] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   // ── Load initial state ──
   useEffect(() => {
@@ -286,6 +294,33 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     }
   }, [passphrase]);
 
+  // ── Restore key from backup ──
+  const handleRestore = useCallback(async () => {
+    if (!restorePassphrase.trim()) { setRestoreError('Enter your passphrase.'); return; }
+    setRestoreError('');
+    setRestoreLoading(true);
+    try {
+      const blob = await downloadFile(KEY_BACKUP_FILE);
+      if (!blob) { setRestoreError('No backup found on Google Drive. Create one first.'); setRestoreLoading(false); return; }
+      const key = await restoreKeyFromBackup(blob, restorePassphrase);
+      await storeFamilyKey(key);
+      await enableSync();
+      setSyncEnabled(true);
+      setRestoreDone(true);
+      toast('Key restored! Syncing now…');
+      triggerSync('manual').catch(() => {});
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('decrypt') || msg.includes('passphrase') || msg.includes('Decryption')) {
+        setRestoreError('Wrong passphrase. Please try again.');
+      } else {
+        setRestoreError('Restore failed: ' + msg);
+      }
+    } finally {
+      setRestoreLoading(false);
+    }
+  }, [restorePassphrase]);
+
   // ── Render ──
   if (loading) {
     return <Shell onClose={onClose}><div style={{ padding: 40, textAlign: 'center', color: C.tl }}>Loading…</div></Shell>;
@@ -297,7 +332,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.t, margin: 0 }}>
-            {view === 'main' ? '☁️ Cloud Sync' : view === 'invite' ? '👥 Invite Partner' : view === 'join' ? '🔗 Join Family' : view === 'google_auth' ? '🔑 Google Sign-In' : '💾 Key Backup'}
+            {view === 'main' ? '☁️ Cloud Sync' : view === 'invite' ? '👥 Invite Partner' : view === 'join' ? '🔗 Join Family' : view === 'google_auth' ? '🔑 Google Sign-In' : view === 'key_restore' ? '🔑 Restore Backup' : '💾 Key Backup'}
           </h3>
           {view === 'main' && <div style={{ fontSize: 12, color: C.tl }}>End-to-end encrypted</div>}
         </div>
@@ -362,6 +397,15 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               >
                 Already have a partner code? <span style={{ color: '#3b82f6', fontWeight: 600 }}>Join their sync</span>
               </button>
+              <button
+                onClick={() => { setRestorePassphrase(''); setRestoreDone(false); setRestoreError(''); setView('key_restore'); }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, color: C.tl, padding: '2px 0', textAlign: 'center',
+                }}
+              >
+                Have a backup? <span style={{ color: '#3b82f6', fontWeight: 600 }}>Restore from passphrase</span>
+              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -380,6 +424,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               {showAdvanced && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <Btn label="Key Backup (passphrase)" onClick={() => { setPassphrase(''); setBackupDone(false); setView('key_backup'); }} outline full />
+                  <Btn label="Restore from Backup" onClick={() => { setRestorePassphrase(''); setRestoreDone(false); setRestoreError(''); setView('key_restore'); }} outline full />
                   <Btn label="Disable Sync" onClick={handleDisable} outline full />
                 </div>
               )}
@@ -549,6 +594,40 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               />
               {passphraseError && <div style={{ fontSize: 12, color: '#ef4444' }}>{passphraseError}</div>}
               <Btn label="Create Backup" onClick={handleBackup} color={C.ok} full />
+            </>
+          )}
+          <Btn label="← Back" onClick={() => setView('main')} outline />
+        </div>
+      )}
+      {/* ────────────────── KEY RESTORE ────────────────── */}
+      {view === 'key_restore' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {restoreDone ? (
+            <Cd style={{ padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>Key restored!</div>
+              <div style={{ fontSize: 12, color: C.tl, marginTop: 4 }}>
+                Your data is syncing now. All entries from both devices will merge automatically.
+              </div>
+            </Cd>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+                Enter the passphrase you used when creating the backup. This will download the encrypted key from Google Drive and restore your sync access.
+              </div>
+              <input
+                type="password"
+                value={restorePassphrase}
+                onChange={(e) => { setRestorePassphrase(e.target.value); setRestoreError(''); }}
+                placeholder="Enter your backup passphrase…"
+                style={{
+                  background: C.cd, border: '1px solid ' + (restoreError ? '#ef4444' : C.b),
+                  borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t,
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+              {restoreError && <div style={{ fontSize: 12, color: '#ef4444' }}>{restoreError}</div>}
+              <Btn label={restoreLoading ? 'Restoring…' : 'Restore Key'} onClick={handleRestore} color={C.s} full />
             </>
           )}
           <Btn label="← Back" onClick={() => setView('main')} outline />

@@ -3,6 +3,7 @@ import { Card as Cd, Button as Btn, ProgressCircle as PR } from '@/components/sh
 import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
 import type { SyncStatus } from '@/lib/sync/types';
+import { triggerSync } from '@/lib/sync/syncEngine';
 import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
 import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
@@ -1261,39 +1262,53 @@ export default function HomeTab({
                   </span>
                 </div>
               )}
-              {/* Sync status pill */}
+              {/* Sync status pill — tap to sync */}
               {syncStatus && (() => {
                 const s = syncStatus;
                 const isActive = s.state !== 'idle' && s.state !== 'error';
                 const isError = s.state === 'error';
                 const msSince = s.lastSyncAt ? Date.now() - new Date(s.lastSyncAt).getTime() : Infinity;
                 const minsSince = msSince / 60_000;
+                const errMsg = s.errorMessage?.toLowerCase() || '';
+                const isAuthError = isError && (errMsg.includes('sign in') || errMsg.includes('google') || errMsg.includes('revoked') || errMsg.includes('permission'));
+                const isOffline = isError && (errMsg.includes('offline') || errMsg.includes('connection') || errMsg.includes('network'));
+                // Softer palette: mint green, warm amber, soft coral
                 let dotColor: string;
                 let blink = false;
                 let label: string;
                 if (isActive) {
-                  dotColor = '#4ade80'; blink = true; label = 'Syncing';
+                  dotColor = '#6ee7b7'; blink = true; label = 'Syncing';
+                } else if (isAuthError) {
+                  dotColor = '#fca5a5'; label = 'Sign in';
+                } else if (isOffline) {
+                  dotColor = '#d4d4d8'; label = 'Offline';
                 } else if (isError || minsSince > 5) {
-                  dotColor = '#f87171'; blink = true; label = isError ? 'Error' : 'Stale';
+                  dotColor = '#fca5a5'; blink = !isError; label = isError ? 'Retry' : 'Stale';
                 } else if (minsSince > 4) {
-                  dotColor = '#f87171'; label = `${Math.round(minsSince)}m`;
+                  dotColor = '#fca5a5'; label = `${Math.round(minsSince)}m`;
                 } else if (minsSince > 2) {
-                  dotColor = '#fb923c'; label = `${Math.round(minsSince)}m`;
+                  dotColor = '#fcd34d'; label = `${Math.round(minsSince)}m`;
                 } else {
-                  dotColor = '#4ade80'; label = s.lastSyncAt ? 'Synced' : 'Ready';
+                  dotColor = '#6ee7b7'; label = s.lastSyncAt ? 'Synced' : 'Ready';
                 }
                 return (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '5px 8px',
-                    flexShrink: 0,
-                  }}>
+                  <div
+                    onClick={() => {
+                      if (isAuthError) { setTab('settings', 'sync'); }
+                      else if (!isActive) { triggerSync('manual').catch(() => {}); }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '5px 8px',
+                      flexShrink: 0, cursor: isActive ? 'default' : 'pointer',
+                    }}
+                  >
                     <div style={{
                       width: 6, height: 6, borderRadius: '50%',
                       background: dotColor, boxShadow: `0 0 4px ${dotColor}`,
                       ...(blink ? { animation: 'syncBlink 1.2s ease-in-out infinite' } : {}),
                     }} />
-                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 600 }}>{label}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 600 }}>{label}</span>
                   </div>
                 );
               })()}
