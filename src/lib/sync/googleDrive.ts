@@ -44,14 +44,14 @@ export async function hasValidTokens(): Promise<boolean> {
 
 /**
  * Check if a token scope string covers the required Drive access.
- * Accepts either drive.file (per-file) or drive (full) scope.
+ * Requires the full `drive` scope — `drive.file` is insufficient because
+ * it only exposes files the current user's app instance created, preventing
+ * cross-account sync (Parent B can't see Parent A's uploaded files).
  */
 function hasRequiredDriveScope(tokenScope: string): boolean {
   const scopes = tokenScope.split(/[\s,]+/);
   return scopes.some(
-    (s) =>
-      s === 'https://www.googleapis.com/auth/drive.file' ||
-      s === 'https://www.googleapis.com/auth/drive',
+    (s) => s === 'https://www.googleapis.com/auth/drive',
   );
 }
 
@@ -759,12 +759,9 @@ async function loadPickerApi(): Promise<void> {
 /**
  * Show a Google Picker dialog for the user to select a shared folder.
  *
- * Used by Parent B to grant the app drive.file access to the folder
- * that Parent A shared with them. The user sees a folder browser
- * filtered to "Shared with me" and taps the BabyBloom Sync folder.
- *
- * When the user picks a folder via the Picker, the app automatically
- * receives drive.file access to it — no broad drive scope needed.
+ * Used by Parent B to explicitly select the shared folder.
+ * The user sees a folder browser filtered to "Shared with me"
+ * and taps the BabyBloom Sync folder.
  *
  * @returns The selected folder's Google Drive ID, or null if cancelled.
  */
