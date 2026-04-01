@@ -1,4 +1,4 @@
-// @vitest-environment node
+// @vitest-environment jsdom
 
 /**
  * BabyBloom Cloud Sync — Encryption Module Tests

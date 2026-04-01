@@ -47,3 +47,33 @@ if (!globalThis.indexedDB) {
 afterEach(() => {
   vi.clearAllMocks();
 });
+
+// Fix Uint8Array deep equality in jsdom (crypto.subtle returns cross-realm buffers)
+expect.addEqualityTesters([
+  function uint8ArrayEquality(a: unknown, b: unknown): boolean | undefined {
+    if (a instanceof Uint8Array && b instanceof Uint8Array) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+      }
+      return true;
+    }
+    // Also handle cross-realm Uint8Array (jsdom crypto.subtle)
+    if (
+      a && b &&
+      typeof a === 'object' && typeof b === 'object' &&
+      'length' in a && 'length' in b && 'buffer' in a && 'buffer' in b &&
+      (a.constructor?.name === 'Uint8Array' || Object.prototype.toString.call(a) === '[object Uint8Array]') &&
+      (b.constructor?.name === 'Uint8Array' || Object.prototype.toString.call(b) === '[object Uint8Array]')
+    ) {
+      const ua = a as Uint8Array;
+      const ub = b as Uint8Array;
+      if (ua.length !== ub.length) return false;
+      for (let i = 0; i < ua.length; i++) {
+        if (ua[i] !== ub[i]) return false;
+      }
+      return true;
+    }
+    return undefined; // fall through to default equality
+  }
+]);

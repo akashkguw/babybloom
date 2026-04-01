@@ -14,5 +14,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  experimental: {
+    skipSsrTransform: true
   }
 });
