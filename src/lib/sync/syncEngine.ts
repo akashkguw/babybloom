@@ -37,6 +37,7 @@ import {
   deviceStatePrevFileName,
   MANIFEST_FILE,
   DriveError,
+  clearSharedFolderId,
 } from './googleDrive';
 import type { StateSnapshot, SyncManifest, SyncStatus, SyncState } from './types';
 import {
@@ -399,6 +400,9 @@ export async function disableSync(deleteCloudData = false): Promise<void> {
       // Non-fatal
     }
   }
+
+  // Clear the stored shared folder ID
+  await clearSharedFolderId();
 }
 
 /**

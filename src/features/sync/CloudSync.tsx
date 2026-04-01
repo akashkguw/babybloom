@@ -25,6 +25,8 @@ import {
   hasFamilyKey,
   exportKeyForQR,
   importKeyFromQR,
+  exportKeyAndFolderForQR,
+  importKeyAndFolderFromQR,
   validatePassphrase,
   createKeyBackup,
 } from '@/lib/sync/keyManager';
@@ -38,6 +40,10 @@ import {
 import {
   initiateGoogleSignIn,
   isAuthenticated,
+  getOrCreateFolder,
+  shareFolderWithPartner,
+  acceptSharedFolder,
+  setSharedFolderId,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
 import { Sentry } from '@/lib/sentry';
@@ -47,7 +53,8 @@ import { Sentry } from '@/lib/sentry';
 type CloudSyncView =
   | 'main'
   | 'google_auth'    // Sign into Google to activate Drive backup
-  | 'setup_a'        // Parent A: generating family key + QR
+  | 'invite'         // Parent A: share folder + show QR
+  | 'setup_a'        // Parent A: showing QR code to partner
   | 'setup_b'        // Parent B: scanning QR to join
   | 'key_backup'     // Passphrase-based backup setup
   | 'key_restore';   // Passphrase-based key recovery
@@ -106,6 +113,11 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   const [familyKeyQR, setFamilyKeyQR] = useState('');
   const [qrCountdown, setQrCountdown] = useState(QR_DISMISS_SECONDS);
   const [showScanner, setShowScanner] = useState(false);
+
+  // Invite flow state
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteShared, setInviteShared] = useState(false);
 
   // Key backup state
   const [passphrase, setPassphrase] = useState('');
@@ -188,13 +200,22 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   // ── Join existing family (Parent B: scan QR) ──
   const handleJoinFamily = useCallback(async (qrData: string) => {
     setShowScanner(false);
-    const key = await importKeyFromQR(qrData);
-    if (!key) {
+
+    // Try BK2 first (key + folder ID), fall back to BK1 (key only)
+    const result = await importKeyAndFolderFromQR(qrData);
+    if (!result) {
       toast('Invalid family key QR code. Please scan again.');
       return;
     }
+
     try {
-      await storeFamilyKey(key);
+      await storeFamilyKey(result.key);
+
+      // If we got a folder ID from BK2 format, store it for later use
+      if (result.folderId) {
+        await setSharedFolderId(result.folderId);
+      }
+
       await enableSync();
       setSyncEnabled(true);
 
@@ -203,6 +224,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         toast('Key imported! Now connect Google Drive to start syncing.');
         setView('google_auth');
       } else {
+        // If we have a folder ID, try to verify access now
+        if (result.folderId) {
+          try {
+            await acceptSharedFolder(result.folderId);
+          } catch {
+            toast('Folder access pending — your partner may need to share it with your Google account.');
+          }
+        }
         toast('Joined family sync! Data is being merged…');
         setView('main');
       }
@@ -218,14 +247,58 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     await triggerSync('manual');
   }, [isSyncing]);
 
-  // ── Show QR again ──
+  // ── Show invite flow (share folder + QR) ──
+  const handleInvitePartner = useCallback(async () => {
+    setPartnerEmail('');
+    setInviteShared(false);
+    setView('invite');
+  }, []);
+
+  // ── Share folder with partner email and generate QR ──
+  const handleShareAndShowQR = useCallback(async () => {
+    if (!partnerEmail.trim() || !partnerEmail.includes('@')) {
+      toast('Please enter a valid email address.');
+      return;
+    }
+    try {
+      setInviteLoading(true);
+      // Ensure folder exists
+      const folderId = await getOrCreateFolder();
+      // Share with partner
+      await shareFolderWithPartner(partnerEmail.trim());
+      setInviteShared(true);
+
+      // Generate BK2 QR code with key + folder ID
+      const key = await loadFamilyKey();
+      if (!key) {
+        toast('Family key not found. Please re-enable sync.');
+        return;
+      }
+      const qrString = await exportKeyAndFolderForQR(key, folderId);
+      setFamilyKeyQR(qrString);
+      setView('setup_a');
+    } catch (err: any) {
+      const msg = err?.message || 'unknown error';
+      if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('not found')) {
+        toast('Could not share with that email. Check the address and try again.');
+      } else {
+        toast('Failed to share folder: ' + msg);
+      }
+      Sentry.captureException(err, { tags: { action: 'share_folder' } });
+    } finally {
+      setInviteLoading(false);
+    }
+  }, [partnerEmail]);
+
+  // ── Show QR without re-sharing (for already-shared partners) ──
   const handleShowQR = useCallback(async () => {
     const key = await loadFamilyKey();
     if (!key) {
       toast('Family key not found. Please re-enable sync.');
       return;
     }
-    const qrString = await exportKeyForQR(key);
+    const folderId = await getOrCreateFolder();
+    const qrString = await exportKeyAndFolderForQR(key, folderId);
     setFamilyKeyQR(qrString);
     setView('setup_a');
   }, []);
@@ -339,8 +412,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.7 }}>
                 <strong style={{ color: C.t }}>How it works:</strong><br />
                 1️⃣ Tap <em>Enable</em> — a secret key is created on your device.<br />
-                2️⃣ Your data is encrypted with that key and backed up to <strong>your</strong> Google Drive automatically (Google sign-in happens on first sync).<br />
-                3️⃣ To add a co-parent, tap "Invite Family Member" and share the QR code.
+                2️⃣ Your data is encrypted and backed up to a shared Google Drive folder (Google sign-in happens on first sync).<br />
+                3️⃣ To add a co-parent, tap "Invite Family Member", enter their Google email to share the folder, and show them the QR code.
               </div>
               <Btn
                 label="Enable Cloud Sync (Google Drive)"
@@ -358,8 +431,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Btn
-                label="Invite Family Member (show QR)"
-                onClick={handleShowQR}
+                label="Invite Family Member"
+                onClick={handleInvitePartner}
                 color={C.a}
                 full
               />
@@ -377,6 +450,43 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── INVITE: Share folder + generate QR ── */}
+      {view === 'invite' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.t }}>
+            Invite Your Partner
+          </div>
+          <div style={{ padding: '10px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
+            Enter your partner's <strong>Google email</strong> so they can access the shared sync folder.
+            After sharing, show them the QR code to complete setup.
+          </div>
+          <input
+            type="email"
+            value={partnerEmail}
+            onChange={(e) => setPartnerEmail(e.target.value)}
+            placeholder="partner@gmail.com"
+            style={{
+              background: C.cd, border: '1px solid ' + C.b,
+              borderRadius: 12, padding: '10px 14px', fontSize: 14, color: C.t,
+              width: '100%', boxSizing: 'border-box',
+            }}
+          />
+          <Btn
+            label={inviteLoading ? 'Sharing…' : 'Share & Show QR Code'}
+            onClick={handleShareAndShowQR}
+            color={C.s}
+            full
+          />
+          <div style={{ fontSize: 11, color: C.tl, textAlign: 'center', lineHeight: 1.5 }}>
+            Already shared? <button
+              onClick={handleShowQR}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, fontSize: 11, padding: 0, textDecoration: 'underline' }}
+            >Show QR code only</button>
+          </div>
+          <Btn label="← Back" onClick={() => setView('main')} outline />
         </div>
       )}
 

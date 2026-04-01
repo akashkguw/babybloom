@@ -218,8 +218,14 @@ export const PASSPHRASE_MIN_LENGTH = 12;
 /** PBKDF2 iterations for passphrase-based key backup */
 export const PBKDF2_ITERATIONS = 100_000;
 
-/** Google Drive appDataFolder scope */
-export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+/** Google Drive scope — full drive access needed for cross-account shared folders */
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+
+/** IndexedDB key for the shared Google Drive folder ID */
+export const DB_KEY_SHARED_FOLDER_ID = 'sync_shared_folder_id';
+
+/** Family key + folder ID QR code prefix for BK2: format */
+export const FAMILY_KEY_PREFIX_V2 = 'BK2:';
 
 /** Google Drive API base URL */
 export const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3';

@@ -2,16 +2,21 @@
  * BabyBloom Cloud Sync — Google Drive API Wrapper
  *
  * Handles all Google Drive interactions for the sync engine.
- * Uses the appDataFolder scope — the most restrictive available.
- * Only BabyBloom can see these files; the user cannot browse them in Drive.
+ * Uses a regular Google Drive folder (shared between partners) instead of
+ * appDataFolder, so two parents with different Google accounts can both
+ * read/write encrypted state files to the same folder.
  *
- * Folder structure in appDataFolder:
- *   babybloom/
+ * Folder structure in Google Drive:
+ *   BabyBloom Sync/
  *     manifest.enc          ← Family metadata + schema version
  *     device_{id}_state.enc ← Full state snapshot per device
  *     key_backup.enc        ← Optional: family key encrypted with passphrase
  *
- * Design §6 — Google Drive Integration
+ * Flow:
+ *   Parent A: Creates "BabyBloom Sync" folder → shares it with Parent B's email
+ *   Parent B: Receives folder ID via QR code (BK2: format) → accesses shared folder
+ *
+ * Design §6 — Google Drive Integration (updated for cross-account sync)
  */
 
 import { dg, ds } from '@/lib/db';
@@ -21,6 +26,7 @@ import {
   GOOGLE_DRIVE_SCOPE,
   DRIVE_FOLDER_NAME,
   DB_KEY_GOOGLE_TOKENS,
+  DB_KEY_SHARED_FOLDER_ID,
 } from './types';
 import type { GoogleTokens } from './types';
 
@@ -233,20 +239,77 @@ export async function clearTokens(): Promise<void> {
 let cachedFolderId: string | null = null;
 
 /**
- * Get or create the babybloom/ folder in appDataFolder.
+ * Persist the shared folder ID in IndexedDB so both parents can find it.
+ * Called by Parent A after creating the folder, and by Parent B after scanning the QR.
+ */
+export async function setSharedFolderId(folderId: string): Promise<void> {
+  cachedFolderId = folderId;
+  await ds(DB_KEY_SHARED_FOLDER_ID, folderId);
+}
+
+/**
+ * Load the shared folder ID from IndexedDB.
+ * Returns null if no folder has been set up yet.
+ */
+export async function getSharedFolderId(): Promise<string | null> {
+  if (cachedFolderId) return cachedFolderId;
+  const id = await dg(DB_KEY_SHARED_FOLDER_ID);
+  if (id && typeof id === 'string') {
+    cachedFolderId = id;
+    return id;
+  }
+  return null;
+}
+
+/**
+ * Clear the stored shared folder ID (when sync is disabled).
+ */
+export async function clearSharedFolderId(): Promise<void> {
+  cachedFolderId = null;
+  await ds(DB_KEY_SHARED_FOLDER_ID, null);
+}
+
+/**
+ * Get or create the BabyBloom Sync folder in the user's Google Drive.
+ *
+ * For Parent A (folder creator): creates a new folder in Drive root and stores its ID.
+ * For Parent B (joiner): uses the folder ID received from the QR code.
+ *
  * Result is cached in memory for the session.
  */
 export async function getOrCreateFolder(): Promise<string> {
+  // Check in-memory cache first
   if (cachedFolderId) return cachedFolderId;
+
+  // Check IndexedDB for stored folder ID (set by QR import or previous session)
+  const storedId = await getSharedFolderId();
+  if (storedId) {
+    // Verify the folder is still accessible
+    try {
+      const token = await getAccessToken();
+      const resp = await driveRequest(
+        `${GOOGLE_DRIVE_API}/files/${storedId}?fields=id,name,trashed`,
+        'GET',
+        null,
+        token,
+      );
+      if (resp.id && !resp.trashed) {
+        cachedFolderId = storedId;
+        return cachedFolderId;
+      }
+    } catch {
+      // Folder no longer accessible — fall through to create/search
+    }
+  }
 
   const token = await getAccessToken();
 
-  // Search for existing folder
+  // Search for an existing "BabyBloom Sync" folder owned by or shared with this user
   const searchResp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
-      q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and 'appDataFolder' in parents`,
-      spaces: 'appDataFolder',
-      fields: 'files(id, name)',
+      q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name, ownedByMe, shared)',
+      orderBy: 'createdTime',
     }),
     'GET',
     null,
@@ -256,23 +319,70 @@ export async function getOrCreateFolder(): Promise<string> {
   const files = searchResp.files || [];
   if (files.length > 0) {
     cachedFolderId = files[0].id;
-    return cachedFolderId!;
+    await setSharedFolderId(cachedFolderId);
+    return cachedFolderId;
   }
 
-  // Create folder
+  // No folder found — create a new one (Parent A path)
   const createResp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files`,
     'POST',
     {
       name: DRIVE_FOLDER_NAME,
       mimeType: 'application/vnd.google-apps.folder',
-      parents: ['appDataFolder'],
     },
     token,
   );
 
   cachedFolderId = createResp.id;
-  return cachedFolderId!;
+  await setSharedFolderId(cachedFolderId);
+  return cachedFolderId;
+}
+
+/**
+ * Share the sync folder with a partner's Google account.
+ * Called by Parent A to give Parent B read+write access.
+ *
+ * @param email - Partner's Google email address
+ */
+export async function shareFolderWithPartner(email: string): Promise<void> {
+  const token = await getAccessToken();
+  const folderId = await getOrCreateFolder();
+
+  await driveRequest(
+    `${GOOGLE_DRIVE_API}/files/${folderId}/permissions`,
+    'POST',
+    {
+      role: 'writer',
+      type: 'user',
+      emailAddress: email,
+    },
+    token,
+  );
+}
+
+/**
+ * Accept a shared folder by ID (Parent B path).
+ * Verifies that the folder exists and is accessible, then stores the ID.
+ *
+ * @param folderId - The folder ID received from the QR code (BK2 format)
+ */
+export async function acceptSharedFolder(folderId: string): Promise<void> {
+  const token = await getAccessToken();
+
+  // Verify the folder is accessible to this user
+  const resp = await driveRequest(
+    `${GOOGLE_DRIVE_API}/files/${folderId}?fields=id,name,trashed`,
+    'GET',
+    null,
+    token,
+  );
+
+  if (!resp.id || resp.trashed) {
+    throw new DriveError('not_found', 'Shared folder not found or has been deleted. Ask your partner to re-share.');
+  }
+
+  await setSharedFolderId(folderId);
 }
 
 // ═══ FILE OPERATIONS ═══
@@ -360,8 +470,7 @@ export async function listDeviceFiles(): Promise<Array<{ name: string; id: strin
 
   const resp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
-      q: `'${folderId}' in parents and name contains 'device_' and name contains '_state.enc'`,
-      spaces: 'appDataFolder',
+      q: `'${folderId}' in parents and name contains 'device_' and name contains '_state.enc' and trashed = false`,
       fields: 'files(id, name, modifiedTime)',
     }),
     'GET',
@@ -445,8 +554,7 @@ async function findFileId(
 ): Promise<string | null> {
   const resp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
-      q: `name = '${fileName}' and '${folderId}' in parents`,
-      spaces: 'appDataFolder',
+      q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
       fields: 'files(id, name)',
     }),
     'GET',

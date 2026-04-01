@@ -27,6 +27,7 @@ import {
 import {
   DB_KEY_FAMILY_KEY,
   FAMILY_KEY_PREFIX,
+  FAMILY_KEY_PREFIX_V2,
   PASSPHRASE_MIN_LENGTH,
   PBKDF2_ITERATIONS,
 } from './types';
@@ -128,6 +129,75 @@ export async function importKeyFromQR(qrString: string): Promise<CryptoKey | nul
     if (bytes.length !== 32) return null; // AES-256 = 32 bytes
 
     return importKeyBytes(bytes);
+  } catch {
+    return null;
+  }
+}
+
+// ═══ QR CODE EXPORT / IMPORT (BK2: format — key + folder ID) ═══
+
+/**
+ * Export the family key AND shared folder ID as a BK2: string for QR display.
+ * BK2 includes the Google Drive folder ID so Parent B can access the shared folder
+ * without needing to search for it.
+ *
+ * Format: "BK2:<base64(JSON{k: base64_key, f: folder_id})>"
+ */
+export async function exportKeyAndFolderForQR(
+  key: CryptoKey,
+  folderId: string,
+): Promise<string> {
+  const bytes = await exportKeyBytes(key);
+  const payload = JSON.stringify({
+    k: arrayToBase64(bytes),
+    f: folderId,
+  });
+  return `${FAMILY_KEY_PREFIX_V2}${btoa(payload)}`;
+}
+
+/**
+ * Import a family key and folder ID from a BK2: string.
+ * Returns null if the string is invalid.
+ *
+ * Also supports legacy BK1: strings (returns key with folderId = null).
+ */
+export async function importKeyAndFolderFromQR(
+  qrString: string,
+): Promise<{ key: CryptoKey; folderId: string | null } | null> {
+  try {
+    const cleaned = qrString.trim()
+      .replace(/\u{FF1A}/gu, ':')
+      .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
+
+    // Try BK2: format first (key + folder ID)
+    const matchV2 = cleaned.match(/bk2\s*[:：]\s*/i);
+    if (matchV2 && matchV2.index !== undefined) {
+      const b64Payload = cleaned.slice(matchV2.index + matchV2[0].length).trim();
+      const jsonStr = atob(b64Payload);
+      const { k, f } = JSON.parse(jsonStr);
+
+      const bytes = base64ToArray(k);
+      if (bytes.length !== 32) return null;
+
+      const key = await importKeyBytes(bytes);
+      return { key, folderId: f || null };
+    }
+
+    // Fall back to BK1: format (key only, no folder ID)
+    const matchV1 = cleaned.match(/bk1\s*[:：]\s*/i);
+    if (matchV1 && matchV1.index !== undefined) {
+      const b64 = cleaned.slice(matchV1.index + matchV1[0].length).trim()
+        .replace(/[^A-Za-z0-9+/=]/g, '');
+      if (!b64) return null;
+
+      const bytes = base64ToArray(b64);
+      if (bytes.length !== 32) return null;
+
+      const key = await importKeyBytes(bytes);
+      return { key, folderId: null };
+    }
+
+    return null;
   } catch {
     return null;
   }
