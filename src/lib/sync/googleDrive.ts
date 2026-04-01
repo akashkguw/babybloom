@@ -666,6 +666,14 @@ const GOOGLE_CLIENT_ID_FALLBACK = '292704039059-2aqdvdicdf749e2ana47m7dd1b9s9ucc
 // Get it from: console.cloud.google.com → Credentials → your OAuth 2.0 Client ID → Client secret
 const GOOGLE_CLIENT_SECRET_FALLBACK = ''; // paste your client secret here
 
+// ── Google API Key (for Picker API) ─────────────────────────────────────────
+//
+// The Picker API requires a separate API key (not the OAuth Client ID).
+// Create one at: console.cloud.google.com → APIs & Services → Credentials → Create API Key
+// Then restrict it to the Google Picker API.
+//
+const GOOGLE_API_KEY_FALLBACK = ''; // paste your API key here
+
 function getGoogleClientId(): string {
   return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID)
     || GOOGLE_CLIENT_ID_FALLBACK;
@@ -674,6 +682,103 @@ function getGoogleClientId(): string {
 function getGoogleClientSecret(): string {
   return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_CLIENT_SECRET)
     || GOOGLE_CLIENT_SECRET_FALLBACK;
+}
+
+function getGoogleApiKey(): string {
+  return (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_API_KEY)
+    || GOOGLE_API_KEY_FALLBACK;
+}
+
+// ═══ GOOGLE PICKER (folder selection for Parent B) ═══
+
+let pickerApiLoaded = false;
+
+/**
+ * Load the Google Picker API library (gapi + picker module).
+ * Safe to call multiple times — only loads once.
+ */
+async function loadPickerApi(): Promise<void> {
+  if (pickerApiLoaded) return;
+
+  // Load gapi.js if not already present
+  if (!(window as any).gapi) {
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://apis.google.com/js/api.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load Google API script'));
+      document.head.appendChild(script);
+    });
+  }
+
+  // Load the picker module within gapi
+  await new Promise<void>((resolve, reject) => {
+    (window as any).gapi.load('picker', {
+      callback: () => { pickerApiLoaded = true; resolve(); },
+      onerror: () => reject(new Error('Failed to load Google Picker module')),
+    });
+  });
+}
+
+/**
+ * Show a Google Picker dialog for the user to select a shared folder.
+ *
+ * Used by Parent B to grant the app drive.file access to the folder
+ * that Parent A shared with them. The user sees a folder browser
+ * filtered to "Shared with me" and taps the BabyBloom Sync folder.
+ *
+ * When the user picks a folder via the Picker, the app automatically
+ * receives drive.file access to it — no broad drive scope needed.
+ *
+ * @returns The selected folder's Google Drive ID, or null if cancelled.
+ */
+export async function showFolderPicker(): Promise<string | null> {
+  await loadPickerApi();
+
+  const token = await getAccessToken();
+  const apiKey = getGoogleApiKey();
+  const google = (window as any).google;
+
+  if (!google?.picker) {
+    throw new DriveError('api_error', 'Google Picker failed to load. Please try again.');
+  }
+
+  return new Promise((resolve) => {
+    // "Shared with me" folder view — this is where Parent A's folder appears
+    const sharedFoldersView = new google.picker.DocsView()
+      .setIncludeFolders(true)
+      .setMimeTypes('application/vnd.google-apps.folder')
+      .setSelectFolderEnabled(true)
+      .setOwnedByMe(false);
+
+    // "My Drive" folder view (fallback / testing / same-account use)
+    const myFoldersView = new google.picker.DocsView()
+      .setIncludeFolders(true)
+      .setMimeTypes('application/vnd.google-apps.folder')
+      .setSelectFolderEnabled(true);
+
+    const builder = new google.picker.PickerBuilder()
+      .setTitle('Select the "BabyBloom Sync" folder your partner shared')
+      .addView(sharedFoldersView)
+      .addView(myFoldersView)
+      .setOAuthToken(token)
+      .setCallback((data: any) => {
+        if (data.action === google.picker.Action.PICKED) {
+          const folder = data.docs?.[0];
+          resolve(folder?.id || null);
+        } else if (data.action === google.picker.Action.CANCEL) {
+          resolve(null);
+        }
+      });
+
+    // API key is optional but recommended — Picker works without it
+    // if the OAuth token has sufficient scope
+    if (apiKey) {
+      builder.setDeveloperKey(apiKey);
+    }
+
+    builder.build().setVisible(true);
+  });
 }
 
 // ═══ ERROR CLASS ═══

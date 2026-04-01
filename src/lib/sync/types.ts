@@ -218,8 +218,8 @@ export const PASSPHRASE_MIN_LENGTH = 12;
 /** PBKDF2 iterations for passphrase-based key backup */
 export const PBKDF2_ITERATIONS = 100_000;
 
-/** Google Drive scope — full drive access needed for cross-account shared folders */
-export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+/** Google Drive scope — drive.file gives per-file access to files the app creates or the user selects via Picker */
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 /** IndexedDB key for the shared Google Drive folder ID */
 export const DB_KEY_SHARED_FOLDER_ID = 'sync_shared_folder_id';
