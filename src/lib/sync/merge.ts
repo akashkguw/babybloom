@@ -228,6 +228,7 @@ export function mergeVaccines(
   for (const map of deviceMaps) {
     if (!map) continue;
     for (const [country, schedule] of Object.entries(map)) {
+      if (!schedule || typeof schedule !== 'object') continue;
       if (!result[country]) result[country] = {};
       for (const [key, val] of Object.entries(schedule)) {
         if (val === true) result[country][key] = true;
@@ -356,9 +357,6 @@ export function mergeSnapshots(
   local: StateSnapshot,
   ...remotes: StateSnapshot[]
 ): MergeResult {
-  // Count entries before merge for diff reporting
-  const localEntryCount = countEntries(local.logs);
-
   // ── Detect clock skew ──
   let clockSkewMs = 0;
   const now = Date.now();

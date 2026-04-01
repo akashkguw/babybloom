@@ -257,6 +257,9 @@ export const isAuthenticated = hasValidTokens;
  */
 export async function clearTokens(): Promise<void> {
   await ds(DB_KEY_GOOGLE_TOKENS, null);
+  // Also clear the in-memory folder cache so stale folder IDs from a
+  // previous account don't bypass the accessibility check in getOrCreateFolder().
+  cachedFolderId = null;
 }
 
 // ═══ FOLDER MANAGEMENT ═══
@@ -491,7 +494,7 @@ export async function downloadFile(fileName: string): Promise<Uint8Array | null>
 }
 
 /**
- * List all device state files in the babybloom/ folder.
+ * List all device state files in the BabyBloom Sync folder.
  * Returns array of { name, id, modifiedTime }.
  */
 export async function listDeviceFiles(): Promise<Array<{ name: string; id: string; modifiedTime: string }>> {

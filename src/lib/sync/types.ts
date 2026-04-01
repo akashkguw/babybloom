@@ -231,5 +231,5 @@ export const FAMILY_KEY_PREFIX_V2 = 'BK2:';
 export const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3';
 export const GOOGLE_DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 
-/** BabyBloom folder name within appDataFolder */
-export const DRIVE_FOLDER_NAME = 'babybloom';
+/** BabyBloom shared folder name in Google Drive (visible to both parents) */
+export const DRIVE_FOLDER_NAME = 'BabyBloom Sync';

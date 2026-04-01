@@ -22,9 +22,6 @@ import {
   createFamilyKey,
   storeFamilyKey,
   loadFamilyKey,
-  hasFamilyKey,
-  exportKeyForQR,
-  importKeyFromQR,
   exportKeyAndFolderForQR,
   importKeyAndFolderFromQR,
   validatePassphrase,
@@ -42,10 +39,11 @@ import {
   isAuthenticated,
   getOrCreateFolder,
   shareFolderWithPartner,
-  acceptSharedFolder,
   setSharedFolderId,
   getSharedFolderId,
   showFolderPicker,
+  uploadFile,
+  KEY_BACKUP_FILE,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
 import { Sentry } from '@/lib/sentry';
@@ -120,7 +118,6 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   // Invite flow state
   const [partnerEmail, setPartnerEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteShared, setInviteShared] = useState(false);
 
   // Key backup state
   const [passphrase, setPassphrase] = useState('');
@@ -263,7 +260,6 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   // ── Show invite flow (share folder + QR) ──
   const handleInvitePartner = useCallback(async () => {
     setPartnerEmail('');
-    setInviteShared(false);
     setView('invite');
   }, []);
 
@@ -279,7 +275,6 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       const folderId = await getOrCreateFolder();
       // Share with partner
       await shareFolderWithPartner(partnerEmail.trim());
-      setInviteShared(true);
 
       // Generate BK2 QR code with key + folder ID
       const key = await loadFamilyKey();
@@ -338,10 +333,11 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     try {
       const key = await loadFamilyKey();
       if (!key) throw new Error('No family key found');
-      await createKeyBackup(key, passphrase);
-      // In production, upload backup to Google Drive here
+      const backupBlob = await createKeyBackup(key, passphrase);
+      // Upload the passphrase-encrypted backup to Google Drive
+      await uploadFile(KEY_BACKUP_FILE, backupBlob);
       setBackupDone(true);
-      toast('Key backup created! Store your passphrase safely.');
+      toast('Key backup saved to Google Drive! Store your passphrase safely.');
     } catch (err: any) {
       toast('Backup failed: ' + (err?.message || 'unknown'));
     }

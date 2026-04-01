@@ -215,9 +215,20 @@ export async function initNativeApp() {
   App.addListener('appUrlOpen', ({ url }: { url: string }) => {
     try {
       const u = new URL(url);
-      // OAuth callback — dispatch dedicated event for CloudSync to handle
+      // OAuth callback — exchange authorization code for tokens, then notify UI
       if (u.host === 'oauth' || u.pathname === '/oauth') {
-        window.dispatchEvent(new CustomEvent('babybloom:oauth', { detail: { url } }));
+        import('@/lib/sync/googleDrive').then(({ handleOAuthCallback }) => {
+          handleOAuthCallback(url)
+            .then(() => {
+              import('@/lib/sync/syncEngine').then(({ startSyncEngine }) => {
+                startSyncEngine().catch(() => {});
+              });
+              window.dispatchEvent(new CustomEvent('babybloom:oauth'));
+            })
+            .catch((err) => {
+              console.error('[BabyBloom] Native OAuth callback error:', err);
+            });
+        });
         return;
       }
       const params = u.searchParams;
