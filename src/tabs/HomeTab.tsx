@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card as Cd, Button as Btn, ProgressCircle as PR } from '@/components/shared';
 import { ds, dg } from '@/lib/db';
 import VoiceButton from '@/features/voice/VoiceButton';
+import type { SyncStatus } from '@/lib/sync/types';
 import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
 import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
@@ -79,6 +80,7 @@ interface HomeTabProps {
   setCountry: (code: CountryCode) => void;
   showGuideFromSettings?: boolean;
   onGuideShown?: () => void;
+  syncStatus?: SyncStatus | null;
 }
 
 export default function HomeTab({
@@ -105,6 +107,7 @@ export default function HomeTab({
   setCountry,
   showGuideFromSettings,
   onGuideShown,
+  syncStatus,
 }: HomeTabProps) {
   const VACCINES = countryConfig.vaccines;
   const countries = getAvailableCountries();
@@ -1240,17 +1243,60 @@ export default function HomeTab({
             </div>
           </div>
 
-          {/* Feed reminder */}
-          {feedReminderText && (
+          {/* Feed reminder + Sync status row */}
+          {(feedReminderText || syncStatus) && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 5, marginTop: 10,
-              background: feedReminderText.overdue ? 'rgba(255,100,100,0.2)' : 'rgba(255,255,255,0.1)',
-              borderRadius: 10, padding: '5px 10px',
+              display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
             }}>
-              <span style={{ fontSize: 11 }}>{feedReminderText.overdue ? '⏰' : '🕐'}</span>
-              <span style={{ color: feedReminderText.overdue ? 'rgba(255,210,210,0.95)' : 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}>
-                {feedReminderText.text}
-              </span>
+              {/* Feed reminder */}
+              {feedReminderText && (
+                <div style={{
+                  flex: 1, display: 'flex', alignItems: 'center', gap: 5,
+                  background: feedReminderText.overdue ? 'rgba(255,100,100,0.2)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: 10, padding: '5px 10px',
+                }}>
+                  <span style={{ fontSize: 11 }}>{feedReminderText.overdue ? '⏰' : '🕐'}</span>
+                  <span style={{ color: feedReminderText.overdue ? 'rgba(255,210,210,0.95)' : 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}>
+                    {feedReminderText.text}
+                  </span>
+                </div>
+              )}
+              {/* Sync status pill */}
+              {syncStatus && (() => {
+                const s = syncStatus;
+                const isActive = s.state !== 'idle' && s.state !== 'error';
+                const isError = s.state === 'error';
+                const msSince = s.lastSyncAt ? Date.now() - new Date(s.lastSyncAt).getTime() : Infinity;
+                const minsSince = msSince / 60_000;
+                let dotColor: string;
+                let blink = false;
+                let label: string;
+                if (isActive) {
+                  dotColor = '#4ade80'; blink = true; label = 'Syncing';
+                } else if (isError || minsSince > 5) {
+                  dotColor = '#f87171'; blink = true; label = isError ? 'Error' : 'Stale';
+                } else if (minsSince > 4) {
+                  dotColor = '#f87171'; label = `${Math.round(minsSince)}m`;
+                } else if (minsSince > 2) {
+                  dotColor = '#fb923c'; label = `${Math.round(minsSince)}m`;
+                } else {
+                  dotColor = '#4ade80'; label = s.lastSyncAt ? 'Synced' : 'Ready';
+                }
+                return (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    background: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: '5px 8px',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: dotColor, boxShadow: `0 0 4px ${dotColor}`,
+                      ...(blink ? { animation: 'syncBlink 1.2s ease-in-out infinite' } : {}),
+                    }} />
+                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 600 }}>{label}</span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
