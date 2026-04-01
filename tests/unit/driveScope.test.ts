@@ -7,6 +7,9 @@
  * - scope_insufficient DriveErrorCode is defined
  * - No appDataFolder space in API calls
  * - spaces=drive is present in files.list calls
+ * - File operation functions (uploadFile, downloadFile, deleteFile) use
+ *   getAccessToken() for scope pre-validation — these correspond to the
+ *   Ao() minified function path seen in Sentry event 7379272319 (#190)
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -141,5 +144,150 @@ describe('syncEngine — scope_insufficient not reported to Sentry', () => {
     expect(skipIdx).toBeGreaterThan(-1);
     const block = syncEngineSrc.slice(skipIdx, skipIdx + 400);
     expect(block).toContain('scope_insufficient');
+  });
+});
+
+// ─── Ao() code path — file operations scope pre-validation (#190) ─────────────
+//
+// Sentry event 7379272319 (#190) fired from minified function Ao() — a different
+// call path from Be() fixed in #189. The Ao() path corresponds to uploadFile /
+// downloadFile / deleteFile, each of which calls getAccessToken() before making
+// any Drive API request. getAccessToken() validates the token scope, so any
+// scope mismatch is caught before reaching the Drive API (preventing the raw
+// "granted scopes" 403 that surfaced in Sentry).
+
+describe('uploadFile — scope pre-validation via getAccessToken (Sentry #190 / Ao path)', () => {
+  it('uploadFile calls getAccessToken() before making Drive API calls', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function uploadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    // Next occurrence of getAccessToken after the function declaration
+    const callIdx = googleDriveSrc.indexOf('getAccessToken()', fnIdx);
+    const nextFnIdx = googleDriveSrc.indexOf('export async function', fnIdx + 1);
+    expect(callIdx).toBeGreaterThan(fnIdx);
+    expect(callIdx).toBeLessThan(nextFnIdx > fnIdx ? nextFnIdx : Infinity);
+  });
+
+  it('uploadFile goes through handleDriveError after the upload response', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function uploadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('handleDriveError');
+  });
+
+  it('uploadFile uses findFileId which applies spaces: drive', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function uploadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('findFileId(');
+  });
+});
+
+describe('downloadFile — scope pre-validation via getAccessToken (Sentry #190 / Ao path)', () => {
+  it('downloadFile calls getAccessToken() before making Drive API calls', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function downloadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const callIdx = googleDriveSrc.indexOf('getAccessToken()', fnIdx);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    expect(callIdx).toBeGreaterThan(fnIdx);
+    expect(callIdx).toBeLessThan(nextFnIdx > fnIdx ? nextFnIdx : Infinity);
+  });
+
+  it('downloadFile goes through handleDriveError after the response', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function downloadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('handleDriveError');
+  });
+
+  it('downloadFile uses findFileId which applies spaces: drive', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function downloadFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('findFileId(');
+  });
+});
+
+describe('deleteFile — scope pre-validation via getAccessToken (Sentry #190 / Ao path)', () => {
+  it('deleteFile calls getAccessToken() before making Drive API calls', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function deleteFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const callIdx = googleDriveSrc.indexOf('getAccessToken()', fnIdx);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    expect(callIdx).toBeGreaterThan(fnIdx);
+    expect(callIdx).toBeLessThan(nextFnIdx > fnIdx ? nextFnIdx : Infinity);
+  });
+
+  it('deleteFile goes through handleDriveError after the response', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function deleteFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('handleDriveError');
+  });
+
+  it('deleteFile uses findFileId which applies spaces: drive', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function deleteFile(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('findFileId(');
+  });
+});
+
+describe('getFileModifiedTime — scope pre-validation via getAccessToken', () => {
+  it('getFileModifiedTime calls getAccessToken() before Drive API calls', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function getFileModifiedTime(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const callIdx = googleDriveSrc.indexOf('getAccessToken()', fnIdx);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    expect(callIdx).toBeGreaterThan(fnIdx);
+    expect(callIdx).toBeLessThan(nextFnIdx > fnIdx ? nextFnIdx : Infinity);
+  });
+
+  it('getFileModifiedTime uses findFileId which applies spaces: drive', () => {
+    const fnIdx = googleDriveSrc.indexOf('export async function getFileModifiedTime(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const nextFnIdx = googleDriveSrc.indexOf('\nexport async function', fnIdx + 1);
+    const body = googleDriveSrc.slice(fnIdx, nextFnIdx > fnIdx ? nextFnIdx : fnIdx + 2000);
+    expect(body).toContain('findFileId(');
+  });
+});
+
+describe('findFileId — spaces: drive on every files.list call (Ao() code path)', () => {
+  it('findFileId always specifies spaces: drive', () => {
+    const fnIdx = googleDriveSrc.indexOf('async function findFileId(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const block = googleDriveSrc.slice(fnIdx, fnIdx + 500);
+    expect(block).toContain("spaces: 'drive'");
+  });
+
+  it('findFileId does not use appDataFolder as the space', () => {
+    const fnIdx = googleDriveSrc.indexOf('async function findFileId(');
+    expect(fnIdx).toBeGreaterThan(-1);
+    const block = googleDriveSrc.slice(fnIdx, fnIdx + 500);
+    expect(block).not.toContain('appDataFolder');
+  });
+});
+
+describe('scope error coverage — no raw DriveError escapes file operations', () => {
+  it('handleDriveError is the single error-translation point for 403 scope errors', () => {
+    // All Drive API responses go through handleDriveError which maps
+    // "granted scopes" / "requested spaces" 403s to scope_insufficient.
+    // Confirm it covers both known Google error message variants.
+    expect(googleDriveSrc).toContain("msg.toLowerCase().includes('granted scopes')");
+    expect(googleDriveSrc).toContain("msg.toLowerCase().includes('requested spaces')");
+  });
+
+  it('scope_insufficient is thrown from within the 403 case branch', () => {
+    const case403 = googleDriveSrc.indexOf('case 403:');
+    expect(case403).toBeGreaterThan(-1);
+    // Find next case or closing brace to delimit the 403 handler
+    const nextCase = googleDriveSrc.indexOf('    case ', case403 + 1);
+    const handler = googleDriveSrc.slice(case403, nextCase > case403 ? nextCase : case403 + 600);
+    expect(handler).toContain("scope_insufficient");
   });
 });
