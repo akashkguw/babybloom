@@ -32,7 +32,10 @@ import { encryptJSON, decryptJSON, isValidBB2Header } from './encryption';
 import {
   uploadFile,
   downloadFile,
+  downloadFileById,
   listDeviceFiles,
+  listDeviceFilesFromManifest,
+  hasLegacyFullDriveScope,
   deviceStateFileName,
   deviceStatePrevFileName,
   MANIFEST_FILE,
@@ -44,6 +47,7 @@ import {
   DB_KEY_SYNC_ENABLED,
   DB_KEY_LAST_SYNC,
   DB_KEY_SYNC_STATUS,
+  DB_KEY_MANIFEST_FILE_ID,
   CLOCK_SKEW_WARN_MS,
 } from './types';
 import { Sentry } from '@/lib/sentry';
@@ -207,23 +211,53 @@ async function runSyncCycle(reason: string): Promise<void> {
 
   // Encrypt and upload this device's state
   const encryptedState = await encryptJSON(localSnapshot, key);
-  await uploadFile(stateFileName, encryptedState);
+  const stateFileId = await uploadFile(stateFileName, encryptedState);
 
-  // Ensure manifest exists
-  await ensureManifest(deviceId, deviceName, key);
+  // Ensure manifest exists and register our state file ID
+  const manifest = await ensureManifest(deviceId, deviceName, key, stateFileId);
 
   // ── Step 2: DOWNLOADING ──
   await setStatus({ state: 'downloading' });
 
-  // List all device state files
-  const deviceFiles = await listDeviceFiles();
+  // Discover partner device files.
+  // Prefer manifest-based discovery (works with drive.file scope).
+  // Fall back to folder-listing query only for legacy full-drive-scope users
+  // whose partners haven't yet registered their file IDs in the manifest.
+  let deviceFiles: Array<{ name: string; id: string; modifiedTime: string }>;
+
+  if (manifest && Object.values(manifest.devices).some((d) => d.state_file_id)) {
+    // Primary path: manifest has file IDs → use ID-based access
+    deviceFiles = await listDeviceFilesFromManifest(manifest);
+
+    // If some devices don't have state_file_id yet (pre-migration partners),
+    // supplement with folder-listing if we have legacy scope
+    const registeredIds = new Set(
+      Object.values(manifest.devices)
+        .filter((d) => d.state_file_id)
+        .map((d) => d.state_file_id),
+    );
+    const hasFullScope = await hasLegacyFullDriveScope();
+    if (hasFullScope) {
+      const folderFiles = await listDeviceFiles();
+      for (const f of folderFiles) {
+        if (!registeredIds.has(f.id)) {
+          deviceFiles.push(f);
+        }
+      }
+    }
+  } else {
+    // Fallback: no manifest file IDs yet → use folder-listing query
+    // This covers legacy users and first-sync-after-migration scenarios
+    deviceFiles = await listDeviceFiles();
+  }
+
   const partnerFiles = deviceFiles.filter(
     (f) => f.name !== stateFileName && !f.name.includes('_prev'),
   );
 
   // Check if any partner files changed since last sync
   const changedPartnerFiles = partnerFiles.filter((f) => {
-    const lastKnown = partnerFileTimestamps.get(f.name);
+    const lastKnown = partnerFileTimestamps.get(f.id || f.name);
     return !lastKnown || lastKnown !== f.modifiedTime;
   });
 
@@ -231,7 +265,10 @@ async function runSyncCycle(reason: string): Promise<void> {
   const remoteSnapshots: StateSnapshot[] = [];
   for (const file of changedPartnerFiles) {
     try {
-      const data = await downloadFile(file.name);
+      // Prefer ID-based download (works with drive.file for shared files)
+      const data = file.id
+        ? await downloadFileById(file.id)
+        : await downloadFile(file.name);
       if (!data) continue;
 
       // Validate BB2 header before attempting decryption
@@ -249,7 +286,7 @@ async function runSyncCycle(reason: string): Promise<void> {
       }
 
       remoteSnapshots.push(snapshot);
-      partnerFileTimestamps.set(file.name, file.modifiedTime);
+      partnerFileTimestamps.set(file.id || file.name, file.modifiedTime);
     } catch (err) {
       if (err instanceof DriveError) throw err; // propagate connectivity errors
       console.warn(`[Sync] Could not read ${file.name}: ${err}`);
@@ -302,16 +339,31 @@ async function runSyncCycle(reason: string): Promise<void> {
 
 // ═══ MANIFEST ═══
 
+/**
+ * Ensure manifest exists and register this device's state file ID.
+ * Returns the manifest so the sync cycle can use it for file discovery.
+ *
+ * @param stateFileId - The Google Drive file ID of this device's state file (from uploadFile)
+ */
 async function ensureManifest(
   deviceId: string,
   deviceName: string,
   key: CryptoKey,
-): Promise<void> {
+  stateFileId?: string,
+): Promise<SyncManifest> {
   let manifest: SyncManifest | null = null;
 
-  // Try to download existing manifest
+  // Try to download existing manifest — first by stored file ID (drive.file safe),
+  // then fall back to name-based search (needs folder query)
+  const storedManifestId = await dg(DB_KEY_MANIFEST_FILE_ID) as string | null;
   try {
-    const data = await downloadFile(MANIFEST_FILE);
+    let data: Uint8Array | null = null;
+    if (storedManifestId) {
+      data = await downloadFileById(storedManifestId);
+    }
+    if (!data) {
+      data = await downloadFile(MANIFEST_FILE);
+    }
     if (data && isValidBB2Header(data)) {
       manifest = await decryptJSON<SyncManifest>(data, key);
     }
@@ -329,17 +381,34 @@ async function ensureManifest(
       created_at: now,
       minimum_schema_version: 2,
       devices: {
-        [deviceId]: { device_name: deviceName, last_seen: now },
+        [deviceId]: {
+          device_name: deviceName,
+          last_seen: now,
+          ...(stateFileId ? { state_file_id: stateFileId } : {}),
+        },
       },
     };
   } else {
-    // Update this device's last_seen
+    // Update this device's entry with last_seen and state_file_id
     manifest.devices = manifest.devices || {};
-    manifest.devices[deviceId] = { device_name: deviceName, last_seen: now };
+    const existing = manifest.devices[deviceId] || {};
+    manifest.devices[deviceId] = {
+      ...existing,
+      device_name: deviceName,
+      last_seen: now,
+      ...(stateFileId ? { state_file_id: stateFileId } : {}),
+    };
   }
 
+  // Upload manifest and store its file ID for future direct access
   const encrypted = await encryptJSON(manifest, key);
-  await uploadFile(MANIFEST_FILE, encrypted);
+  const manifestFileId = await uploadFile(MANIFEST_FILE, encrypted);
+
+  // Persist manifest file ID locally and in the manifest itself
+  manifest.manifest_file_id = manifestFileId;
+  await ds(DB_KEY_MANIFEST_FILE_ID, manifestFileId);
+
+  return manifest;
 }
 
 // ═══ SCHEDULING ═══

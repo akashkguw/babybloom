@@ -137,50 +137,55 @@ export async function importKeyFromQR(qrString: string): Promise<CryptoKey | nul
 // ═══ QR CODE EXPORT / IMPORT (BK2: format — key + folder ID) ═══
 
 /**
- * Export the family key AND shared folder ID as a BK2: string for QR display.
- * BK2 includes the Google Drive folder ID so Parent B can access the shared folder
- * without needing to search for it.
+ * Export the family key, shared folder ID, and manifest file ID as a BK2: string.
+ * BK2 includes both IDs so Parent B can bootstrap sync without folder-search queries,
+ * enabling the narrower drive.file scope (no costly Google security audit).
  *
- * Format: "BK2:<base64(JSON{k: base64_key, f: folder_id})>"
+ * Format: "BK2:<base64(JSON{k: base64_key, f: folder_id, m?: manifest_file_id})>"
+ *
+ * The `m` field is optional for backward compat — old BK2 codes without it still work.
  */
 export async function exportKeyAndFolderForQR(
   key: CryptoKey,
   folderId: string,
+  manifestFileId?: string,
 ): Promise<string> {
   const bytes = await exportKeyBytes(key);
-  const payload = JSON.stringify({
+  const payload: Record<string, string> = {
     k: arrayToBase64(bytes),
     f: folderId,
-  });
-  return `${FAMILY_KEY_PREFIX_V2}${btoa(payload)}`;
+  };
+  if (manifestFileId) payload.m = manifestFileId;
+  return `${FAMILY_KEY_PREFIX_V2}${btoa(JSON.stringify(payload))}`;
 }
 
 /**
- * Import a family key and folder ID from a BK2: string.
+ * Import a family key, folder ID, and optional manifest file ID from a BK2: string.
  * Returns null if the string is invalid.
  *
  * Also supports legacy BK1: strings (returns key with folderId = null).
+ * Legacy BK2: strings without `m` field return manifestFileId = null.
  */
 export async function importKeyAndFolderFromQR(
   qrString: string,
-): Promise<{ key: CryptoKey; folderId: string | null } | null> {
+): Promise<{ key: CryptoKey; folderId: string | null; manifestFileId: string | null } | null> {
   try {
     const cleaned = qrString.trim()
       .replace(/\u{FF1A}/gu, ':')
       .replace(/[\u200B-\u200F\u2028-\u202F\uFEFF]/g, '');
 
-    // Try BK2: format first (key + folder ID)
+    // Try BK2: format first (key + folder ID + optional manifest file ID)
     const matchV2 = cleaned.match(/bk2\s*[:：]\s*/i);
     if (matchV2 && matchV2.index !== undefined) {
       const b64Payload = cleaned.slice(matchV2.index + matchV2[0].length).trim();
       const jsonStr = atob(b64Payload);
-      const { k, f } = JSON.parse(jsonStr);
+      const { k, f, m } = JSON.parse(jsonStr);
 
       const bytes = base64ToArray(k);
       if (bytes.length !== 32) return null;
 
       const key = await importKeyBytes(bytes);
-      return { key, folderId: f || null };
+      return { key, folderId: f || null, manifestFileId: m || null };
     }
 
     // Fall back to BK1: format (key only, no folder ID)
@@ -194,7 +199,7 @@ export async function importKeyAndFolderFromQR(
       if (bytes.length !== 32) return null;
 
       const key = await importKeyBytes(bytes);
-      return { key, folderId: null };
+      return { key, folderId: null, manifestFileId: null };
     }
 
     return null;

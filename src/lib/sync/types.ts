@@ -159,8 +159,15 @@ export interface SyncManifest {
   family_id: string;
   created_at: string;
   minimum_schema_version: number;
-  /** device_id → { device_name, last_seen } */
-  devices: Record<string, { device_name: string; last_seen: string }>;
+  /** device_id → { device_name, last_seen, state_file_id? } */
+  devices: Record<string, {
+    device_name: string;
+    last_seen: string;
+    /** Google Drive file ID for this device's state file (for drive.file scope) */
+    state_file_id?: string;
+  }>;
+  /** Google Drive file ID of the manifest itself (set after first upload) */
+  manifest_file_id?: string;
 }
 
 // ═══ ENCRYPTED FILE FORMAT (BB2) ═══
@@ -194,6 +201,8 @@ export const DB_KEY_SYNC_ENABLED = 'sync_enabled';
 export const DB_KEY_LAST_SYNC = 'sync_last_at';
 /** IndexedDB key for sync status message */
 export const DB_KEY_SYNC_STATUS = 'sync_status';
+/** IndexedDB key for the manifest's own Google Drive file ID */
+export const DB_KEY_MANIFEST_FILE_ID = 'sync_manifest_file_id';
 
 // ═══ SYNC ENGINE ═══
 
@@ -230,11 +239,15 @@ export const PASSPHRASE_MIN_LENGTH = 12;
 /** PBKDF2 iterations for passphrase-based key backup */
 export const PBKDF2_ITERATIONS = 100_000;
 
-/** Google Drive scope — full drive access so both parents can read each other's
- *  encrypted files in the shared folder. drive.file is insufficient because it
- *  only exposes files the *current user's* app instance created, which prevents
- *  Parent B from listing/downloading Parent A's state files (and vice-versa). */
-export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+/** Google Drive scope — drive.file only accesses files this app created or that
+ *  were explicitly shared. Cross-device sync works via the manifest file registry:
+ *  each device registers its state file ID in the manifest, and partners read
+ *  files by known ID instead of folder-listing queries. This scope avoids the
+ *  costly Google security audit required for the full 'drive' scope. */
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+/** Legacy full drive scope — accepted from existing users for backward compat */
+export const GOOGLE_DRIVE_SCOPE_LEGACY = 'https://www.googleapis.com/auth/drive';
 
 /** IndexedDB key for the shared Google Drive folder ID */
 export const DB_KEY_SHARED_FOLDER_ID = 'sync_shared_folder_id';

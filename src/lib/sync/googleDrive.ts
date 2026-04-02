@@ -24,6 +24,7 @@ import {
   GOOGLE_DRIVE_API,
   GOOGLE_DRIVE_UPLOAD_API,
   GOOGLE_DRIVE_SCOPE,
+  GOOGLE_DRIVE_SCOPE_LEGACY,
   DRIVE_FOLDER_NAME,
   DB_KEY_GOOGLE_TOKENS,
   DB_KEY_SHARED_FOLDER_ID,
@@ -44,14 +45,26 @@ export async function hasValidTokens(): Promise<boolean> {
 
 /**
  * Check if a token scope string covers the required Drive access.
- * Requires the full `drive` scope — `drive.file` is insufficient because
- * it only exposes files the current user's app instance created, preventing
- * cross-account sync (Parent B can't see Parent A's uploaded files).
+ * Accepts both drive.file (new, cheaper verification) and full drive (legacy).
+ * Existing users with the full drive scope continue to work seamlessly.
  */
 function hasRequiredDriveScope(tokenScope: string): boolean {
   const scopes = tokenScope.split(/[\s,]+/);
   return scopes.some(
-    (s) => s === 'https://www.googleapis.com/auth/drive',
+    (s) => s === GOOGLE_DRIVE_SCOPE || s === GOOGLE_DRIVE_SCOPE_LEGACY,
+  );
+}
+
+/**
+ * Check if the stored token has the legacy full drive scope.
+ * Used to decide whether folder-search queries are available (full drive)
+ * or we must use manifest-based file discovery (drive.file).
+ */
+export async function hasLegacyFullDriveScope(): Promise<boolean> {
+  const tokens: GoogleTokens | null = await dg(DB_KEY_GOOGLE_TOKENS);
+  if (!tokens?.scope) return false;
+  return tokens.scope.split(/[\s,]+/).some(
+    (s) => s === GOOGLE_DRIVE_SCOPE_LEGACY,
   );
 }
 
@@ -301,7 +314,12 @@ export async function clearSharedFolderId(): Promise<void> {
  * Get or create the BabyBloom Sync folder in the user's Google Drive.
  *
  * For Parent A (folder creator): creates a new folder in Drive root and stores its ID.
- * For Parent B (joiner): uses the folder ID received from the QR code.
+ * For Parent B (joiner): uses the folder ID received from the QR code (stored in IndexedDB).
+ *
+ * With drive.file scope, folder-search queries only see folders this app created.
+ * Parent B's app can't "discover" Parent A's shared folder via search — it must
+ * use the stored folder ID from the BK2 QR code. This is why the stored ID check
+ * comes first and we only fall through to search if we have legacy full drive scope.
  *
  * Result is cached in memory for the session.
  */
@@ -309,10 +327,12 @@ export async function getOrCreateFolder(): Promise<string> {
   // Check in-memory cache first
   if (cachedFolderId) return cachedFolderId;
 
-  // Check IndexedDB for stored folder ID (set by QR import or previous session)
+  // Check IndexedDB for stored folder ID (set by QR import or previous session).
+  // This is the PRIMARY path for Parent B with drive.file scope.
   const storedId = await getSharedFolderId();
   if (storedId) {
-    // Verify the folder is still accessible
+    // Verify the folder is still accessible (works with both scopes — shared folders
+    // are accessible by file ID even with drive.file when the user has permission)
     try {
       const token = await getAccessToken();
       const resp = await driveRequest(
@@ -331,31 +351,35 @@ export async function getOrCreateFolder(): Promise<string> {
   }
 
   const token = await getAccessToken();
+  const hasFullScope = await hasLegacyFullDriveScope();
 
-  // Search for an existing "BabyBloom Sync" folder owned by or shared with this user.
-  // Explicitly set spaces=drive to avoid the "granted scopes do not give access to all
-  // of the requested spaces" error that occurs when the API infers an incompatible space.
-  const searchResp = await driveRequest(
-    `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
-      q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-      fields: 'files(id, name, ownedByMe, shared)',
-      orderBy: 'createdTime',
-      spaces: 'drive',
-    }),
-    'GET',
-    null,
-    token,
-  );
+  // Only attempt folder search if we have legacy full drive scope.
+  // With drive.file, this query would only return folders this app created,
+  // so it would miss shared folders from the partner.
+  if (hasFullScope) {
+    const searchResp = await driveRequest(
+      `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
+        q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: 'files(id, name, ownedByMe, shared)',
+        orderBy: 'createdTime',
+        spaces: 'drive',
+      }),
+      'GET',
+      null,
+      token,
+    );
 
-  const files = searchResp.files || [];
-  if (files.length > 0) {
-    const id: string = files[0].id;
-    cachedFolderId = id;
-    await setSharedFolderId(id);
-    return id;
+    const files = searchResp.files || [];
+    if (files.length > 0) {
+      const id: string = files[0].id;
+      cachedFolderId = id;
+      await setSharedFolderId(id);
+      return id;
+    }
   }
 
-  // No folder found — create a new one (Parent A path)
+  // No folder found — create a new one (Parent A path).
+  // This works with drive.file scope because the app is creating the folder.
   const createResp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files`,
     'POST',
@@ -496,6 +520,10 @@ export async function downloadFile(fileName: string): Promise<Uint8Array | null>
 /**
  * List all device state files in the BabyBloom Sync folder.
  * Returns array of { name, id, modifiedTime }.
+ *
+ * With drive.file scope: folder-listing queries only return files this app created.
+ * Partner files won't appear. The sync engine should prefer listDeviceFilesFromManifest()
+ * and fall back to this only with legacy full drive scope.
  */
 export async function listDeviceFiles(): Promise<Array<{ name: string; id: string; modifiedTime: string }>> {
   const token = await getAccessToken();
@@ -513,6 +541,69 @@ export async function listDeviceFiles(): Promise<Array<{ name: string; id: strin
   );
 
   return resp.files || [];
+}
+
+/**
+ * List device state files using the manifest's file registry.
+ * Works with drive.file scope because it accesses files by known ID.
+ *
+ * Reads the manifest to get each device's registered state_file_id,
+ * then fetches metadata for each file by ID (which works even for
+ * partner files shared via the folder permission).
+ *
+ * @param manifest - The decrypted manifest containing device file IDs
+ * @returns Array of { name, id, modifiedTime } matching listDeviceFiles() format
+ */
+export async function listDeviceFilesFromManifest(
+  manifest: { devices: Record<string, { state_file_id?: string }> },
+): Promise<Array<{ name: string; id: string; modifiedTime: string }>> {
+  const token = await getAccessToken();
+  const results: Array<{ name: string; id: string; modifiedTime: string }> = [];
+
+  for (const [deviceId, device] of Object.entries(manifest.devices)) {
+    if (!device.state_file_id) continue;
+    try {
+      const resp = await driveRequest(
+        `${GOOGLE_DRIVE_API}/files/${device.state_file_id}?fields=id,name,modifiedTime,trashed`,
+        'GET',
+        null,
+        token,
+      );
+      if (resp.id && !resp.trashed) {
+        results.push({
+          name: resp.name || `device_${deviceId}_state.enc`,
+          id: resp.id,
+          modifiedTime: resp.modifiedTime || '',
+        });
+      }
+    } catch {
+      // File may have been deleted — skip silently
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Download a file by its Google Drive file ID (instead of by name + folder search).
+ * Works with drive.file scope for shared files when the user has folder permission.
+ */
+export async function downloadFileById(fileId: string): Promise<Uint8Array | null> {
+  const token = await getAccessToken();
+
+  const resp = await fetchWithTimeout(
+    `${GOOGLE_DRIVE_API}/files/${fileId}?alt=media`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+    60_000,
+  );
+
+  if (resp.status === 404) return null;
+  await handleDriveError(resp);
+
+  const buffer = await resp.arrayBuffer();
+  return new Uint8Array(buffer);
 }
 
 /**

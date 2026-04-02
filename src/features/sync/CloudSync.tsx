@@ -36,6 +36,8 @@ import {
   setSharedFolderId,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
+import { DB_KEY_MANIFEST_FILE_ID } from '@/lib/sync/types';
+import { dg, ds } from '@/lib/db';
 import { Sentry } from '@/lib/sentry';
 
 // ═══ TYPES ═══
@@ -179,6 +181,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     try {
       await storeFamilyKey(result.key);
       if (result.folderId) await setSharedFolderId(result.folderId);
+      if (result.manifestFileId) await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
       await enableSync();
       setSyncEnabled(true);
       if (!googleAuthed) {
@@ -206,7 +209,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await shareFolderWithPartner(partnerEmail.trim());
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
-      const qr = await exportKeyAndFolderForQR(key, folderId);
+      const manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+      const qr = await exportKeyAndFolderForQR(key, folderId, manifestFileId || undefined);
       setFamilyKeyQR(qr);
       toast('Folder shared with ' + partnerEmail.trim());
     } catch (err: any) {
@@ -223,7 +227,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
       const folderId = await getOrCreateFolder();
-      setFamilyKeyQR(await exportKeyAndFolderForQR(key, folderId));
+      const manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+      setFamilyKeyQR(await exportKeyAndFolderForQR(key, folderId, manifestFileId || undefined));
     } catch (err: any) {
       toast('Failed: ' + (err?.message || 'unknown'));
     }
