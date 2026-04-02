@@ -103,6 +103,13 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
     const fnRegion = gdriveSrc.slice(fnStart, fnStart + 1500);
     expect(fnRegion).toContain('if (hasFullScope)');
   });
+
+  it('uploadFile accepts optional knownFileId to PATCH by ID (prevents manifest duplication)', () => {
+    const fnStart = gdriveSrc.indexOf('export async function uploadFile');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 600);
+    expect(fnRegion).toContain('knownFileId?: string');
+    expect(fnRegion).toContain('knownFileId || await findFileId');
+  });
 });
 
 // ─── syncEngine ───
@@ -169,6 +176,13 @@ describe('syncEngine — manifest-based file registry', () => {
     expect(engineSrc).toContain('): Promise<SyncManifest>');
     // The sync cycle should capture the return value
     expect(engineSrc).toContain('const manifest = await ensureManifest(');
+  });
+
+  it('ensureManifest passes stored manifest file ID to uploadFile to prevent duplication', () => {
+    const fnStart = engineSrc.indexOf('async function ensureManifest');
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 2500);
+    // Must pass storedManifestId as 3rd arg to uploadFile so it PATCHes instead of creating
+    expect(fnRegion).toContain('uploadFile(MANIFEST_FILE, encrypted, storedManifestId');
   });
 });
 

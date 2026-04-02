@@ -400,9 +400,12 @@ async function ensureManifest(
     };
   }
 
-  // Upload manifest and store its file ID for future direct access
+  // Upload manifest and store its file ID for future direct access.
+  // Pass storedManifestId so uploadFile PATCHes the existing file by ID
+  // instead of searching by name (which fails with drive.file scope for
+  // manifests created by the partner's app instance).
   const encrypted = await encryptJSON(manifest, key);
-  const manifestFileId = await uploadFile(MANIFEST_FILE, encrypted);
+  const manifestFileId = await uploadFile(MANIFEST_FILE, encrypted, storedManifestId || undefined);
 
   // Persist manifest file ID locally and in the manifest itself
   manifest.manifest_file_id = manifestFileId;

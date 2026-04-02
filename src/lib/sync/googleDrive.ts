@@ -451,13 +451,18 @@ export async function acceptSharedFolder(folderId: string): Promise<void> {
  *
  * @param fileName - e.g. "device_abc123_state.enc"
  * @param data - Encrypted Uint8Array (BB2 format)
+ * @param knownFileId - Optional: if we already know the Drive file ID, PATCH it
+ *   directly instead of searching by name. Critical for drive.file scope where
+ *   folder-search queries can't find files created by a partner's app instance.
  */
-export async function uploadFile(fileName: string, data: Uint8Array): Promise<string> {
+export async function uploadFile(fileName: string, data: Uint8Array, knownFileId?: string): Promise<string> {
   const token = await getAccessToken();
   const folderId = await getOrCreateFolder();
 
-  // Check if file exists
-  const existingId = await findFileId(fileName, folderId, token);
+  // Use known file ID if provided, otherwise search by name in folder.
+  // With drive.file scope, findFileId only finds files this app instance created.
+  // For shared files (like manifest.enc created by the partner), we MUST use knownFileId.
+  const existingId = knownFileId || await findFileId(fileName, folderId, token);
 
   const metadata = {
     name: fileName,
