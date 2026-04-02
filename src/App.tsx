@@ -85,6 +85,8 @@ function App() {
   const [navSyncStatus, setNavSyncStatus] = useState<SyncStatus | null>(null);
   const [showReport, setShowReport] = useState<boolean>(false);
   const [showGuideFromSettings, setShowGuideFromSettings] = useState<boolean>(false);
+  // Guard: prevent spd() from overwriting profileData while sync is applying
+  const syncApplyingRef = useRef(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [darkMode, setDarkModeR] = useState<boolean>(true);
   const [reminders, setRemR] = useState<Reminders>({ feedInterval: 0, enabled: true });
@@ -178,11 +180,14 @@ function App() {
     setTab(t);
   };
 
-  // Save field to both global and profile-specific keys, then notify sync engine
+  // Save field to both global and profile-specific keys, then notify sync engine.
+  // Skips profileData writes while sync is applying to prevent race conditions
+  // where stale state overwrites freshly merged data.
   const spd = (field: string, val: any) => {
     ds(field, val);
-    if (activeProfile) {
+    if (activeProfile && !syncApplyingRef.current) {
       dg(`profileData_${activeProfile}`).then((d: any) => {
+        if (syncApplyingRef.current) return; // re-check after async gap
         const data = d || {};
         data[field] = val;
         ds(`profileData_${activeProfile}`, data);
@@ -520,21 +525,26 @@ function App() {
   // Without this, users must reload the page to see partner's data.
   useEffect(() => {
     const onSyncApplied = () => {
+      // Block spd() from overwriting profileData while we reload merged state
+      syncApplyingRef.current = true;
       dg('activeProfile').then((apId: any) => {
         const pid = apId || activeProfile;
-        if (!pid) return;
+        if (!pid) { syncApplyingRef.current = false; return; }
         dg(`profileData_${pid}`).then((pData: any) => {
-          if (!pData) return;
+          if (!pData) { syncApplyingRef.current = false; return; }
           setLgR(pData.logs || { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] });
           setCkR(pData.milestones || {});
           setVDAllR(migrateVDone(pData.vaccines));
           setThR(pData.teeth || {});
           setFiR(pData.firsts || []);
           if (pData.birthDate) setBR(pData.birthDate);
-        });
+          // Release guard after a tick so React state updates settle
+          // before any spd() calls from effects can fire
+          setTimeout(() => { syncApplyingRef.current = false; }, 100);
+        }).catch(() => { syncApplyingRef.current = false; });
         // Also refresh emergency contacts (not profile-scoped)
         dg('emergencyContacts').then((ec: any) => { if (ec) setECR(ec); });
-      });
+      }).catch(() => { syncApplyingRef.current = false; });
     };
     window.addEventListener('babybloom:sync-applied', onSyncApplied);
     return () => window.removeEventListener('babybloom:sync-applied', onSyncApplied);

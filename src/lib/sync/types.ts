@@ -139,11 +139,16 @@ export interface StateSnapshot {
   firsts: SyncFirstEntry[];
   /** tooth index → eruption date (YYYY-MM-DD) */
   teeth: Record<string, string>;
-  /** milestone key → achieved boolean */
-  milestones: Record<string, boolean>;
+  /** week number → { checkKey → achieved boolean } (nested milestone checks) */
+  milestones: Record<string, Record<string, boolean> | boolean>;
   /** country code → { schedule key → completed boolean } */
   vaccines: Record<string, Record<string, boolean>>;
   emergency_contacts: SyncEmergencyContact[];
+  /** Device-local wellness data (private, not merged across devices — backup only) */
+  wellness?: {
+    today?: any;
+    history?: any[];
+  };
 }
 
 // ═══ MANIFEST ═══

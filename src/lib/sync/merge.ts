@@ -232,6 +232,39 @@ export function mergeBooleanFlags(
 }
 
 /**
+ * Merge milestones with nested structure: { weekNum: { checkKey: boolean } }.
+ * Deep-merges each week's boolean map using "once checked, always checked" rule.
+ * Handles both flat (legacy) and nested (current) formats gracefully.
+ */
+export function mergeMilestones(
+  ...deviceMaps: Array<Record<string, any> | undefined>
+): Record<string, any> {
+  const result: Record<string, any> = {};
+
+  for (const map of deviceMaps) {
+    if (!map) continue;
+    for (const [key, val] of Object.entries(map)) {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        // Nested: val is { checkKey: boolean, ... } — deep-merge
+        if (!result[key] || typeof result[key] !== 'object') {
+          result[key] = {};
+        }
+        for (const [innerKey, innerVal] of Object.entries(val)) {
+          if (innerVal === true) result[key][innerKey] = true;
+          else if (result[key][innerKey] !== true) result[key][innerKey] = innerVal;
+        }
+      } else {
+        // Flat boolean (legacy format) — once true, always true
+        if (val === true) result[key] = true;
+        else if (result[key] !== true) result[key] = val || result[key] || false;
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
  * Merge vaccine maps nested by country code.
  * vaccines: { US: { '0_0': true, ... }, IN: { ... } }
  */
@@ -409,7 +442,9 @@ export function mergeSnapshots(
   );
 
   // ── Merge milestones ──
-  const mergedMilestones = mergeBooleanFlags(
+  // Milestones use nested structure { weekNum: { checkKey: boolean } }
+  // so we use mergeMilestones which deep-merges each week's checks.
+  const mergedMilestones = mergeMilestones(
     ...allLogs.map((s) => s.milestones),
   );
 
@@ -446,6 +481,8 @@ export function mergeSnapshots(
     milestones: mergedMilestones,
     vaccines: mergedVaccines,
     emergency_contacts: mergedContacts,
+    // Wellness is device-local private data — preserve only local device's copy
+    wellness: local.wellness,
   };
 
   // Count new entries (excluding tombstones from remote)

@@ -75,6 +75,8 @@ export async function buildSnapshot(
     emergencyContacts,
     profiles,
     activeProfileId,
+    wellnessToday,
+    wellnessHistory,
   ] = await Promise.all([
     dg('logs'),
     dg('birthDate'),
@@ -85,6 +87,8 @@ export async function buildSnapshot(
     dg('emergencyContacts'),
     dg('profiles'),
     dg('activeProfile'),
+    dg('momcare_today'),       // MomCare wellness — private backup
+    dg('momcare_history'),     // MomCare wellness history — private backup
   ]);
 
   // ── Normalize logs — backfill modified_at for legacy entries ──
@@ -136,6 +140,10 @@ export async function buildSnapshot(
     milestones: milestones || {},
     vaccines: vaccines || {},
     emergency_contacts: syncContacts,
+    // Wellness is device-local backup only — not merged across devices
+    wellness: (wellnessToday || wellnessHistory)
+      ? { today: wellnessToday || undefined, history: wellnessHistory || undefined }
+      : undefined,
   };
 }
 
@@ -212,6 +220,12 @@ export async function applySnapshot(
     ds('vaccines', snapshot.vaccines),          // NOT 'vDoneAll'
     ds('emergencyContacts', snapshot.emergency_contacts),
   ];
+
+  // Restore wellness data if present (device-local backup — only from own snapshots)
+  if (snapshot.wellness) {
+    if (snapshot.wellness.today) writes.push(ds('momcare_today', snapshot.wellness.today));
+    if (snapshot.wellness.history) writes.push(ds('momcare_history', snapshot.wellness.history));
+  }
 
   // Also update the profile-specific bundle so loadProfileData() sees merged data
   if (activeProfileId) {
