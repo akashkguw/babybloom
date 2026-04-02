@@ -82,6 +82,7 @@ interface HomeTabProps {
   showGuideFromSettings?: boolean;
   onGuideShown?: () => void;
   syncStatus?: SyncStatus | null;
+  onOpenCloudSync?: () => void;
 }
 
 export default function HomeTab({
@@ -109,6 +110,7 @@ export default function HomeTab({
   showGuideFromSettings,
   onGuideShown,
   syncStatus,
+  onOpenCloudSync,
 }: HomeTabProps) {
   const VACCINES = countryConfig.vaccines;
   const countries = getAvailableCountries();
@@ -646,16 +648,50 @@ export default function HomeTab({
           {/* Divider */}
           <div style={{ height: 1, background: C.b, margin: '20px -4px 16px' }} />
 
-          {/* Have a share code? — ref enables scroll-into-view on reveal */}
+          {/* Partner sync options */}
           <div ref={joinSectionRef}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 4, textAlign: 'center' }}>
+              Already have a partner using BabyBloom?
+            </div>
+            <div style={{ fontSize: 11, color: C.tl, marginBottom: 12, textAlign: 'center', lineHeight: 1.4 }}>
+              Choose how to connect
+            </div>
+
             {!showJoinCode ? (
-              <div
-                onClick={() => setShowJoinCode(true)}
-                style={{ cursor: 'pointer', textAlign: 'center' }}
-              >
-                <span style={{ fontSize: 13, color: C.s, fontWeight: 600 }}>
-                  Have a QR code or share code from your partner?
-                </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {/* Offline Share Code card */}
+                <div
+                  onClick={() => setShowJoinCode(true)}
+                  style={{
+                    flex: 1, padding: '14px 10px', borderRadius: 14, cursor: 'pointer',
+                    border: `2px solid ${C.b}`, background: C.bg, textAlign: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>📋</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 4 }}>Share Code</div>
+                  <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.4 }}>
+                    Paste a code from your partner. No account needed.
+                  </div>
+                </div>
+
+                {/* Google Drive Sync card */}
+                <div
+                  onClick={() => {
+                    if (onOpenCloudSync) onOpenCloudSync();
+                  }}
+                  style={{
+                    flex: 1, padding: '14px 10px', borderRadius: 14, cursor: 'pointer',
+                    border: `2px solid ${C.b}`, background: C.bg, textAlign: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>☁️</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 4 }}>Google Drive</div>
+                  <div style={{ fontSize: 10, color: C.tl, lineHeight: 1.4 }}>
+                    Auto-sync with your partner. Encrypted backup.
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
@@ -678,13 +714,10 @@ export default function HomeTab({
                     label="Join with share code"
                     onClick={() => {
                       if (!joinCode.trim()) { toast('Please paste a share code'); return; }
-                      // Decode the share code inline (same logic as PartnerSync)
                       try {
                         let cleaned = joinCode.trim().replace(/^["']+|["']+$/g, '');
-                        // Case-insensitive: messaging apps may lowercase "BB1:" to "bb1:"
                         const bb1Idx = cleaned.toUpperCase().indexOf('BB1:');
                         if (bb1Idx >= 0) cleaned = cleaned.slice(bb1Idx + 4).trim();
-                        // Strip ALL non-base64 characters (invisible unicode from messaging apps)
                         cleaned = cleaned.replace(/[^A-Za-z0-9+/=]/g, '');
                         const binary = atob(cleaned);
                         const bytes = new Uint8Array(binary.length);
@@ -692,7 +725,6 @@ export default function HomeTab({
                         const json = new TextDecoder().decode(bytes);
                         const payload = JSON.parse(json);
                         if (payload.v !== 1) { toast('Invalid sync code format'); return; }
-                        // Apply data from share code
                         if (payload.logs) setLogs(payload.logs);
                         if (payload.birth) setBirth(payload.birth);
                         else setBirth(today());

@@ -844,6 +844,7 @@ function App() {
               showGuideFromSettings={showGuideFromSettings}
               onGuideShown={() => setShowGuideFromSettings(false)}
               syncStatus={navSyncStatus}
+              onOpenCloudSync={() => setShowCloudSync(true)}
             />
           ) : null}
           {tab === 'log' ? (
