@@ -34,9 +34,14 @@ import {
   getOrCreateFolder,
   shareFolderWithPartner,
   setSharedFolderId,
+  showFolderPicker,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
-import { DB_KEY_MANIFEST_FILE_ID } from '@/lib/sync/types';
+import {
+  DB_KEY_MANIFEST_FILE_ID,
+  DB_KEY_SHARED_FOLDER_ID,
+  DB_KEY_SYNC_PENDING_FOLDER_ID,
+} from '@/lib/sync/types';
 import { dg, ds } from '@/lib/db';
 import { Sentry } from '@/lib/sentry';
 
@@ -100,6 +105,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [familyKeyQR, setFamilyKeyQR] = useState('');
   const [qrCountdown, setQrCountdown] = useState(QR_DISMISS_SECONDS);
+  const [bindingFolder, setBindingFolder] = useState(false);
 
   // Join flow
   const [showScanner, setShowScanner] = useState(false);
@@ -112,6 +118,34 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     googleAuthed &&
     !!syncStatus.lastSyncAt &&
     (syncStatus.deviceCount ?? 0) === 0;
+
+  // With drive.file scope, partner-shared files can require explicit folder
+  // selection (Google Picker) before this app can read/write them.
+  const bindSharedFolder = useCallback(async (expectedFolderId?: string | null): Promise<boolean> => {
+    setBindingFolder(true);
+    try {
+      const pickedFolderId = await showFolderPicker();
+      if (!pickedFolderId) {
+        toast('Folder selection cancelled. Select the shared BabyBloom Sync folder to finish setup.');
+        return false;
+      }
+
+      const expected = expectedFolderId || await dg(DB_KEY_SHARED_FOLDER_ID) as string | null;
+      if (expected && pickedFolderId !== expected) {
+        toast('Wrong folder selected. Please choose the BabyBloom Sync folder shared by your partner.');
+        return false;
+      }
+
+      await setSharedFolderId(pickedFolderId);
+      await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, null);
+      return true;
+    } catch (err: any) {
+      toast('Could not open Google folder picker: ' + (err?.message || 'unknown'));
+      return false;
+    } finally {
+      setBindingFolder(false);
+    }
+  }, []);
 
   // ── Load initial state ──
   useEffect(() => {
@@ -132,16 +166,28 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     const onOAuth = () => {
       isAuthenticated().then((authed) => {
         if (authed) {
-          setGoogleAuthed(true);
-          setView('main');
-          toast('Google Drive connected! Syncing now…');
-          triggerSync('manual').catch(() => {});
+          (async () => {
+            setGoogleAuthed(true);
+            setView('main');
+
+            const pendingFolderId = await dg(DB_KEY_SYNC_PENDING_FOLDER_ID) as string | null;
+            if (pendingFolderId) {
+              const bound = await bindSharedFolder(pendingFolderId);
+              if (!bound) {
+                toast('Select your partner folder to finish Cloud Sync setup.');
+                return;
+              }
+            }
+
+            toast('Google Drive connected! Syncing now…');
+            triggerSync('manual').catch(() => {});
+          })();
         }
       });
     };
     window.addEventListener('babybloom:oauth', onOAuth);
     return () => { unsub(); window.removeEventListener('babybloom:oauth', onOAuth); };
-  }, []);
+  }, [bindSharedFolder]);
 
   // ── QR countdown (invite screen) ──
   useEffect(() => {
@@ -208,13 +254,25 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await storeFamilyKey(result.key);
       await setSharedFolderId(result.folderId);
       await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
+
+      if (googleAuthed) {
+        const bound = await bindSharedFolder(result.folderId);
+        if (!bound) {
+          await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
+          toast('Select the shared folder to complete join.');
+          return;
+        }
+      } else {
+        await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
+      }
+
       await enableSync();
       setSyncEnabled(true);
       if (!googleAuthed) {
-        toast('Key imported! Now sign in with Google.');
+        toast('Key imported! Sign in with Google, then select your partner folder.');
         setView('google_auth');
       } else {
-        toast('Joined family sync. If data is missing, ask partner to open app and tap Sync.');
+        toast('Joined family sync. Tap Sync once on both phones.');
         setView('main');
         triggerSync('manual').catch(() => {});
       }
@@ -222,7 +280,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       toast('Failed to join: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'join_sync' } });
     }
-  }, [googleAuthed]);
+  }, [googleAuthed, bindSharedFolder]);
 
   // ── Invite: share folder + generate QR ──
   const handleInvite = useCallback(async () => {
@@ -286,6 +344,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       }
     }
   }, []);
+
+  const handleRelinkFolder = useCallback(async () => {
+    const expectedFolderId = await dg(DB_KEY_SHARED_FOLDER_ID) as string | null;
+    const bound = await bindSharedFolder(expectedFolderId);
+    if (!bound) return;
+    toast('Shared folder linked. Syncing now…');
+    triggerSync('manual').catch(() => {});
+  }, [bindSharedFolder]);
 
   // ── Disable sync ──
   const handleDisable = useCallback(async () => {
@@ -377,6 +443,25 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
               <div style={{ marginTop: 6, fontSize: 10, color: '#2563eb' }}>
                 Cross-account sync requires folder sharing one time.
               </div>
+              {googleAuthed && (
+                <button
+                  onClick={handleRelinkFolder}
+                  disabled={bindingFolder}
+                  style={{
+                    marginTop: 8,
+                    background: 'none',
+                    border: 'none',
+                    cursor: bindingFolder ? 'default' : 'pointer',
+                    fontSize: 11,
+                    color: '#2563eb',
+                    fontWeight: 600,
+                    padding: 0,
+                    textAlign: 'left',
+                  }}
+                >
+                  {bindingFolder ? 'Linking shared folder…' : 'Re-link shared folder'}
+                </button>
+              )}
             </Cd>
           )}
 

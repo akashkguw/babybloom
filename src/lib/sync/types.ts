@@ -214,6 +214,8 @@ export const DB_KEY_SYNC_STATUS = 'sync_status';
 export const DB_KEY_MANIFEST_FILE_ID = 'sync_manifest_file_id';
 /** IndexedDB key tracking which one-time sync migrations have run */
 export const DB_KEY_SYNC_MIGRATION_VERSION = 'sync_migration_version';
+/** IndexedDB key storing pending shared-folder selection required after join */
+export const DB_KEY_SYNC_PENDING_FOLDER_ID = 'sync_pending_folder_id';
 
 // ═══ SYNC ENGINE ═══
 

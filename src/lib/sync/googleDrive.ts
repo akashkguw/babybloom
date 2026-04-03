@@ -406,7 +406,9 @@ export async function getOrCreateFolder(): Promise<string> {
 
     const files = searchResp.files || [];
     if (files.length > 0) {
-      const id: string = files[0].id;
+      // Prefer an already shared folder when duplicates exist.
+      const preferred = files.find((f: any) => !!f.shared) || files[0];
+      const id: string = preferred.id;
       cachedFolderId = id;
       await setSharedFolderId(id);
       return id;
@@ -529,7 +531,24 @@ export async function uploadFile(fileName: string, data: Uint8Array, knownFileId
 
   // If PATCH targets a stale/deleted file ID (404) or a non-app-authorized file
   // (drive.file write denied), create a fresh app-authorized file and continue.
+  // Exception: never auto-create a replacement for a known shared manifest ID,
+  // because that silently forks families into separate manifests.
   if (existingId && await shouldCreateNewFileAfterPatchFailure(resp)) {
+    if (knownFileId && fileName === MANIFEST_FILE) {
+      if (resp.status === 404) {
+        throw new DriveError(
+          'not_found',
+          'Stored sync manifest is missing. Ask your partner to share a fresh sync code.',
+        );
+      }
+      if (await isAppWriteAccessDenied(resp)) {
+        throw new DriveError(
+          'forbidden',
+          'Shared manifest is not app-authorized on this device. Re-link the shared folder in Cloud Sync and tap Sync again.',
+        );
+      }
+    }
+
     const createMetadataJson = JSON.stringify({
       name: fileName,
       parents: [folderId],

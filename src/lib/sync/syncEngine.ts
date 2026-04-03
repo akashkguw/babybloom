@@ -422,21 +422,38 @@ async function ensureManifest(
   let manifest: SyncManifest | null = null;
 
   // Try to download existing manifest — first by stored file ID (drive.file safe),
-  // then fall back to name-based search (needs folder query)
+  // then fall back to name-based search only when no stored ID exists.
+  // IMPORTANT: if a stored manifest ID exists but is unreadable/missing, fail fast
+  // instead of silently creating a brand-new manifest (which splits families).
   const storedManifestId = await dg(DB_KEY_MANIFEST_FILE_ID) as string | null;
-  try {
-    let data: Uint8Array | null = null;
-    if (storedManifestId) {
-      data = await downloadFileById(storedManifestId);
-    }
+  let data: Uint8Array | null = null;
+  if (storedManifestId) {
+    data = await downloadFileById(storedManifestId);
     if (!data) {
-      data = await downloadFile(MANIFEST_FILE);
+      throw new DriveError(
+        'not_found',
+        'Stored sync manifest is missing. Ask your partner to share a fresh sync code.',
+      );
     }
-    if (data && isValidBB2Header(data)) {
+  } else {
+    data = await downloadFile(MANIFEST_FILE);
+  }
+
+  if (data) {
+    if (!isValidBB2Header(data)) {
+      throw new DriveError(
+        'api_error',
+        'Sync manifest is corrupted or incompatible. Reconnect partner sync.',
+      );
+    }
+    try {
       manifest = await decryptJSON<SyncManifest>(data, key);
+    } catch {
+      throw new DriveError(
+        'forbidden',
+        'Sync key mismatch. Reconnect partner sync with a fresh invite code.',
+      );
     }
-  } catch {
-    // No manifest yet — will create one
   }
 
   const now = new Date().toISOString();

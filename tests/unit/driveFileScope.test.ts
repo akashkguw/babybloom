@@ -139,10 +139,18 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
 
   it('uploadFile falls back to POST create when PATCH is denied for app write access', () => {
     const fnStart = gdriveSrc.indexOf('export async function uploadFile');
-    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 2200);
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 3400);
     expect(fnRegion).toContain('shouldCreateNewFileAfterPatchFailure(resp)');
     expect(fnRegion).toContain('const createResp = await fetchWithTimeout');
     expect(fnRegion).toContain('files?uploadType=multipart');
+  });
+
+  it('uploadFile does not auto-create a replacement manifest when known manifest patch is denied', () => {
+    const fnStart = gdriveSrc.indexOf('export async function uploadFile');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 3200);
+    expect(fnRegion).toContain('knownFileId && fileName === MANIFEST_FILE');
+    expect(fnRegion).toContain('Shared manifest is not app-authorized');
+    expect(fnRegion).toContain('Stored sync manifest is missing');
   });
 
   it('has helper to detect app write-access denied 403 responses', () => {
@@ -191,13 +199,28 @@ describe('syncEngine — manifest-based file registry', () => {
 
   it('ensureManifest tries stored manifest file ID before name-based download', () => {
     const fnStart = engineSrc.indexOf('async function ensureManifest');
-    const fnRegion = engineSrc.slice(fnStart, fnStart + 1000);
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 1400);
     const storedIdx = fnRegion.indexOf('DB_KEY_MANIFEST_FILE_ID');
     const downloadByIdIdx = fnRegion.indexOf('downloadFileById');
     const downloadByNameIdx = fnRegion.indexOf('downloadFile(MANIFEST_FILE)');
     expect(storedIdx).toBeGreaterThan(-1);
     expect(downloadByIdIdx).toBeGreaterThan(storedIdx);
     expect(downloadByNameIdx).toBeGreaterThan(downloadByIdIdx);
+  });
+
+  it('ensureManifest fails fast when stored manifest ID is missing instead of creating a new split manifest', () => {
+    const fnStart = engineSrc.indexOf('async function ensureManifest');
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 1900);
+    expect(fnRegion).toContain('Stored sync manifest is missing');
+    expect(fnRegion).toContain("throw new DriveError(");
+  });
+
+  it('ensureManifest surfaces key mismatch/corruption errors instead of silently recreating manifest', () => {
+    const fnStart = engineSrc.indexOf('async function ensureManifest');
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 2400);
+    expect(fnRegion).toContain('isValidBB2Header');
+    expect(fnRegion).toContain('Sync key mismatch');
+    expect(fnRegion).toContain('Sync manifest is corrupted or incompatible');
   });
 
   it('runSyncCycle uses manifest-based discovery with fallback to folder listing', () => {
@@ -237,7 +260,7 @@ describe('syncEngine — manifest-based file registry', () => {
 
   it('ensureManifest passes stored manifest file ID to uploadFile to prevent duplication', () => {
     const fnStart = engineSrc.indexOf('async function ensureManifest');
-    const fnRegion = engineSrc.slice(fnStart, fnStart + 2500);
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 3800);
     // Must pass storedManifestId as 3rd arg to uploadFile so it PATCHes instead of creating
     expect(fnRegion).toContain('uploadFile(MANIFEST_FILE, encrypted, storedManifestId');
   });
@@ -310,5 +333,11 @@ describe('CloudSync — manifest file ID in QR flows', () => {
     expect(joinRegion).toContain('result.manifestFileId');
     expect(joinRegion).toContain('outdated');
     expect(joinRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
+  });
+
+  it('join/oauth flow tracks pending folder picker binding for drive.file permissions', () => {
+    expect(cloudSyncSrc).toContain('DB_KEY_SYNC_PENDING_FOLDER_ID');
+    expect(cloudSyncSrc).toContain('bindSharedFolder');
+    expect(cloudSyncSrc).toContain('showFolderPicker');
   });
 });
