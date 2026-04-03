@@ -350,4 +350,15 @@ describe('CloudSync — manifest file ID in QR flows', () => {
     const oauthRegion = cloudSyncSrc.slice(oauthStart, oauthStart + 600);
     expect(oauthRegion).not.toContain('bindSharedFolder(');
   });
+
+  it('join/oauth flows validate shared folder access using acceptSharedFolder', () => {
+    expect(cloudSyncSrc).toContain('acceptSharedFolder');
+    const joinStart = cloudSyncSrc.indexOf('const handleJoin');
+    const joinRegion = cloudSyncSrc.slice(joinStart, joinStart + 1200);
+    expect(joinRegion).toContain('await acceptSharedFolder(result.folderId)');
+
+    const oauthStart = cloudSyncSrc.indexOf('const onOAuth');
+    const oauthRegion = cloudSyncSrc.slice(oauthStart, oauthStart + 1200);
+    expect(oauthRegion).toContain('await acceptSharedFolder(pendingFolderId)');
+  });
 });

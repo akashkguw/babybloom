@@ -35,6 +35,7 @@ import {
   shareFolderWithPartner,
   setSharedFolderId,
   showFolderPicker,
+  acceptSharedFolder,
 } from '@/lib/sync/googleDrive';
 import type { SyncStatus } from '@/lib/sync/types';
 import {
@@ -166,10 +167,26 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     const onOAuth = () => {
       isAuthenticated().then((authed) => {
         if (authed) {
-          setGoogleAuthed(true);
-          setView('main');
-          toast('Google Drive connected! Syncing now…');
-          triggerSync('manual').catch(() => {});
+          (async () => {
+            setGoogleAuthed(true);
+            setView('main');
+
+            const pendingFolderId = await dg(DB_KEY_SYNC_PENDING_FOLDER_ID) as string | null;
+            if (pendingFolderId) {
+              try {
+                await acceptSharedFolder(pendingFolderId);
+                await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, null);
+              } catch {
+                await disableSync(false);
+                setSyncEnabled(false);
+                toast('This Google account cannot access the shared sync folder. Sync was paused. Ask your partner to share to this email, then join again.');
+                return;
+              }
+            }
+
+            toast('Google Drive connected! Syncing now…');
+            triggerSync('manual').catch(() => {});
+          })();
         }
       });
     };
@@ -240,11 +257,19 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     }
     try {
       await storeFamilyKey(result.key);
-      await setSharedFolderId(result.folderId);
+      if (googleAuthed) {
+        try {
+          await acceptSharedFolder(result.folderId);
+          await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, null);
+        } catch {
+          toast('This Google account cannot access the shared sync folder. Ask your partner to share the folder to this email first.');
+          return;
+        }
+      } else {
+        await setSharedFolderId(result.folderId);
+        await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
+      }
       await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
-      // Keep pending folder marker for optional manual re-link,
-      // but do not auto-open Google Picker during join.
-      await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
 
       await enableSync();
       setSyncEnabled(true);

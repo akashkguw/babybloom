@@ -1055,7 +1055,7 @@ export class DriveError extends Error {
       case 'forbidden':
         return 'Google Drive denied access. Check folder sharing and the selected Google account.';
       case 'not_found':
-        return 'Cloud link is outdated. Reconnect partner sync in Settings → Cloud Sync.';
+        return 'Cloud link is outdated or folder access is missing for this Google account. Reconnect partner sync with a fresh invite code.';
       case 'rate_limited':
         return 'Google Drive is busy. Will retry automatically.';
       case 'offline':
