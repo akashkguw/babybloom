@@ -141,6 +141,7 @@ export default function HomeTab({
   const joinSectionRef = useRef<HTMLDivElement>(null);
   const [showMilestoneCarousel, setShowMilestoneCarousel] = useState(false);
   const [heroBg, setHeroBg] = useState<HeroBgSetting | null>(null);
+  const [nowTickMs, setNowTickMs] = useState<number>(() => Date.now());
 
   // Scroll share-code section into view when revealed
   useEffect(() => {
@@ -154,6 +155,20 @@ export default function HomeTab({
     dg(HERO_BG_KEY).then((saved: HeroBgSetting | null) => {
       if (saved) setHeroBg(saved);
     });
+  }, []);
+
+  // Keep time-based hero labels live (feed countdown, stale/synced age, day rollover).
+  useEffect(() => {
+    const tick = () => setNowTickMs(Date.now());
+    const iv = setInterval(tick, 30_000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   // Check if baby turned 2 and milestone carousel hasn't been shown yet
@@ -203,7 +218,7 @@ export default function HomeTab({
       parseInt(spT[0]),
       parseInt(spT[1])
     );
-    if (Date.now() - sleepDate.getTime() > 14 * 3600000) isSleeping = false;
+    if (nowTickMs - sleepDate.getTime() > 14 * 3600000) isSleeping = false;
   }
 
   // ═══ Quick-log warning colors — highlight important buttons not used recently ═══
@@ -224,7 +239,7 @@ export default function HomeTab({
           if (t > latestMs) latestMs = t;
         }
       }
-      if (latestMs > 0 && (Date.now() - latestMs) / 86400000 >= 3) return {};
+      if (latestMs > 0 && (nowTickMs - latestMs) / 86400000 >= 3) return {};
     }
 
     // Thresholds in hours: [warningStart, dangerStart]
@@ -240,7 +255,7 @@ export default function HomeTab({
       ...(babyAgeMonths >= 6 ? { 'Solids': { cat: 'feed', types: ['Solids'], warnH: 12, dangerH: 24, warnMsg: 'No solids in {h}h', dangerMsg: 'No solids in {h}h — might be time for a meal', neverMsg: 'No solids logged yet — start introducing at 6 months' } } : {}),
     };
     const warnings: Record<string, { level: 'warn' | 'danger'; reason: string } | null> = {};
-    const nowMs = Date.now();
+    const nowMs = nowTickMs;
     for (const [label, cfg] of Object.entries(thresholds)) {
       // Suppress feed warnings when baby is sleeping
       if (isSleeping && (label === 'Nurse Left' || label === 'Nurse Right' || label === 'Solids')) {
@@ -265,7 +280,6 @@ export default function HomeTab({
           const tp = e.time.split(':');
           const t = new Date(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]).getTime();
           if (t > lastMs) lastMs = t;
-          break; // logs are sorted newest first
         }
       }
       if (lastMs === 0) {
@@ -283,7 +297,7 @@ export default function HomeTab({
       }
     }
     return warnings;
-  }, [logs, age, isSleeping]);
+  }, [logs, age, isSleeping, nowTickMs]);
 
   // Rich long-press info panel state
   interface QlInfoPanel {
@@ -471,17 +485,17 @@ export default function HomeTab({
     const interval = smartFeedInterval;
     const feeds = logs.feed || [];
     // For timed feeds, reminders should be based on completion time, not start time.
-    const recent = findMostRecentFeed(feeds, Date.now(), true);
+    const recent = findMostRecentFeed(feeds, nowTickMs, true);
     const lastFeed = recent ? recent.entry as LogEntry : null;
     if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
     const lastT = new Date(recent!.timestampMs);
     const nextT = new Date(lastT.getTime() + interval * 3600000);
-    const now2 = new Date();
-    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(msToLocalTime(recent!.timestampMs)), overdue: true };
-    const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
-    const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
+    if (nowTickMs >= nextT.getTime()) return { text: 'Feed overdue · last ' + fmtTime(msToLocalTime(recent!.timestampMs)), overdue: true };
+    const remainingMs = nextT.getTime() - nowTickMs;
+    const hrs = Math.floor(remainingMs / 3600000);
+    const mins = Math.floor((remainingMs % 3600000) / 60000);
     return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };
-  }, [reminders, logs.feed, smartFeedInterval, feedTimer]);
+  }, [reminders, logs.feed, smartFeedInterval, feedTimer, nowTickMs]);
 
   // 2-year milestone celebration carousel
   if (showMilestoneCarousel && birth) {
@@ -1012,7 +1026,14 @@ export default function HomeTab({
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   // ═══ Compute today's stats ═══
-  const td = today();
+  const td = msToLocalDate(nowTickMs);
+  const entryDateTimeMs = (x: LogEntry): number => {
+    if (!x.date || !x.time) return 0;
+    const dp = x.date.split('-').map(Number);
+    const tp = x.time.split(':').map(Number);
+    if (dp.length < 3 || tp.length < 2 || dp.some(Number.isNaN) || tp.some(Number.isNaN)) return 0;
+    return new Date(dp[0], dp[1] - 1, dp[2], tp[0], tp[1]).getTime();
+  };
   const feedDay = (x: LogEntry): string => {
     const ts = entryEffectiveFeedTimestampMs(x);
     return ts ? msToLocalDate(ts) : x.date;
@@ -1062,7 +1083,11 @@ export default function HomeTab({
     : null;
 
   // Last diaper info for hero widget
-  const lastDiaperToday = (logs.diaper || []).find((x) => x.date === td);
+  const lastDiaperToday = (logs.diaper || []).reduce<LogEntry | undefined>((max, x) => {
+    if (x.date !== td) return max;
+    if (!max) return x;
+    return entryDateTimeMs(x) > entryDateTimeMs(max) ? x : max;
+  }, undefined);
   const lastDiaperLabel = lastDiaperToday
     ? lastDiaperToday.type === 'Wet' ? '💧 Pee'
       : lastDiaperToday.type === 'Dirty' ? '💩 Poop'
@@ -1071,7 +1096,11 @@ export default function HomeTab({
     : null;
 
   // Last sleep info for hero widget
-  const lastSleepToday = (logs.sleep || []).find((x) => x.date === td && x.type !== 'Wake Up');
+  const lastSleepToday = (logs.sleep || []).reduce<LogEntry | undefined>((max, x) => {
+    if (x.date !== td || x.type === 'Wake Up') return max;
+    if (!max) return x;
+    return entryDateTimeMs(x) > entryDateTimeMs(max) ? x : max;
+  }, undefined);
   const lastSleepLabel = lastSleepToday
     ? lastSleepToday.type === 'Nap' ? '😴 Nap'
       : lastSleepToday.type === 'Night Sleep' ? '🌙 Night'

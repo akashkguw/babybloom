@@ -192,7 +192,7 @@ describe('syncEngine — manifest-based file registry', () => {
 
   it('ensureManifest stores manifest_file_id after upload', () => {
     const fnStart = engineSrc.indexOf('async function ensureManifest');
-    const fnRegion = engineSrc.slice(fnStart, fnStart + 3200);
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 4400);
     expect(fnRegion).toContain('manifest.manifest_file_id = manifestFileId');
     expect(fnRegion).toContain("ds(DB_KEY_MANIFEST_FILE_ID, manifestFileId)");
   });

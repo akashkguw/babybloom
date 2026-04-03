@@ -420,6 +420,7 @@ async function ensureManifest(
   stateFileId?: string,
 ): Promise<SyncManifest> {
   let manifest: SyncManifest | null = null;
+  let shouldUploadManifest = false;
 
   // Try to download existing manifest — first by stored file ID (drive.file safe),
   // then fall back to name-based search only when no stored ID exists.
@@ -457,6 +458,7 @@ async function ensureManifest(
   }
 
   const now = new Date().toISOString();
+  const knownManifestId = storedManifestId || manifest?.manifest_file_id;
 
   if (!manifest) {
     // Create new manifest (first parent enabling sync)
@@ -473,16 +475,38 @@ async function ensureManifest(
         },
       },
     };
+    shouldUploadManifest = true;
   } else {
-    // Update this device's entry with last_seen and state_file_id
+    // Update this device's entry in-memory.
+    // We only persist manifest when discovery-critical fields changed.
     manifest.devices = manifest.devices || {};
+    const hadDeviceEntry = !!manifest.devices[deviceId];
     const existing = manifest.devices[deviceId] || {};
+    const stateFileChanged = !!stateFileId && existing.state_file_id !== stateFileId;
+
     manifest.devices[deviceId] = {
       ...existing,
       device_name: deviceName,
       last_seen: now,
       ...(stateFileId ? { state_file_id: stateFileId } : {}),
     };
+
+    // Persist only when needed for partner discovery:
+    // 1) first registration of this device in manifest
+    // 2) state file ID changed (new file ID)
+    // Skip routine last_seen-only writes to avoid unnecessary cross-account
+    // write failures under drive.file scope.
+    shouldUploadManifest = !hadDeviceEntry || stateFileChanged;
+
+    // Keep local manifest linkage if we already know it.
+    if (knownManifestId) {
+      manifest.manifest_file_id = knownManifestId;
+      await ds(DB_KEY_MANIFEST_FILE_ID, knownManifestId);
+    }
+
+    if (!shouldUploadManifest) {
+      return manifest;
+    }
   }
 
   // Upload manifest and store its file ID for future direct access.
