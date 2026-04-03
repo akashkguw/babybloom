@@ -98,18 +98,36 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
 
   it('getOrCreateFolder checks stored folder ID before search (drive.file primary path)', () => {
     const fnStart = gdriveSrc.indexOf('async function getOrCreateFolder');
-    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 1200);
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 3600);
     // Stored ID check must come before the search query
     const storedIdIdx = fnRegion.indexOf('getSharedFolderId');
-    const searchIdx = fnRegion.indexOf('hasFullScope');
+    const searchIdx = fnRegion.indexOf('name =');
     expect(storedIdIdx).toBeGreaterThan(-1);
     expect(searchIdx).toBeGreaterThan(storedIdIdx);
   });
 
-  it('folder search only runs with legacy full scope', () => {
+  it('getOrCreateFolder can recover folder ID from stored manifest file ID', () => {
     const fnStart = gdriveSrc.indexOf('async function getOrCreateFolder');
-    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 1500);
-    expect(fnRegion).toContain('if (hasFullScope)');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 2600);
+    expect(fnRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
+    expect(fnRegion).toContain('parents');
+    expect(fnRegion).toContain('setSharedFolderId(parentId)');
+  });
+
+  it('getOrCreateFolder prevents silent new-folder creation when stored shared folder is inaccessible', () => {
+    const fnStart = gdriveSrc.indexOf('async function getOrCreateFolder');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 3000);
+    expect(fnRegion).toContain('storedIdInaccessible');
+    expect(fnRegion).toContain('Shared sync folder is no longer accessible');
+  });
+
+  it('folder search runs before create to reduce duplicate-folder creation', () => {
+    const fnStart = gdriveSrc.indexOf('async function getOrCreateFolder');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 3400);
+    const searchIdx = fnRegion.indexOf("name = '${DRIVE_FOLDER_NAME}'");
+    const createIdx = fnRegion.indexOf('No folder found — create a new one');
+    expect(searchIdx).toBeGreaterThan(-1);
+    expect(createIdx).toBeGreaterThan(searchIdx);
   });
 
   it('uploadFile accepts optional knownFileId to PATCH by ID (prevents manifest duplication)', () => {
@@ -285,9 +303,10 @@ describe('CloudSync — manifest file ID in QR flows', () => {
     expect(showRegion).toContain('exportKeyAndFolderForQR(key, folderId, manifestFileId');
   });
 
-  it('handleJoin requires manifest file ID from QR scan', () => {
+  it('handleJoin requires folder ID and manifest file ID from QR scan', () => {
     const joinStart = cloudSyncSrc.indexOf('const handleJoin');
     const joinRegion = cloudSyncSrc.slice(joinStart, joinStart + 1000);
+    expect(joinRegion).toContain('result.folderId');
     expect(joinRegion).toContain('result.manifestFileId');
     expect(joinRegion).toContain('outdated');
     expect(joinRegion).toContain('DB_KEY_MANIFEST_FILE_ID');

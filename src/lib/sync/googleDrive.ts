@@ -28,6 +28,7 @@ import {
   DRIVE_FOLDER_NAME,
   DB_KEY_GOOGLE_TOKENS,
   DB_KEY_SHARED_FOLDER_ID,
+  DB_KEY_MANIFEST_FILE_ID,
 } from './types';
 import type { GoogleTokens } from './types';
 
@@ -330,7 +331,10 @@ export async function getOrCreateFolder(): Promise<string> {
   // Check IndexedDB for stored folder ID (set by QR import or previous session).
   // This is the PRIMARY path for Parent B with drive.file scope.
   const storedId = await getSharedFolderId();
+  let hadStoredId = false;
+  let storedIdInaccessible = false;
   if (storedId) {
+    hadStoredId = true;
     // Verify the folder is still accessible (works with both scopes — shared folders
     // are accessible by file ID even with drive.file when the user has permission)
     try {
@@ -346,22 +350,53 @@ export async function getOrCreateFolder(): Promise<string> {
         return cachedFolderId;
       }
     } catch {
-      // Folder no longer accessible — fall through to create/search
+      // Folder no longer accessible — we will try manifest-derived recovery below.
+      storedIdInaccessible = true;
     }
   }
 
   const token = await getAccessToken();
+  const storedManifestId = await dg(DB_KEY_MANIFEST_FILE_ID) as string | null;
+  if (storedManifestId) {
+    try {
+      const manifestMeta = await driveRequest(
+        `${GOOGLE_DRIVE_API}/files/${storedManifestId}?fields=id,parents,trashed`,
+        'GET',
+        null,
+        token,
+      );
+      const parentId = Array.isArray(manifestMeta.parents) ? manifestMeta.parents[0] : null;
+      if (manifestMeta.id && !manifestMeta.trashed && parentId) {
+        cachedFolderId = parentId;
+        await setSharedFolderId(parentId);
+        return parentId;
+      }
+    } catch {
+      // Fall through to search/create.
+    }
+  }
+
+  // If we had a stored shared folder ID but cannot access it anymore and
+  // couldn't recover via manifest linkage, stop here instead of creating a
+  // brand-new folder (which causes silent partner desync and folder sprawl).
+  if (hadStoredId && storedIdInaccessible) {
+    throw new DriveError(
+      'not_found',
+      'Shared sync folder is no longer accessible. Reconnect partner sync with a fresh invite code.',
+    );
+  }
+
   const hasFullScope = await hasLegacyFullDriveScope();
 
-  // Only attempt folder search if we have legacy full drive scope.
-  // With drive.file, this query would only return folders this app created,
-  // so it would miss shared folders from the partner.
-  if (hasFullScope) {
+  // Attempt name-based search before creating.
+  // With drive.file, this only returns folders this app/account can discover,
+  // but that is enough to avoid duplicate folder creation on repeated setup.
+  try {
     const searchResp = await driveRequest(
       `${GOOGLE_DRIVE_API}/files?` + new URLSearchParams({
         q: `name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
         fields: 'files(id, name, ownedByMe, shared)',
-        orderBy: 'createdTime',
+        orderBy: 'createdTime desc',
         spaces: 'drive',
       }),
       'GET',
@@ -376,6 +411,8 @@ export async function getOrCreateFolder(): Promise<string> {
       await setSharedFolderId(id);
       return id;
     }
+  } catch {
+    // Ignore search failures and fall back to create path below.
   }
 
   // No folder found — create a new one (Parent A path).

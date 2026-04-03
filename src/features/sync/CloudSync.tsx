@@ -200,14 +200,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     setShowScanner(false);
     const result = await importKeyAndFolderFromQR(qrData);
     if (!result) { toast('Invalid sync code. Check and try again.'); return; }
-    if (!result.manifestFileId) {
+    if (!result.folderId || !result.manifestFileId) {
       toast('This sync code is outdated. Ask your partner to tap Sync and share a new code.');
       return;
     }
     try {
       await storeFamilyKey(result.key);
-      if (result.folderId) await setSharedFolderId(result.folderId);
-      if (result.manifestFileId) await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
+      await setSharedFolderId(result.folderId);
+      await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
       await enableSync();
       setSyncEnabled(true);
       if (!googleAuthed) {
