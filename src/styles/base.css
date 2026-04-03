@@ -270,14 +270,9 @@ button {
   justify-content: space-between;
 }
 
-/* Tab bar — extends into bottom safe area */
-.tab-bar {
-  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-}
-
 /* Content area — leaves room for tab bar + FAB + safe area */
 .ca {
-  padding-bottom: calc(160px + env(safe-area-inset-bottom, 12px)) !important;
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 12px)) !important;
 }
 
 .toast {

@@ -22,62 +22,79 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
     { id: 'safety', icon: 'shield', l: 'Safety' },
   ];
 
-  const bgSolid = C.bg === '#1A1A2E' ? '#1A1A2E' : '#FFFFFF';
   const bgFrost = C.bg === '#1A1A2E' ? 'rgba(26,26,46,0.95)' : 'rgba(255,255,255,0.92)';
+  const safeBottom = 'env(safe-area-inset-bottom, 0px)';
 
   return (
-    <div
-      className="tab-bar"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: bgFrost,
-        boxShadow: C.bg === '#1A1A2E' ? '0 -8px 20px rgba(0,0,0,0.35)' : '0 -6px 16px rgba(0,0,0,0.08)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderTop: `1px solid ${C.b}`,
-        display: 'flex',
-        justifyContent: 'space-around',
-        paddingTop: 8,
-        zIndex: 100,
-      }}
-    >
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => set(t.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2,
-            cursor: 'pointer',
-            padding: '4px 8px',
-            opacity: active === t.id ? 1 : 0.45,
-            transition: 'opacity 0.2s ease, transform 0.1s ease',
-          }}
-        >
-          <Icon
-            n={t.icon}
-            s={22}
-            c={active === t.id ? C.p : C.tl}
-          />
-          <span
+    <>
+      {/* Fill the iOS home-indicator inset without pushing icons upward */}
+      <div
+        className="tab-bar-safe-fill"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: safeBottom,
+          background: bgFrost,
+          zIndex: 99,
+        }}
+      />
+      <div
+        className="tab-bar-main"
+        style={{
+          position: 'fixed',
+          bottom: safeBottom,
+          left: 0,
+          right: 0,
+          background: bgFrost,
+          boxShadow: C.bg === '#1A1A2E' ? '0 -8px 20px rgba(0,0,0,0.35)' : '0 -6px 16px rgba(0,0,0,0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderTop: `1px solid ${C.b}`,
+          display: 'flex',
+          justifyContent: 'space-around',
+          padding: '8px 0',
+          zIndex: 100,
+        }}
+      >
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => set(t.id)}
             style={{
-              fontSize: 10,
-              fontWeight: active === t.id ? 700 : 500,
-              color: active === t.id ? C.p : C.tl,
+              background: 'none',
+              border: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              cursor: 'pointer',
+              minHeight: 48,
+              padding: '4px 8px',
+              opacity: active === t.id ? 1 : 0.45,
+              transition: 'opacity 0.2s ease, transform 0.1s ease',
             }}
           >
-            {t.l}
-          </span>
-        </button>
-      ))}
-    </div>
+            <Icon
+              n={t.icon}
+              s={22}
+              c={active === t.id ? C.p : C.tl}
+            />
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: active === t.id ? 700 : 500,
+                color: active === t.id ? C.p : C.tl,
+              }}
+            >
+              {t.l}
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 };
 
