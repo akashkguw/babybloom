@@ -490,6 +490,32 @@ export async function uploadFile(fileName: string, data: Uint8Array, knownFileId
     body: body as unknown as BodyInit,
   }, 60_000);
 
+  // Legacy files created before drive.file migration may be readable by ID but
+  // not writable with PATCH under drive.file. If that happens, create a fresh
+  // app-authorized file in the shared folder and continue with the new file ID.
+  if (existingId && await isAppWriteAccessDenied(resp)) {
+    const createMetadataJson = JSON.stringify({
+      name: fileName,
+      parents: [folderId],
+    });
+    const createBody = buildMultipartBody(boundary, createMetadataJson, data);
+    const createResp = await fetchWithTimeout(
+      `${GOOGLE_DRIVE_UPLOAD_API}/files?uploadType=multipart`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/related; boundary="${boundary}"`,
+        },
+        body: createBody as unknown as BodyInit,
+      },
+      60_000,
+    );
+    await handleDriveError(createResp);
+    const created = await createResp.json();
+    return created.id as string;
+  }
+
   await handleDriveError(resp);
 
   const result = await resp.json();
@@ -751,6 +777,18 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function isAppWriteAccessDenied(resp: Response): Promise<boolean> {
+  if (resp.status !== 403) return false;
+  let msg = '';
+  try {
+    const body = await resp.clone().json();
+    msg = String(body?.error?.message || '').toLowerCase();
+  } catch {
+    return false;
+  }
+  return msg.includes('has not granted the app') && msg.includes('write access');
 }
 
 async function handleDriveError(resp: Response): Promise<void> {

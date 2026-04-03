@@ -110,6 +110,19 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
     expect(fnRegion).toContain('knownFileId?: string');
     expect(fnRegion).toContain('knownFileId || await findFileId');
   });
+
+  it('uploadFile falls back to POST create when PATCH is denied for app write access', () => {
+    const fnStart = gdriveSrc.indexOf('export async function uploadFile');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 2200);
+    expect(fnRegion).toContain('isAppWriteAccessDenied(resp)');
+    expect(fnRegion).toContain('const createResp = await fetchWithTimeout');
+    expect(fnRegion).toContain('files?uploadType=multipart');
+  });
+
+  it('has helper to detect app write-access denied 403 responses', () => {
+    expect(gdriveSrc).toContain('async function isAppWriteAccessDenied');
+    expect(gdriveSrc).toContain("msg.includes('has not granted the app')");
+  });
 });
 
 // ─── syncEngine ───
