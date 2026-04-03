@@ -32,10 +32,11 @@ describe('mergeFeedSession', () => {
       expect(getRecentFeed({}, null)).toBeNull();
     });
 
-    it('filters by type when specified', () => {
+    it('filters by type when specified (except Breast L/R are merge-compatible)', () => {
       const logs = makeFeeds(10, 'Breast L');
       expect(getRecentFeed(logs, 'Breast L')).not.toBeNull();
-      expect(getRecentFeed(logs, 'Breast R')).toBeNull();
+      expect(getRecentFeed(logs, 'Breast R')).not.toBeNull();
+      expect(getRecentFeed(logs, 'Formula')).toBeNull();
     });
 
     it('returns null when feed has no time/date', () => {

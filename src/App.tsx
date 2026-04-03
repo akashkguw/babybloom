@@ -21,8 +21,9 @@ import type { CountryCode } from '@/lib/constants/countries';
 import { isNative, setStatusBarStyle, sendNotification } from '@/lib/native';
 import { checkFeedNotification } from '@/lib/utils/feedNotification';
 import { handleOAuthCallback } from '@/lib/sync/googleDrive';
-import { isSyncEnabled, startSyncEngine, notifyDataWrite, onSyncStatus } from '@/lib/sync/syncEngine';
+import { isSyncEnabled, startSyncEngine, notifyDataWrite, onSyncStatus, runSyncMigrations } from '@/lib/sync/syncEngine';
 import type { SyncStatus } from '@/lib/sync/types';
+import { normalizeFeedTimer } from '@/features/feeding/timerUtils';
 
 const displayName = (type: string): string => {
   const map: Record<string, string> = { 'Breast L': 'Nurse Left', 'Breast R': 'Nurse Right' };
@@ -51,6 +52,7 @@ interface FeedTimerApp {
   type: string;
   startTime: number;
   startTimeStr: string;
+  startDateStr?: string;
 }
 
 interface SiriResult {
@@ -164,8 +166,10 @@ function App() {
   };
 
   const setFeedTimerApp = (v: FeedTimerApp | null) => {
-    _setFTA(v);
-    ds('feedTimerApp', v);
+    const normalized = v ? normalizeFeedTimer(v) : null;
+    _setFTA(normalized);
+    ds('feedTimerApp', normalized);
+    notifyDataWrite();
   };
 
   const subNavRef = useRef<string | null>(null);
@@ -354,14 +358,19 @@ function App() {
   // If the user already enabled sync in a previous session, restart the engine
   // on every app load (timers and event listeners are lost on page navigation).
   useEffect(() => {
-    isSyncEnabled().then((enabled) => {
-      if (enabled) {
-        startSyncEngine().catch(() => {});
-        // Subscribe to sync status for the nav dot indicator
-        const unsub = onSyncStatus((s) => setNavSyncStatus(s));
-        return () => unsub();
-      }
-    });
+    // Run one-time sync migrations (e.g., force re-auth for drive.file scope)
+    // before starting the engine, so stale tokens are cleared first.
+    runSyncMigrations()
+      .catch(() => {}) // non-fatal — engine will handle auth errors
+      .then(() => isSyncEnabled())
+      .then((enabled) => {
+        if (enabled) {
+          startSyncEngine().catch(() => {});
+          // Subscribe to sync status for the nav dot indicator
+          const unsub = onSyncStatus((s) => setNavSyncStatus(s));
+          return () => unsub();
+        }
+      });
   }, []); // run once on mount
 
   // ── Web OAuth callback handler ──────────────────────────────────────────
@@ -455,7 +464,7 @@ function App() {
       if (r[7] != null) setECR(r[7]);
       else setECR(cfg.emergency.defaultContacts);
       if (r[10] != null) setRemR(r[10]);
-      if (r[11] != null) _setFTA(r[11]);
+      if (r[11] != null) _setFTA(normalizeFeedTimer(r[11]));
       if (r[12]) setVUR(r[12]);
       else setVUR(cfg.defaults.volumeUnit);
 
@@ -544,6 +553,7 @@ function App() {
         }).catch(() => { syncApplyingRef.current = false; });
         // Also refresh emergency contacts (not profile-scoped)
         dg('emergencyContacts').then((ec: any) => { if (ec) setECR(ec); });
+        dg('feedTimerApp').then((ft: any) => _setFTA(normalizeFeedTimer(ft)));
       }).catch(() => { syncApplyingRef.current = false; });
     };
     window.addEventListener('babybloom:sync-applied', onSyncApplied);

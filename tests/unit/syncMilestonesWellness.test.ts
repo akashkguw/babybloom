@@ -130,7 +130,7 @@ describe('Wellness — cloud sync backup', () => {
   it('mergeSnapshots preserves only local device wellness (not merged across devices)', () => {
     const mergeFn = mergeSrc.slice(
       mergeSrc.indexOf('function mergeSnapshots'),
-      mergeSrc.indexOf('function mergeSnapshots') + 3000
+      mergeSrc.indexOf('// ═══ DELETE / RESTORE HELPERS ═══')
     );
     expect(mergeFn).toContain('wellness: local.wellness');
   });

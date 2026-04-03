@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { today, now, fmtTime } from '@/lib/utils/date';
+import { getRecentFeedWithinMinutes, msToLocalDate } from '@/features/feeding/timerUtils';
 
 export interface FeedTimer {
   type: string;
   startTime: number;
   startTimeStr: string;
+  startDateStr?: string;
 }
 
 export interface Logs {
@@ -58,21 +60,12 @@ export default function useFeedingTimer(logs: Logs, setLogs: (logs: Logs) => voi
 
   function startFeedTimer(type: string) {
     if (feedTimer) return;
-    setFeedTimerApp({ type: type, startTime: Date.now(), startTimeStr: now() });
+    setFeedTimerApp({ type: type, startTime: Date.now(), startTimeStr: now(), startDateStr: today() });
   }
 
   function getRecentFeed(type: string | null): any | null {
-    const feeds = logs.feed || [];
-    if (feeds.length === 0) return null;
-    const last = feeds[0];
-    if (!last.time || !last.date) return null;
-    // Check if within 30 min
-    const dp = last.date.split('-');
-    const tp = last.time.split(':');
-    const lastTime = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]), parseInt(tp[0]), parseInt(tp[1]));
-    const diffMin = (Date.now() - lastTime.getTime()) / 60000;
-    if (diffMin <= 30 && (!type || last.type === type)) return last;
-    return null;
+    const match = getRecentFeedWithinMinutes(logs.feed || [], type, 30);
+    return match ? match.entry : null;
   }
 
   function stopFeedTimer() {
@@ -88,7 +81,7 @@ export default function useFeedingTimer(logs: Logs, setLogs: (logs: Logs) => voi
       return;
     }
     const entry = {
-      date: today(),
+      date: feedTimer.startDateStr || msToLocalDate(feedTimer.startTime),
       time: feedTimer.startTimeStr,
       id: Date.now(),
       type: feedTimer.type,
@@ -115,7 +108,7 @@ export default function useFeedingTimer(logs: Logs, setLogs: (logs: Logs) => voi
     let minsInt = Math.round(secs / 60);
     if (minsInt < 1) minsInt = 1;
     const entry = {
-      date: today(),
+      date: feedTimer.startDateStr || msToLocalDate(feedTimer.startTime),
       time: feedTimer.startTimeStr,
       id: Date.now(),
       type: feedTimer.type,
@@ -127,7 +120,7 @@ export default function useFeedingTimer(logs: Logs, setLogs: (logs: Logs) => voi
     next.feed = [entry].concat(logs.feed || []);
     setLogs(next);
     // Atomically switch to new side — no gap where feedTimer is null
-    setFeedTimerApp({ type: newType, startTime: Date.now(), startTimeStr: now() });
+    setFeedTimerApp({ type: newType, startTime: Date.now(), startTimeStr: now(), startDateStr: today() });
   }
 
   return {

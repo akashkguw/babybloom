@@ -105,6 +105,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [pasteCode, setPasteCode] = useState('');
 
+  // Partner data is "pending" only after at least one successful sync run
+  // completes with zero detected partner devices.
+  const partnerWaiting =
+    syncEnabled &&
+    googleAuthed &&
+    !!syncStatus.lastSyncAt &&
+    (syncStatus.deviceCount ?? 0) === 0;
+
   // ── Load initial state ──
   useEffect(() => {
     Promise.all([isSyncEnabled(), isAuthenticated()]).then(([enabled, authed]) => {
@@ -188,7 +196,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         toast('Key imported! Now sign in with Google.');
         setView('google_auth');
       } else {
-        toast('Joined family sync!');
+        toast('Joined family sync. If data is missing, ask partner to open app and tap Sync.');
         setView('main');
         triggerSync('manual').catch(() => {});
       }
@@ -212,7 +220,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       const manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
       const qr = await exportKeyAndFolderForQR(key, folderId, manifestFileId || undefined);
       setFamilyKeyQR(qr);
-      toast('Folder shared with ' + partnerEmail.trim());
+      toast('Folder shared. Ask partner to scan code, sign in, then tap Sync once.');
     } catch (err: any) {
       toast('Failed: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'share_folder' } });
@@ -322,6 +330,49 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
             </button>
           )}
 
+          {/* Setup checklist */}
+          {syncEnabled && (
+            <Cd style={{ padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 6 }}>
+                First-time setup checklist
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
+                1. On one phone: use <strong>Invite Partner</strong> to share the folder by email.
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
+                2. On the other phone: use <strong>Join Family</strong> with the QR/code.
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
+                3. Both parents sign in with Google.
+              </div>
+              <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6 }}>
+                4. Tap <strong>Sync</strong> on both phones once.
+              </div>
+              <div style={{ marginTop: 6, fontSize: 10, color: '#2563eb' }}>
+                Cross-account sync requires folder sharing one time.
+              </div>
+            </Cd>
+          )}
+
+          {/* Partner-pending status */}
+          {partnerWaiting && (
+            <div
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 10,
+                background: 'rgba(59,130,246,0.1)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                fontSize: 12,
+                color: '#1d4ed8',
+                lineHeight: 1.6,
+              }}
+            >
+              <strong>Waiting for partner data.</strong> Confirm folder share is done, both devices are signed in, and each parent taps Sync once.
+            </div>
+          )}
+
           {/* Not yet enabled */}
           {!syncEnabled ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -422,6 +473,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
             Ask your partner to go to Cloud Sync → Invite Partner, then scan or paste the code below.
+            Cross-account sync works only after your partner shares the BabyBloom Sync folder (one-time).
           </div>
 
           {/* QR scanner */}
@@ -471,6 +523,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ padding: '12px 14px', borderRadius: 10, background: C.cd, fontSize: 12, color: C.tl, lineHeight: 1.6 }}>
             Your encrypted data is stored in <strong>your own</strong> Google Drive. BabyBloom can't read it.
+            <br />
+            For partner sync, one parent must share the BabyBloom Sync folder one time via Invite Partner.
           </div>
           <Btn label="Sign in with Google" onClick={handleGoogleAuth} color={C.s} full />
           <div style={{ fontSize: 11, color: C.tl, textAlign: 'center' }}>

@@ -20,6 +20,7 @@ import type {
   SyncFirstEntry,
   SyncEmergencyContact,
   SyncLogs,
+  SyncActiveTimer,
 } from './types';
 import { FUZZY_DEDUP_WINDOW_MS, TOMBSTONE_PURGE_DAYS } from './types';
 
@@ -87,6 +88,35 @@ function isExpiredTombstone(deleted_at?: string | null): boolean {
   const deletedMs = new Date(deleted_at).getTime();
   const purgeMs = TOMBSTONE_PURGE_DAYS * 24 * 60 * 60 * 1000;
   return Date.now() - deletedMs > purgeMs;
+}
+
+const ACTIVE_TIMER_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+
+function mergeActiveTimer(...timers: Array<SyncActiveTimer | null | undefined>): SyncActiveTimer | null {
+  let winner: SyncActiveTimer | null = null;
+  for (const timer of timers) {
+    if (!timer) continue;
+    if (!Number.isFinite(timer.start_time_ms)) continue;
+    if (Date.now() - timer.start_time_ms > ACTIVE_TIMER_MAX_AGE_MS) continue;
+    if (!winner || timer.start_time_ms > winner.start_time_ms) {
+      winner = timer;
+    }
+  }
+  return winner;
+}
+
+function timerMatchesCompletedEntry(timer: SyncActiveTimer, logs: SyncLogs): boolean {
+  const entries: SyncLogEntry[] = timer.type === 'Tummy Time'
+    ? ((logs.tummy || []) as SyncLogEntry[])
+    : ((logs.feed || []) as SyncLogEntry[]);
+
+  for (const entry of entries) {
+    if (entry.type !== timer.type) continue;
+    const ms = entryToMs(entry.date, entry.time);
+    if (!ms) continue;
+    if (Math.abs(ms - timer.start_time_ms) <= 60_000) return true;
+  }
+  return false;
 }
 
 // ═══ LOG ENTRY MERGE ═══
@@ -468,6 +498,15 @@ export function mergeSnapshots(
     ...allLogs.map((s) => s.emergency_contacts),
   );
 
+  const mergedActiveTimerCandidate = mergeActiveTimer(
+    local.active_timer,
+    ...remotes.map((s) => s.active_timer),
+  );
+  const mergedActiveTimer =
+    mergedActiveTimerCandidate && timerMatchesCompletedEntry(mergedActiveTimerCandidate, mergedLogs)
+      ? null
+      : mergedActiveTimerCandidate;
+
   // ── Build merged snapshot ──
   const mergedSnapshot: StateSnapshot = {
     schema_version: 2,
@@ -481,6 +520,7 @@ export function mergeSnapshots(
     milestones: mergedMilestones,
     vaccines: mergedVaccines,
     emergency_contacts: mergedContacts,
+    active_timer: mergedActiveTimer,
     // Wellness is device-local private data — preserve only local device's copy
     wellness: local.wellness,
   };

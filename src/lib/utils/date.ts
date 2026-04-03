@@ -179,6 +179,18 @@ export function findUnmatchedSleep(entries: SleepEntry[]): SleepEntry | null {
 }
 
 /**
+ * Enforce strict sleep transitions:
+ * - Wake Up can only be logged when a sleep-start is open.
+ * - Nap/Night Sleep can only be logged when baby is currently awake.
+ */
+export function canLogSleepType(entries: SleepEntry[], type: string): boolean {
+  const unmatched = findUnmatchedSleep(entries);
+  if (type === 'Wake Up') return unmatched !== null;
+  if (type === 'Nap' || type === 'Night Sleep') return unmatched === null;
+  return true;
+}
+
+/**
  * Calculate sleep duration in minutes using both date and time.
  * Returns 0 if duration is non-positive or exceeds 24 hours.
  */

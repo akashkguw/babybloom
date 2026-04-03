@@ -48,9 +48,53 @@ import {
   DB_KEY_LAST_SYNC,
   DB_KEY_SYNC_STATUS,
   DB_KEY_MANIFEST_FILE_ID,
+  DB_KEY_SYNC_MIGRATION_VERSION,
+  GOOGLE_DRIVE_SCOPE_LEGACY,
   CLOCK_SKEW_WARN_MS,
 } from './types';
+import type { GoogleTokens } from './types';
 import { Sentry } from '@/lib/sentry';
+
+// ═══ ONE-TIME MIGRATIONS ═══
+
+/**
+ * Current migration version. Bump this when adding new migrations.
+ * Each migration runs at most once (guarded by the stored version number).
+ */
+const CURRENT_MIGRATION_VERSION = 1;
+
+/**
+ * Run any pending one-time sync migrations on app startup.
+ * Safe to call multiple times — each migration is idempotent and version-gated.
+ *
+ * Preserves: family key, folder ID, device ID, all local data (logs, profiles, etc.)
+ * Only clears: Google OAuth tokens (forces re-auth with drive.file scope)
+ */
+export async function runSyncMigrations(): Promise<void> {
+  const stored = (await dg(DB_KEY_SYNC_MIGRATION_VERSION)) as number | null;
+  const version = stored || 0;
+  if (version >= CURRENT_MIGRATION_VERSION) return; // already up to date
+
+  // ── Migration 1: Force re-auth to move from full drive → drive.file scope ──
+  if (version < 1) {
+    const tokens = (await dg('family_google_tokens')) as GoogleTokens | null;
+    if (tokens?.scope) {
+      const hasLegacy = tokens.scope.split(/[\s,]+/).some(
+        (s) => s === GOOGLE_DRIVE_SCOPE_LEGACY,
+      );
+      if (hasLegacy) {
+        // Clear only the OAuth tokens — everything else stays intact.
+        // On next sync attempt the engine will surface "Not authenticated"
+        // and the UI will prompt the user to sign in again with drive.file scope.
+        await ds('family_google_tokens', null);
+        // Preserve sync_enabled so the user sees "Google Drive not connected"
+        // banner instead of losing their sync setup entirely.
+      }
+    }
+  }
+
+  await ds(DB_KEY_SYNC_MIGRATION_VERSION, CURRENT_MIGRATION_VERSION);
+}
 
 // ═══ SYNC ENGINE STATE ═══
 

@@ -11,6 +11,7 @@ import {
   calcSleepMins,
   getWeekStart,
   findUnmatchedSleep,
+  canLogSleepType,
   type SleepEntry,
 } from '@/lib/utils/date';
 
@@ -221,6 +222,33 @@ describe('date utils', () => {
 
     it('handles short nap (15 minutes)', () => {
       expect(calcSleepMins('2025-03-15', '10:00', '2025-03-15', '10:15')).toBe(15);
+    });
+  });
+
+  // ── canLogSleepType() ──
+  describe('canLogSleepType', () => {
+    it('allows Wake Up only when there is an unmatched sleep start', () => {
+      const openSleep: SleepEntry[] = [{ id: 1, type: 'Nap', date: '2026-04-03', time: '09:00' }];
+      expect(canLogSleepType(openSleep, 'Wake Up')).toBe(true);
+
+      const closedSleep: SleepEntry[] = [
+        { id: 1, type: 'Nap', date: '2026-04-03', time: '09:00' },
+        { id: 2, type: 'Wake Up', date: '2026-04-03', time: '10:00' },
+      ];
+      expect(canLogSleepType(closedSleep, 'Wake Up')).toBe(false);
+    });
+
+    it('allows Sleep start only when baby is currently awake', () => {
+      const openSleep: SleepEntry[] = [{ id: 3, type: 'Night Sleep', date: '2026-04-03', time: '22:00' }];
+      expect(canLogSleepType(openSleep, 'Nap')).toBe(false);
+      expect(canLogSleepType(openSleep, 'Night Sleep')).toBe(false);
+
+      const awake: SleepEntry[] = [
+        { id: 3, type: 'Night Sleep', date: '2026-04-03', time: '22:00' },
+        { id: 4, type: 'Wake Up', date: '2026-04-04', time: '06:30' },
+      ];
+      expect(canLogSleepType(awake, 'Nap')).toBe(true);
+      expect(canLogSleepType(awake, 'Night Sleep')).toBe(true);
     });
   });
 

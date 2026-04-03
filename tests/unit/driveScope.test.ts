@@ -80,13 +80,9 @@ describe('getAccessToken — scope validation', () => {
 // ─── hasRequiredDriveScope logic ─────────────────────────────────────────────
 
 describe('hasRequiredDriveScope — scope matching', () => {
-  it('requires full drive scope (drive.file is insufficient for cross-account sync)', () => {
-    // hasRequiredDriveScope must check for the full 'drive' scope.
-    // drive.file only exposes files the current user's app instance created,
-    // which prevents Parent B from seeing Parent A's uploaded files.
-    expect(googleDriveSrc).toContain(
-      "'https://www.googleapis.com/auth/drive'",
-    );
+  it('accepts both drive.file and legacy full-drive scopes', () => {
+    expect(googleDriveSrc).toContain('GOOGLE_DRIVE_SCOPE');
+    expect(googleDriveSrc).toContain('GOOGLE_DRIVE_SCOPE_LEGACY');
   });
 
   it('splits multi-scope strings on whitespace/comma', () => {

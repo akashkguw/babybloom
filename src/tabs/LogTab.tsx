@@ -9,7 +9,7 @@ import {
   TabHeader,
 } from '@/components/shared';
 import { fmtVol, volLabel, mlToOz, ozToMl } from '@/lib/utils/volume';
-import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
+import { today, now, fmtTime, fmtDate, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep, canLogSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
@@ -130,7 +130,7 @@ const LogTab: React.FC<LogTabProps> = ({
   // Derived: the open (unmatched) sleep session, used to guard Wake Up submissions.
   // Computed at component level so the submit button can read it.
   const unmatchedSleepForGuard = useMemo(() => {
-    if (sub !== 'sleep' || form.type !== 'Wake Up') return null;
+    if (sub !== 'sleep') return null;
     return findUnmatchedSleep(
       (logs.sleep || []).map((e) => ({
         id: Number(e.id),
@@ -139,11 +139,16 @@ const LogTab: React.FC<LogTabProps> = ({
         time: e.time,
       }))
     );
-  }, [sub, form.type, logs.sleep]);
+  }, [sub, logs.sleep]);
 
   // Wake Up submit is blocked when no open sleep session exists and this is not an edit.
   const wakeUpBlocked =
     sub === 'sleep' && form.type === 'Wake Up' && !editId && unmatchedSleepForGuard === null;
+  const sleepStartBlocked =
+    sub === 'sleep' &&
+    (form.type === 'Nap' || form.type === 'Night Sleep') &&
+    !editId &&
+    unmatchedSleepForGuard !== null;
 
   const navigateDate = (dir: -1 | 1) => {
     const d = new Date(selectedDate + 'T00:00:00');
@@ -328,7 +333,32 @@ const LogTab: React.FC<LogTabProps> = ({
     // For sleep entries with no explicit type: auto-detect Nap vs Night Sleep.
     // Do NOT override Wake Up — that is a valid type the user can submit explicitly.
     if (sub === 'sleep' && !entry.type) {
-      entry.type = autoSleepType(entry.time);
+      entry.type = autoSleepType(
+        (logs.sleep || []).map((e) => ({
+          id: Number(e.id),
+          type: e.type || '',
+          date: e.date,
+          time: e.time,
+        })),
+        entry.time
+      );
+    }
+
+    if (sub === 'sleep' && !editId) {
+      const sleepEntries = (logs.sleep || []).map((e) => ({
+        id: Number(e.id),
+        type: e.type || '',
+        date: e.date,
+        time: e.time,
+      }));
+      if (entry.type === 'Wake Up' && !canLogSleepType(sleepEntries, 'Wake Up')) {
+        toast('Baby is already awake — log Sleep first');
+        return;
+      }
+      if ((entry.type === 'Nap' || entry.type === 'Night Sleep') && !canLogSleepType(sleepEntries, entry.type)) {
+        toast('Sleep already in progress — log Wake Up first');
+        return;
+      }
     }
 
     // Compute duration from endTime if provided (unified form)
@@ -1911,7 +1941,7 @@ const LogTab: React.FC<LogTabProps> = ({
               onClick={addEntry}
               color={C.s}
               full={true}
-              disabled={wakeUpBlocked}
+              disabled={wakeUpBlocked || sleepStartBlocked}
             />
           </div>
         </div>

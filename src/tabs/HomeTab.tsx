@@ -5,7 +5,7 @@ import VoiceButton from '@/features/voice/VoiceButton';
 import type { SyncStatus } from '@/lib/sync/types';
 import { triggerSync } from '@/lib/sync/syncEngine';
 import { fmtVol, volLabel, mlToOz } from '@/lib/utils/volume';
-import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep } from '@/lib/utils/date';
+import { today, now, fmtTime, daysAgo, autoSleepType, calcSleepMins, findUnmatchedSleep, canLogSleepType } from '@/lib/utils/date';
 import { C } from '@/lib/constants/colors';
 import { MILESTONES } from '@/lib/constants/milestones';
 import type { CountryConfig, CountryCode } from '@/lib/constants/countries';
@@ -20,6 +20,7 @@ import type { HeroBgSetting } from '@/features/settings/HeroBackgroundPicker';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
+import { getRecentFeedWithinMinutes, findMostRecentFeed, msToLocalDate } from '@/features/feeding/timerUtils';
 
 
 // Map internal DB type names to user-friendly display names
@@ -43,6 +44,7 @@ interface FeedTimer {
   type: string;
   startTime: number;
   startTimeStr: string;
+  startDateStr?: string;
 }
 
 interface Logs {
@@ -462,11 +464,10 @@ export default function HomeTab({
     // Use smart age-based interval (fallback to saved interval for backward compat)
     const interval = smartFeedInterval;
     const feeds = logs.feed || [];
-    const lastFeed = feeds.length > 0 ? feeds[0] : null;
+    const recent = findMostRecentFeed(feeds);
+    const lastFeed = recent ? recent.entry as LogEntry : null;
     if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
-    const dp2 = lastFeed.date.split('-');
-    const parts = lastFeed.time.split(':');
-    const lastT = new Date(parseInt(dp2[0]), parseInt(dp2[1]) - 1, parseInt(dp2[2]), parseInt(parts[0]), parseInt(parts[1]), 0);
+    const lastT = new Date(recent!.timestampMs);
     const nextT = new Date(lastT.getTime() + interval * 3600000);
     const now2 = new Date();
     if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
@@ -767,6 +768,26 @@ export default function HomeTab({
       entry
     ) as LogEntry;
 
+    if (cat === 'sleep') {
+      const sleepEntries = (logs.sleep || []).map((x) => ({
+        id: Number(x.id),
+        type: x.type || '',
+        date: x.date,
+        time: x.time,
+      }));
+      const isWake = e.type === 'Wake Up';
+      const isSleepStart = e.type === 'Nap' || e.type === 'Night Sleep';
+
+      if (isWake && !canLogSleepType(sleepEntries, 'Wake Up')) {
+        toast('Baby is already awake — log Sleep first');
+        return;
+      }
+      if (isSleepStart && !canLogSleepType(sleepEntries, e.type || '')) {
+        toast('Sleep already in progress — log Wake Up first');
+        return;
+      }
+    }
+
     // Auto-compute sleep duration for Wake Up using only the unmatched sleep start.
     // Using findUnmatchedSleep prevents double-counting when two Wake Ups are logged
     // against the same sleep-start entry.
@@ -827,42 +848,22 @@ export default function HomeTab({
       type: type,
       startTime: Date.now(),
       startTimeStr: now(),
+      startDateStr: today(),
     });
   }
 
-  // Check if last feed is recent & same type (for merge/continue)
+  // Check if latest feed is recent & same type (for merge/continue)
   function getRecentFeed(type?: string | null): LogEntry | null {
-    const feeds = logs.feed || [];
-    if (feeds.length === 0) return null;
-    const last = feeds[0];
-    if (!last.time || !last.date) return null;
-
-    // Check if within 30 min
-    const dp = last.date.split('-');
-    const tp = last.time.split(':');
-    const lastTime = new Date(
-      parseInt(dp[0]),
-      parseInt(dp[1]) - 1,
-      parseInt(dp[2]),
-      parseInt(tp[0]),
-      parseInt(tp[1])
-    );
-    const diffMin = (Date.now() - lastTime.getTime()) / 60000;
-    if (diffMin <= 30) {
-      if (!type || last.type === type) return last;
-      // Allow merging between breast sides (Breast L ↔ Breast R) only
-      const isMergeableBreast =
-        (type === 'Breast L' || type === 'Breast R') &&
-        (last.type === 'Breast L' || last.type === 'Breast R');
-      if (isMergeableBreast) return last;
-    }
-    return null;
+    const match = getRecentFeedWithinMinutes(logs.feed || [], type || null, 30);
+    return match ? match.entry as LogEntry : null;
   }
 
-  function mergeIntoLastFeed(extraMins: number, type?: string) {
+  function mergeIntoLastFeed(extraMins: number, type?: string): boolean {
     const feeds = logs.feed || [];
-    if (feeds.length === 0) return;
-    const last = feeds[0];
+    const match = getRecentFeedWithinMinutes(feeds, type || null, 30);
+    if (!match) return false;
+    const last = match.entry as LogEntry;
+    const lastIdx = match.index;
     const prevMins = last.mins || 0;
     const totalMins = prevMins + extraMins;
     // When merging different breast sides, update type to the latest side
@@ -886,8 +887,10 @@ export default function HomeTab({
         (type && type !== last.type ? ' (' + type + ')' : ''),
     });
     const next = Object.assign({}, logs);
-    next.feed = ([updated] as LogEntry[]).concat(feeds.slice(1));
+    const remaining = feeds.filter((_, i) => i !== lastIdx);
+    next.feed = [updated, ...remaining];
     setLogs(next);
+    return true;
   }
 
   function stopFeedTimer() {
@@ -897,6 +900,7 @@ export default function HomeTab({
     if (minsInt < 1) minsInt = 1;
 
     const isTummy = feedTimer.type === 'Tummy Time';
+    const timerDate = feedTimer.startDateStr || msToLocalDate(feedTimer.startTime);
 
     if (!isTummy) {
       const recent = getRecentFeed(feedTimer.type);
@@ -906,7 +910,7 @@ export default function HomeTab({
         // Auto-merge into previous feed (only merges same-type or breast L↔R)
         mergeIntoLastFeed(minsInt, feedTimer.type);
         const enc = getEncouragement('feed', feedTimer.type);
-        setUndoEntry({ cat: 'feed', entry: { id: Date.now(), date: today(), time: feedTimer.startTimeStr, type: feedTimer.type, mins: minsInt } as LogEntry, emoji: '🍼', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min added', encouragement: enc, prevLogs });
+        setUndoEntry({ cat: 'feed', entry: { id: Date.now(), date: timerDate, time: feedTimer.startTimeStr, type: feedTimer.type, mins: minsInt } as LogEntry, emoji: '🍼', msg: displayName(feedTimer.type) + ' — ' + minsInt + ' min added', encouragement: enc, prevLogs });
         if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
         undoTimerRef.current = setTimeout(() => setUndoEntry(null), 4000);
         setFeedTimerApp(null);
@@ -917,7 +921,7 @@ export default function HomeTab({
     // Snapshot logs before mutation for reliable undo
     const prevLogs = logs;
     const entry: LogEntry = {
-      date: today(),
+      date: timerDate,
       time: feedTimer.startTimeStr,
       id: Date.now(),
       type: feedTimer.type,
@@ -944,13 +948,14 @@ export default function HomeTab({
     const secs = Math.floor((Date.now() - feedTimer.startTime) / 1000);
     let minsInt = Math.round(secs / 60);
     if (minsInt < 1) minsInt = 1;
+    const timerDate = feedTimer.startDateStr || msToLocalDate(feedTimer.startTime);
 
     const recent = getRecentFeed(feedTimer.type);
     if (recent) {
       mergeIntoLastFeed(minsInt, feedTimer.type);
     } else {
       const entry: LogEntry = {
-        date: today(),
+        date: timerDate,
         time: feedTimer.startTimeStr,
         id: Date.now(),
         type: feedTimer.type,
@@ -970,6 +975,7 @@ export default function HomeTab({
       type: newType,
       startTime: Date.now(),
       startTimeStr: now(),
+      startDateStr: today(),
     });
     toast('Switched to ' + (newType === 'Breast L' ? 'Left' : 'Right') + ' side');
   }
@@ -1652,7 +1658,7 @@ export default function HomeTab({
             if (!isSleeping) {
               companionItems.push({
                 e: '😴', l: 'Sleep',
-                fn: () => quickLog('sleep', { type: autoSleepType() }, 'Sleep'),
+                fn: () => quickLog('sleep', { type: autoSleepType((logs.sleep || []).map((e) => ({ id: Number(e.id), type: e.type || '', date: e.date, time: e.time })), now()) }, 'Sleep'),
               });
             }
             // If breast feeding, offer switch to the other side
@@ -1712,7 +1718,7 @@ export default function HomeTab({
           const qlWet     = { e: '💧', l: 'Pee', fn: () => quickLog('diaper', { type: 'Wet' }, 'Pee'), active: false, dis: false, needsQty: false };
           const qlDirty   = { e: '💩', l: 'Poop', fn: () => quickLog('diaper', { type: 'Dirty' }, 'Poop'), active: false, dis: false, needsQty: false };
           // "Wake Up" is always tappable; "Sleep" is blocked while any timed activity runs
-          const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType() }, 'Sleep'); }, active: false, dis: !isSleeping && isTimerActive, highlight: isSleeping, needsQty: false };
+          const qlSleepItem = { e: isSleeping ? '⏰' : '😴', l: isSleeping ? 'Wake Up' : 'Sleep', fn: () => { if (isSleeping) quickLog('sleep', { type: 'Wake Up' }, 'Wake Up'); else quickLog('sleep', { type: autoSleepType((logs.sleep || []).map((e) => ({ id: Number(e.id), type: e.type || '', date: e.date, time: e.time })), now()) }, 'Sleep'); }, active: false, dis: !isSleeping && isTimerActive, highlight: isSleeping, needsQty: false };
           const qlSolids  = { e: '🥣', l: 'Solids', fn: () => quickLog('feed', { type: 'Solids' }, 'Solids'), active: false, dis: isFeedingTimerActive || isSleeping, needsQty: false };
           const qlBath    = { e: '🛁', l: 'Bath', fn: () => quickLog('bath', { type: 'Full Bath' }, 'Bath'), active: false, dis: isTimerActive || isSleeping, needsQty: false };
           const qlMassage = { e: '💆', l: 'Massage', fn: () => quickLog('massage', { type: 'Full Body' }, 'Massage'), active: false, dis: isTimerActive, needsQty: false };

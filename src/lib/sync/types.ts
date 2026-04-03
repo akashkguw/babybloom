@@ -129,6 +129,13 @@ export interface SyncLogs {
   tummy?: SyncTummyEntry[];
 }
 
+export interface SyncActiveTimer {
+  type: string;
+  start_time_ms: number;
+  start_date: string; // YYYY-MM-DD (local date at start)
+  start_time: string; // HH:MM (local time at start)
+}
+
 export interface StateSnapshot {
   schema_version: 2;
   device_id: string;
@@ -144,6 +151,8 @@ export interface StateSnapshot {
   /** country code → { schedule key → completed boolean } */
   vaccines: Record<string, Record<string, boolean>>;
   emergency_contacts: SyncEmergencyContact[];
+  /** In-progress timed activity (feed/tummy) so partners can continue safely */
+  active_timer?: SyncActiveTimer | null;
   /** Device-local wellness data (private, not merged across devices — backup only) */
   wellness?: {
     today?: any;
@@ -203,6 +212,8 @@ export const DB_KEY_LAST_SYNC = 'sync_last_at';
 export const DB_KEY_SYNC_STATUS = 'sync_status';
 /** IndexedDB key for the manifest's own Google Drive file ID */
 export const DB_KEY_MANIFEST_FILE_ID = 'sync_manifest_file_id';
+/** IndexedDB key tracking which one-time sync migrations have run */
+export const DB_KEY_SYNC_MIGRATION_VERSION = 'sync_migration_version';
 
 // ═══ SYNC ENGINE ═══
 

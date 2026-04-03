@@ -6,7 +6,7 @@
  * back to IndexedDB.
  *
  * Non-synced data (per design §3.3):
- *   - theme, notifications, active tab state, feed timer, sentry config
+ *   - theme, notifications, active tab state, sentry config
  *   - These remain device-local and are never included in snapshots.
  *
  * Selective sync privacy zones (per design §3.4):
@@ -16,8 +16,69 @@
 
 import { dg, ds } from '@/lib/db';
 import { DB_KEY_DEVICE_ID } from './types';
-import type { StateSnapshot, SyncProfile, SyncLogs } from './types';
+import type { StateSnapshot, SyncProfile, SyncLogs, SyncActiveTimer } from './types';
 import { backfillModifiedAt } from './merge';
+
+const TIMER_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+
+function pad2(v: number): string {
+  return String(v).padStart(2, '0');
+}
+
+function msToLocalDate(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function msToLocalTime(ms: number): string {
+  const d = new Date(ms);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function entryMs(date?: string, time?: string): number {
+  if (!date || !time) return 0;
+  const dp = date.split('-').map(Number);
+  const tp = time.split(':').map(Number);
+  if (dp.length < 3 || tp.length < 2 || dp.some(Number.isNaN) || tp.some(Number.isNaN)) return 0;
+  return new Date(dp[0], dp[1] - 1, dp[2], tp[0], tp[1]).getTime();
+}
+
+function normalizeActiveTimer(raw: any): SyncActiveTimer | null {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!raw.type || typeof raw.type !== 'string') return null;
+  if (typeof raw.startTime !== 'number' || !Number.isFinite(raw.startTime)) return null;
+  if (Date.now() - raw.startTime > TIMER_MAX_AGE_MS) return null;
+
+  return {
+    type: raw.type,
+    start_time_ms: raw.startTime,
+    start_date: typeof raw.startDateStr === 'string' && raw.startDateStr ? raw.startDateStr : msToLocalDate(raw.startTime),
+    start_time: typeof raw.startTimeStr === 'string' && raw.startTimeStr ? raw.startTimeStr : msToLocalTime(raw.startTime),
+  };
+}
+
+function timerToLocalShape(timer: SyncActiveTimer | null): any {
+  if (!timer) return null;
+  return {
+    type: timer.type,
+    startTime: timer.start_time_ms,
+    startTimeStr: timer.start_time,
+    startDateStr: timer.start_date,
+  };
+}
+
+function timerMatchesCompletedEntry(timer: SyncActiveTimer, logs: Record<string, any[]>): boolean {
+  const cat = timer.type === 'Tummy Time' ? 'tummy' : 'feed';
+  const arr = logs[cat] || [];
+  for (const entry of arr) {
+    if (entry.type !== timer.type) continue;
+    const ts = entryMs(entry.date, entry.time);
+    if (!ts) continue;
+    // A finalized timer entry is logged at the timer start timestamp.
+    if (Math.abs(ts - timer.start_time_ms) <= 60_000) return true;
+  }
+  return false;
+}
 
 // ═══ DEVICE ID ═══
 
@@ -77,6 +138,7 @@ export async function buildSnapshot(
     activeProfileId,
     wellnessToday,
     wellnessHistory,
+    feedTimerApp,
   ] = await Promise.all([
     dg('logs'),
     dg('birthDate'),
@@ -89,6 +151,7 @@ export async function buildSnapshot(
     dg('activeProfile'),
     dg('momcare_today'),       // MomCare wellness — private backup
     dg('momcare_history'),     // MomCare wellness history — private backup
+    dg('feedTimerApp'),
   ]);
 
   // ── Normalize logs — backfill modified_at for legacy entries ──
@@ -127,6 +190,7 @@ export async function buildSnapshot(
 
   // ── Normalize emergency contacts ──
   const syncContacts = backfillModifiedAt(emergencyContacts || []) as any[];
+  const activeTimer = normalizeActiveTimer(feedTimerApp);
 
   return {
     schema_version: 2,
@@ -140,6 +204,7 @@ export async function buildSnapshot(
     milestones: milestones || {},
     vaccines: vaccines || {},
     emergency_contacts: syncContacts,
+    active_timer: activeTimer,
     // Wellness is device-local backup only — not merged across devices
     wellness: (wellnessToday || wellnessHistory)
       ? { today: wellnessToday || undefined, history: wellnessHistory || undefined }
@@ -154,7 +219,7 @@ export async function buildSnapshot(
  * This is called after the merge algorithm produces the unified state.
  * Written atomically — all keys updated before any UI re-render.
  *
- * Note: device-local settings (theme, notifications, timers) are NOT touched.
+ * Note: device-local settings (theme, notifications) are NOT touched.
  */
 export async function applySnapshot(
   snapshot: StateSnapshot,
@@ -209,6 +274,8 @@ export async function applySnapshot(
   // App.tsx `spd()` writes to both generic keys and profileData_${id}.
   // We must write to both so the app sees merged data immediately AND on next load.
   const activeProfileId = await dg('activeProfile');
+  const localTimer = normalizeActiveTimer(await dg('feedTimerApp'));
+  const incomingTimer = snapshot.active_timer || null;
 
   const writes: Promise<void>[] = [
     // Generic top-level keys (used by spd() and the app's initial load fallback)
@@ -220,6 +287,20 @@ export async function applySnapshot(
     ds('vaccines', snapshot.vaccines),          // NOT 'vDoneAll'
     ds('emergencyContacts', snapshot.emergency_contacts),
   ];
+
+  let timerToPersist: SyncActiveTimer | null = null;
+  if (localTimer && incomingTimer) {
+    timerToPersist = localTimer.start_time_ms >= incomingTimer.start_time_ms ? localTimer : incomingTimer;
+  } else {
+    timerToPersist = localTimer || incomingTimer;
+  }
+  if (timerToPersist) {
+    // Never resurrect a timer that already has a finalized entry in merged logs.
+    if (timerMatchesCompletedEntry(timerToPersist, logsToWrite)) {
+      timerToPersist = null;
+    }
+  }
+  writes.push(ds('feedTimerApp', timerToLocalShape(timerToPersist)));
 
   // Restore wellness data if present (device-local backup — only from own snapshots)
   if (snapshot.wellness) {

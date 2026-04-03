@@ -140,7 +140,7 @@ describe('syncEngine — manifest-based file registry', () => {
 
   it('ensureManifest stores manifest_file_id after upload', () => {
     const fnStart = engineSrc.indexOf('async function ensureManifest');
-    const fnRegion = engineSrc.slice(fnStart, fnStart + 2000);
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 3200);
     expect(fnRegion).toContain('manifest.manifest_file_id = manifestFileId');
     expect(fnRegion).toContain("ds(DB_KEY_MANIFEST_FILE_ID, manifestFileId)");
   });
@@ -204,7 +204,7 @@ describe('keyManager — BK2 format with manifest file ID', () => {
   it('importKeyAndFolderFromQR returns manifestFileId', () => {
     expect(keyMgrSrc).toContain('manifestFileId: string | null');
     const fnStart = keyMgrSrc.indexOf('async function importKeyAndFolderFromQR');
-    const fnRegion = keyMgrSrc.slice(fnStart, fnStart + 800);
+    const fnRegion = keyMgrSrc.slice(fnStart, fnStart + 1400);
     expect(fnRegion).toContain('manifestFileId: m || null');
   });
 });
