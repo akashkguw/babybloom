@@ -114,7 +114,7 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
   it('uploadFile falls back to POST create when PATCH is denied for app write access', () => {
     const fnStart = gdriveSrc.indexOf('export async function uploadFile');
     const fnRegion = gdriveSrc.slice(fnStart, fnStart + 2200);
-    expect(fnRegion).toContain('isAppWriteAccessDenied(resp)');
+    expect(fnRegion).toContain('shouldCreateNewFileAfterPatchFailure(resp)');
     expect(fnRegion).toContain('const createResp = await fetchWithTimeout');
     expect(fnRegion).toContain('files?uploadType=multipart');
   });
@@ -122,6 +122,11 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
   it('has helper to detect app write-access denied 403 responses', () => {
     expect(gdriveSrc).toContain('async function isAppWriteAccessDenied');
     expect(gdriveSrc).toContain("msg.includes('has not granted the app')");
+  });
+
+  it('falls back to create when PATCH target file ID is stale (404)', () => {
+    expect(gdriveSrc).toContain('async function shouldCreateNewFileAfterPatchFailure');
+    expect(gdriveSrc).toContain('if (resp.status === 404) return true;');
   });
 });
 

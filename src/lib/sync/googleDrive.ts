@@ -490,10 +490,9 @@ export async function uploadFile(fileName: string, data: Uint8Array, knownFileId
     body: body as unknown as BodyInit,
   }, 60_000);
 
-  // Legacy files created before drive.file migration may be readable by ID but
-  // not writable with PATCH under drive.file. If that happens, create a fresh
-  // app-authorized file in the shared folder and continue with the new file ID.
-  if (existingId && await isAppWriteAccessDenied(resp)) {
+  // If PATCH targets a stale/deleted file ID (404) or a non-app-authorized file
+  // (drive.file write denied), create a fresh app-authorized file and continue.
+  if (existingId && await shouldCreateNewFileAfterPatchFailure(resp)) {
     const createMetadataJson = JSON.stringify({
       name: fileName,
       parents: [folderId],
@@ -789,6 +788,11 @@ async function isAppWriteAccessDenied(resp: Response): Promise<boolean> {
     return false;
   }
   return msg.includes('has not granted the app') && msg.includes('write access');
+}
+
+async function shouldCreateNewFileAfterPatchFailure(resp: Response): Promise<boolean> {
+  if (resp.status === 404) return true;
+  return isAppWriteAccessDenied(resp);
 }
 
 async function handleDriveError(resp: Response): Promise<void> {
