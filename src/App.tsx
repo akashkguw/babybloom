@@ -674,14 +674,17 @@ function App() {
     return (
       <div
         style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100%',
           maxWidth: 500,
           margin: '0 auto',
           background: C.bg,
-          height: '100dvh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
         <div style={{ fontSize: 64 }}>🍼</div>
@@ -691,7 +694,7 @@ function App() {
   }
 
   return (
-    <div style={{ maxWidth: 500, margin: '0 auto', background: C.bg, height: '100dvh', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, width: '100%', maxWidth: 500, margin: '0 auto', background: C.bg, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Spacer to push content below the fixed header */}
       <div className="header-spacer" />
       {showAnyBanner && <div className="banner-spacer" />}

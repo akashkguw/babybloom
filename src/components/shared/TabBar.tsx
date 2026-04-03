@@ -28,7 +28,7 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
     <div
       className="tab-bar-main"
       style={{
-        position: 'fixed',
+        position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
