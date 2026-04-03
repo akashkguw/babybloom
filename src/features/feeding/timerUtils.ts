@@ -13,6 +13,7 @@ export interface FeedTimerLike {
 }
 
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000; // tolerate small clock drift
+const MAX_FEED_DURATION_MIN = 4 * 60; // sanity cap (timer auto-resets at 4h)
 
 function pad2(v: number): string {
   return String(v).padStart(2, '0');
@@ -50,12 +51,27 @@ export function entryTimestampMs(entry: Pick<FeedLikeEntry, 'date' | 'time'>): n
 }
 
 /**
+ * For timed feeds, treat completion time as start + mins.
+ * Falls back to start timestamp for non-duration entries.
+ */
+export function entryCompletionTimestampMs(entry: FeedLikeEntry): number {
+  const startMs = entryTimestampMs(entry);
+  if (!startMs) return 0;
+  const minsRaw = typeof entry.mins === 'number' ? entry.mins : Number(entry.mins);
+  if (!Number.isFinite(minsRaw) || minsRaw <= 0 || minsRaw > MAX_FEED_DURATION_MIN) {
+    return startMs;
+  }
+  return startMs + Math.round(minsRaw * 60_000);
+}
+
+/**
  * Find the most recent feed by parsed date/time.
  * Prefers entries not in the future (within 5 min skew tolerance).
  */
 export function findMostRecentFeed(
   feeds: FeedLikeEntry[],
   nowMs: number = Date.now(),
+  useCompletionTime: boolean = false,
 ): { entry: FeedLikeEntry; index: number; timestampMs: number } | null {
   if (!Array.isArray(feeds) || feeds.length === 0) return null;
 
@@ -64,7 +80,7 @@ export function findMostRecentFeed(
 
   for (let i = 0; i < feeds.length; i++) {
     const entry = feeds[i];
-    const ts = entryTimestampMs(entry);
+    const ts = useCompletionTime ? entryCompletionTimestampMs(entry) : entryTimestampMs(entry);
     if (!ts) continue;
 
     if (!bestAny || ts > bestAny.timestampMs) {
@@ -88,8 +104,9 @@ export function getRecentFeedWithinMinutes(
   type: string | null,
   windowMinutes: number = 30,
   nowMs: number = Date.now(),
+  useCompletionTime: boolean = false,
 ): { entry: FeedLikeEntry; index: number; timestampMs: number } | null {
-  const recent = findMostRecentFeed(feeds, nowMs);
+  const recent = findMostRecentFeed(feeds, nowMs, useCompletionTime);
   if (!recent) return null;
 
   const diffMin = (nowMs - recent.timestampMs) / 60000;

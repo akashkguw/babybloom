@@ -20,7 +20,7 @@ import type { HeroBgSetting } from '@/features/settings/HeroBackgroundPicker';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
-import { getRecentFeedWithinMinutes, findMostRecentFeed, msToLocalDate } from '@/features/feeding/timerUtils';
+import { getRecentFeedWithinMinutes, findMostRecentFeed, msToLocalDate, msToLocalTime } from '@/features/feeding/timerUtils';
 
 
 // Map internal DB type names to user-friendly display names
@@ -464,13 +464,14 @@ export default function HomeTab({
     // Use smart age-based interval (fallback to saved interval for backward compat)
     const interval = smartFeedInterval;
     const feeds = logs.feed || [];
-    const recent = findMostRecentFeed(feeds);
+    // For timed feeds, reminders should be based on completion time, not start time.
+    const recent = findMostRecentFeed(feeds, Date.now(), true);
     const lastFeed = recent ? recent.entry as LogEntry : null;
     if (!lastFeed || !lastFeed.time || !lastFeed.date) return { text: 'No feeds logged — time to feed?', overdue: true };
     const lastT = new Date(recent!.timestampMs);
     const nextT = new Date(lastT.getTime() + interval * 3600000);
     const now2 = new Date();
-    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(lastFeed.time), overdue: true };
+    if (now2 >= nextT) return { text: 'Feed overdue · last ' + fmtTime(msToLocalTime(recent!.timestampMs)), overdue: true };
     const hrs = Math.floor((nextT.getTime() - now2.getTime()) / 3600000);
     const mins = Math.floor(((nextT.getTime() - now2.getTime()) % 3600000) / 60000);
     return { text: 'Next feed in ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm', overdue: false };

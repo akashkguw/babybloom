@@ -52,6 +52,26 @@ describe('timerUtils', () => {
     expect(recent?.entry.time).toBe('00:10');
   });
 
+  it('can use completion time for timed cross-midnight feeds', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 3, 0, 20)); // Apr 3, 2026 00:20
+
+    const feeds = [
+      { type: 'Breast L', date: '2026-04-02', time: '23:58', mins: 10 }, // ends at 00:08
+      { type: 'Breast R', date: '2026-04-02', time: '22:00', mins: 20 }, // ends at 22:20
+    ];
+
+    const recentByStart = findMostRecentFeed(feeds, Date.now(), false);
+    const recentByEnd = findMostRecentFeed(feeds, Date.now(), true);
+
+    expect(recentByStart?.entry.type).toBe('Breast L');
+    expect(recentByEnd?.entry.type).toBe('Breast L');
+    const h = new Date(recentByEnd!.timestampMs).getHours();
+    const m = new Date(recentByEnd!.timestampMs).getMinutes();
+    expect(h).toBe(0);
+    expect(m).toBe(8);
+  });
+
   it('treats Breast L/R as merge-compatible for recent feed lookup', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 3, 3, 9, 30));

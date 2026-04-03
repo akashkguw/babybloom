@@ -117,5 +117,14 @@ describe('checkFeedNotification', () => {
       expect(result.shouldNotify).toBe(true);
       expect(result.body).toContain('3.7 hours ago');
     });
+
+    it('uses completion time for timed feeds (start + mins)', () => {
+      // Start at 11:00 with 15m duration => completion 11:15.
+      // At 14:00, elapsed is 2h45m (< 3h), so no reminder yet.
+      const feeds = [{ date: '2025-03-15', time: '11:00', mins: 15 } as FeedEntry];
+      const result = checkFeedNotification(feeds, 3, null, nowMs);
+      expect(result.shouldNotify).toBe(false);
+      expect(result.feedKey).toBe('2025-03-15_11:00');
+    });
   });
 });

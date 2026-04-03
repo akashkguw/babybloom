@@ -241,24 +241,34 @@ describe('CloudSync — manifest file ID in QR flows', () => {
     expect(cloudSyncSrc).toContain('DB_KEY_MANIFEST_FILE_ID');
   });
 
-  it('handleInvite reads manifest file ID and passes to exportKeyAndFolderForQR', () => {
+  it('has helper to ensure manifest file ID exists (trigger sync if missing)', () => {
+    const helperStart = cloudSyncSrc.indexOf('const ensureManifestFileId');
+    const helperRegion = cloudSyncSrc.slice(helperStart, helperStart + 700);
+    expect(helperRegion).toContain('dg(DB_KEY_MANIFEST_FILE_ID)');
+    expect(helperRegion).toContain("triggerSync('manual')");
+  });
+
+  it('handleInvite ensures manifest file ID and passes to exportKeyAndFolderForQR', () => {
     const inviteStart = cloudSyncSrc.indexOf('const handleInvite');
-    const inviteRegion = cloudSyncSrc.slice(inviteStart, inviteStart + 800);
-    expect(inviteRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
+    const inviteRegion = cloudSyncSrc.slice(inviteStart, inviteStart + 1000);
+    expect(inviteRegion).toContain('ensureManifestFileId()');
+    expect(inviteRegion).toContain('if (!manifestFileId)');
     expect(inviteRegion).toContain('exportKeyAndFolderForQR(key, folderId, manifestFileId');
   });
 
-  it('handleShowQR reads manifest file ID and passes to exportKeyAndFolderForQR', () => {
+  it('handleShowQR ensures manifest file ID and passes to exportKeyAndFolderForQR', () => {
     const showStart = cloudSyncSrc.indexOf('const handleShowQR');
-    const showRegion = cloudSyncSrc.slice(showStart, showStart + 500);
-    expect(showRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
+    const showRegion = cloudSyncSrc.slice(showStart, showStart + 700);
+    expect(showRegion).toContain('ensureManifestFileId()');
+    expect(showRegion).toContain('if (!manifestFileId)');
     expect(showRegion).toContain('exportKeyAndFolderForQR(key, folderId, manifestFileId');
   });
 
-  it('handleJoin stores manifest file ID from QR scan', () => {
+  it('handleJoin requires manifest file ID from QR scan', () => {
     const joinStart = cloudSyncSrc.indexOf('const handleJoin');
-    const joinRegion = cloudSyncSrc.slice(joinStart, joinStart + 800);
+    const joinRegion = cloudSyncSrc.slice(joinStart, joinStart + 1000);
     expect(joinRegion).toContain('result.manifestFileId');
+    expect(joinRegion).toContain('outdated');
     expect(joinRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
   });
 });

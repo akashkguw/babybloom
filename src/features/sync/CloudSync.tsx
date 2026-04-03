@@ -181,11 +181,29 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     }
   }, [googleAuthed]);
 
+  // Ensure manifest file ID exists before generating share codes.
+  // With drive.file scope, partner discovery depends on this ID.
+  const ensureManifestFileId = useCallback(async (): Promise<string | undefined> => {
+    let manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+    if (manifestFileId) return manifestFileId;
+    try {
+      await triggerSync('manual');
+    } catch {
+      // Fall through — caller will handle missing manifest ID with user guidance.
+    }
+    manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+    return manifestFileId || undefined;
+  }, []);
+
   // ── Join partner (from QR or pasted code) ──
   const handleJoin = useCallback(async (qrData: string) => {
     setShowScanner(false);
     const result = await importKeyAndFolderFromQR(qrData);
     if (!result) { toast('Invalid sync code. Check and try again.'); return; }
+    if (!result.manifestFileId) {
+      toast('This sync code is outdated. Ask your partner to tap Sync and share a new code.');
+      return;
+    }
     try {
       await storeFamilyKey(result.key);
       if (result.folderId) await setSharedFolderId(result.folderId);
@@ -217,7 +235,11 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await shareFolderWithPartner(partnerEmail.trim());
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
-      const manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+      const manifestFileId = await ensureManifestFileId();
+      if (!manifestFileId) {
+        toast('Could not prepare sync code. Tap Sync once, then try Invite again.');
+        return;
+      }
       const qr = await exportKeyAndFolderForQR(key, folderId, manifestFileId || undefined);
       setFamilyKeyQR(qr);
       toast('Folder shared. Ask partner to scan code, sign in, then tap Sync once.');
@@ -227,7 +249,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     } finally {
       setInviteLoading(false);
     }
-  }, [partnerEmail]);
+  }, [partnerEmail, ensureManifestFileId]);
 
   // ── Show QR without re-sharing ──
   const handleShowQR = useCallback(async () => {
@@ -235,12 +257,16 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
       const folderId = await getOrCreateFolder();
-      const manifestFileId = (await dg(DB_KEY_MANIFEST_FILE_ID)) as string | undefined;
+      const manifestFileId = await ensureManifestFileId();
+      if (!manifestFileId) {
+        toast('Could not prepare sync code. Tap Sync once, then try again.');
+        return;
+      }
       setFamilyKeyQR(await exportKeyAndFolderForQR(key, folderId, manifestFileId || undefined));
     } catch (err: any) {
       toast('Failed: ' + (err?.message || 'unknown'));
     }
-  }, []);
+  }, [ensureManifestFileId]);
 
   // ── Google sign-in ──
   const handleGoogleAuth = useCallback(async () => {
