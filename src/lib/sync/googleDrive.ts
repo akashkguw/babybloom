@@ -34,6 +34,27 @@ import type { GoogleTokens } from './types';
 
 // ═══ OAUTH ═══
 
+const OAUTH_VERIFIER_KEY = 'bb_oauth_verifier';
+const OAUTH_VERIFIER_BACKUP_KEY = 'bb_oauth_verifier_backup';
+
+function setOAuthVerifier(verifier: string): void {
+  try { sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier); } catch {}
+  try { localStorage.setItem(OAUTH_VERIFIER_BACKUP_KEY, verifier); } catch {}
+}
+
+function getOAuthVerifier(): string | null {
+  let verifier: string | null = null;
+  try { verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY); } catch {}
+  if (verifier) return verifier;
+  try { verifier = localStorage.getItem(OAUTH_VERIFIER_BACKUP_KEY); } catch {}
+  return verifier;
+}
+
+function clearOAuthVerifier(): void {
+  try { sessionStorage.removeItem(OAUTH_VERIFIER_KEY); } catch {}
+  try { localStorage.removeItem(OAUTH_VERIFIER_BACKUP_KEY); } catch {}
+}
+
 /**
  * Check if Google tokens exist and are (likely) valid.
  */
@@ -235,7 +256,7 @@ export async function exchangeCodeForTokens(
  */
 export async function initiateGoogleSignIn(): Promise<string> {
   const { url, codeVerifier } = await buildAuthUrl();
-  sessionStorage.setItem('bb_oauth_verifier', codeVerifier);
+  setOAuthVerifier(codeVerifier);
   return url;
 }
 
@@ -249,15 +270,15 @@ export async function handleOAuthCallback(callbackUrl: string): Promise<void> {
   const error = u.searchParams.get('error');
   if (error) throw new DriveError('not_authenticated', `Google sign-in denied: ${error}`);
   if (!code)  throw new DriveError('not_authenticated', 'No authorization code in callback URL.');
-  const codeVerifier = sessionStorage.getItem('bb_oauth_verifier');
+  const codeVerifier = getOAuthVerifier();
   if (!codeVerifier) throw new DriveError('not_authenticated', 'OAuth session expired. Please try signing in again.');
-  sessionStorage.removeItem('bb_oauth_verifier');
   const isNativeApp = callbackUrl.startsWith('babybloom://');
   const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
   const redirectUri = isNativeApp
     ? 'babybloom://oauth'
     : `${window.location.origin}${base.replace(/\/$/, '')}/oauth/`;
   await exchangeCodeForTokens(code, codeVerifier, redirectUri);
+  clearOAuthVerifier();
 }
 
 /**

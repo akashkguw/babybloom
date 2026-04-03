@@ -336,13 +336,20 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     try {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || (window.navigator as any).standalone === true;
-      const popup = isStandalone ? null : window.open('', '_self');
       const url = await initiateGoogleSignIn();
-      if (popup) { popup.location.href = url; } else { window.location.href = url; }
+      if (isStandalone) {
+        // iOS PWA standalone can fail Google auth in-app due cookie isolation.
+        // Open external browser first; fall back to same tab if blocked.
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!opened) window.location.href = url;
+      } else {
+        window.location.href = url;
+      }
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('Client ID is not configured')) {
-        toast('Google sign-in not configured.'); console.error(msg);
+        toast('Google sign-in not configured.');
+        if (import.meta.env.DEV) console.warn(msg);
       } else {
         toast('Sign-in failed: ' + msg);
         Sentry.captureException(err, { tags: { action: 'oauth_initiate' } });

@@ -385,22 +385,51 @@ function App() {
     // 1. Direct path match — local dev (Vite handles /babybloom/oauth as a SPA route)
     //    URL: http://localhost:5173/babybloom/oauth?code=...
     //
-    // 2. sessionStorage bounce — GitHub Pages (static host can't serve /oauth as a route).
-    //    public/oauth/index.html stores the callback URL in sessionStorage then
+    // 2. storage/hash bounce — GitHub Pages (static host can't serve /oauth as a route).
+    //    public/oauth/index.html stores the callback URL and
     //    redirects to /babybloom/, where we pick it up here.
     //    URL after bounce: https://akashkguw.github.io/babybloom/
     const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const oauthPath = `${base}/oauth`;
-    const storedCallback = sessionStorage.getItem('bb_oauth_callback');
+    const readStoredCallback = (): string | null => {
+      try {
+        const fromSession = sessionStorage.getItem('bb_oauth_callback');
+        if (fromSession) return fromSession;
+      } catch {}
+      try {
+        const fromLocal = localStorage.getItem('bb_oauth_callback');
+        if (fromLocal) return fromLocal;
+      } catch {}
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const fromHash = hashParams.get('bb_oauth_callback');
+        if (fromHash) return decodeURIComponent(fromHash);
+      } catch {}
+      return null;
+    };
+    const clearStoredCallback = (): void => {
+      try { sessionStorage.removeItem('bb_oauth_callback'); } catch {}
+      try { localStorage.removeItem('bb_oauth_callback'); } catch {}
+      try {
+        if (window.location.hash.includes('bb_oauth_callback=')) {
+          window.history.replaceState({}, '', window.location.pathname + window.location.search);
+        }
+      } catch {}
+    };
+    const storedCallback = readStoredCallback();
 
     const isDirectPath = window.location.pathname === oauthPath
       || window.location.pathname === oauthPath + '/';
-    const callbackUrl = storedCallback || (isDirectPath ? window.location.href : null);
+    const params = new URLSearchParams(window.location.search);
+    const hasOAuthParams = params.has('code') || params.has('error');
+    const callbackUrl = storedCallback || ((isDirectPath || hasOAuthParams) ? window.location.href : null);
     if (!callbackUrl) return;
 
     // Clean up before any async work
-    sessionStorage.removeItem('bb_oauth_callback');
-    if (isDirectPath) window.history.replaceState({}, '', import.meta.env.BASE_URL);
+    clearStoredCallback();
+    if (isDirectPath || hasOAuthParams) {
+      window.history.replaceState({}, '', import.meta.env.BASE_URL);
+    }
 
     handleOAuthCallback(callbackUrl)
       .then(() => {
@@ -416,7 +445,9 @@ function App() {
       })
       .catch((err: any) => {
         toast('Google sign-in failed: ' + (err?.message || 'unknown error'));
-        console.error('[BabyBloom] Web OAuth callback error:', err);
+        if (import.meta.env.DEV) {
+          console.warn('[BabyBloom] Web OAuth callback issue:', err);
+        }
       });
   }, []); // run once on mount — intentionally no deps
 
@@ -520,7 +551,9 @@ function App() {
         setLoading(false);
       });
     }).catch((err: Error) => {
-      console.error('BabyBloom load error:', err);
+      if (import.meta.env.DEV) {
+        console.warn('BabyBloom load issue:', err);
+      }
       // Ensure logs are properly initialized even on full load failure
       setLgR((prev: any) => (prev && prev.feed ? prev : { feed: [], diaper: [], sleep: [], tummy: [], growth: [], temp: [], bath: [], massage: [], meds: [], allergy: [] }));
       clearTimeout(safetyTimer);

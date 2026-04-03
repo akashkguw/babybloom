@@ -10,15 +10,17 @@
     // GitHub Pages serves this static file at /babybloom/oauth/
     // Google redirects here after OAuth with ?code=...&state=...
     //
-    // sessionStorage persists across same-tab navigation, so the PKCE
-    // code_verifier (stored by the main app before redirect) is still here.
-    // We stash the full callback URL and bounce back to the main app.
+    // Stash the full callback URL and bounce back to the main app.
+    // Some iOS/PWA flows lose sessionStorage during auth redirects, so we
+    // also write localStorage and a hash fallback.
     try {
       sessionStorage.setItem('bb_oauth_callback', window.location.href);
-    } catch (e) {
-      // sessionStorage blocked — fall back to hash param
-    }
-    window.location.replace('/babybloom/');
+    } catch (e) {}
+    try {
+      localStorage.setItem('bb_oauth_callback', window.location.href);
+    } catch (e) {}
+    const hashCallback = '#bb_oauth_callback=' + encodeURIComponent(window.location.href);
+    window.location.replace('/babybloom/' + hashCallback);
   </script>
 </body>
 </html>

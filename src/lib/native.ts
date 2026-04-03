@@ -226,7 +226,9 @@ export async function initNativeApp() {
               window.dispatchEvent(new CustomEvent('babybloom:oauth'));
             })
             .catch((err) => {
-              console.error('[BabyBloom] Native OAuth callback error:', err);
+              if (import.meta.env.DEV) {
+                console.warn('[BabyBloom] Native OAuth callback issue:', err);
+              }
             });
         });
         return;
