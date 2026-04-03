@@ -2,6 +2,7 @@ export interface FeedLikeEntry {
   date?: string;
   time?: string;
   type?: string;
+  notes?: string;
   [key: string]: any;
 }
 
@@ -62,6 +63,23 @@ export function entryCompletionTimestampMs(entry: FeedLikeEntry): number {
     return startMs;
   }
   return startMs + Math.round(minsRaw * 60_000);
+}
+
+export function isTimedFeedEntry(entry: FeedLikeEntry): boolean {
+  return typeof entry.notes === 'string' && entry.notes.includes('Timed');
+}
+
+/**
+ * Effective timestamp used for UI grouping/sorting:
+ * - timed session entries use completion timestamp
+ * - all other entries use logged date/time timestamp
+ */
+export function entryEffectiveFeedTimestampMs(entry: FeedLikeEntry): number {
+  if (isTimedFeedEntry(entry)) {
+    const doneMs = entryCompletionTimestampMs(entry);
+    if (doneMs) return doneMs;
+  }
+  return entryTimestampMs(entry);
 }
 
 /**

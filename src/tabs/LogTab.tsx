@@ -14,6 +14,7 @@ import { C } from '@/lib/constants/colors';
 import { toast } from '@/lib/utils/toast';
 import { clampNum, safeNum, cleanStr, LIMITS } from '@/lib/utils/validate';
 import StatsView from '@/features/stats/StatsView';
+import { entryEffectiveFeedTimestampMs, msToLocalDate, msToLocalTime } from '@/features/feeding/timerUtils';
 
 const displayName = (type: string, sides?: string[]): string => {
   const map: Record<string, string> = { 'Breast L': 'Left', 'Breast R': 'Right', 'Wet': 'Pee', 'Dirty': 'Poop' };
@@ -195,8 +196,16 @@ const LogTab: React.FC<LogTabProps> = ({
   ];
 
   const items = (logs[sub] || [])
-    .filter((x) => x.date === selectedDate)
+    .filter((x) => {
+      if (sub !== 'feed') return x.date === selectedDate;
+      const ts = entryEffectiveFeedTimestampMs(x);
+      if (!ts) return x.date === selectedDate;
+      return msToLocalDate(ts) === selectedDate;
+    })
     .sort((a, b) => {
+      if (sub === 'feed') {
+        return entryEffectiveFeedTimestampMs(b) - entryEffectiveFeedTimestampMs(a);
+      }
       if (!a.time) return 1;
       if (!b.time) return -1;
       return b.time.localeCompare(a.time); // newest first
@@ -602,7 +611,13 @@ const LogTab: React.FC<LogTabProps> = ({
                         color: C.t,
                       }}
                     >
-                      {fmtTime(entry.time)}
+                      {fmtTime(
+                        sub === 'feed'
+                          ? (entryEffectiveFeedTimestampMs(entry)
+                              ? msToLocalTime(entryEffectiveFeedTimestampMs(entry))
+                              : entry.time)
+                          : entry.time,
+                      )}
                       {entry.type ? ' — ' + displayName(entry.type, (entry as any).sides) : ''}
                       {entry.oz
                         ? ' — ' + fmtVol(entry.oz, volumeUnit)

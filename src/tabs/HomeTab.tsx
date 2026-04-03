@@ -20,7 +20,13 @@ import type { HeroBgSetting } from '@/features/settings/HeroBackgroundPicker';
 import useDynamicRedFlags from '@/features/insights/useDynamicRedFlags';
 import useMomAlerts from '@/features/insights/useMomAlerts';
 import MomCare from '@/features/wellness/MomCare';
-import { getRecentFeedWithinMinutes, findMostRecentFeed, msToLocalDate, msToLocalTime } from '@/features/feeding/timerUtils';
+import {
+  getRecentFeedWithinMinutes,
+  findMostRecentFeed,
+  msToLocalDate,
+  msToLocalTime,
+  entryEffectiveFeedTimestampMs,
+} from '@/features/feeding/timerUtils';
 
 
 // Map internal DB type names to user-friendly display names
@@ -1007,7 +1013,16 @@ export default function HomeTab({
 
   // ═══ Compute today's stats ═══
   const td = today();
-  const feedCt = (logs.feed || []).filter((x) => x.date === td).length;
+  const feedDay = (x: LogEntry): string => {
+    const ts = entryEffectiveFeedTimestampMs(x);
+    return ts ? msToLocalDate(ts) : x.date;
+  };
+  const feedTime = (x: LogEntry): string => {
+    const ts = entryEffectiveFeedTimestampMs(x);
+    return ts ? msToLocalTime(ts) : x.time;
+  };
+
+  const feedCt = (logs.feed || []).filter((x) => feedDay(x) === td).length;
   const diaperCt = (logs.diaper || []).filter((x) => x.date === td).length;
   const _sleepCt = (logs.sleep || []).filter((x) => x.date === td && x.type !== 'Wake Up').length;
 
@@ -1021,13 +1036,15 @@ export default function HomeTab({
 
   let feedOzToday = 0;
   (logs.feed || [])
-    .filter((x) => x.date === td && x.oz)
+    .filter((x) => feedDay(x) === td && x.oz)
     .forEach((x) => {
       feedOzToday += x.oz || 0;
     });
 
   // Last feed info for hero widget
-  const lastFeedToday = (logs.feed || []).find((x) => x.date === td);
+  const lastFeedToday = (logs.feed || [])
+    .filter((x) => feedDay(x) === td)
+    .sort((a, b) => entryEffectiveFeedTimestampMs(b) - entryEffectiveFeedTimestampMs(a))[0];
   const lastFeedLabel = lastFeedToday
     ? (() => {
         const sides = (lastFeedToday as any).sides as string[] | undefined;
@@ -1063,7 +1080,7 @@ export default function HomeTab({
 
   let _feedMinToday = 0;
   (logs.feed || [])
-    .filter((x) => x.date === td && x.mins && !x.oz)
+    .filter((x) => feedDay(x) === td && x.mins && !x.oz)
     .forEach((x) => {
       _feedMinToday += x.mins || 0;
     });
@@ -1073,7 +1090,7 @@ export default function HomeTab({
     weekDiapers = 0;
   for (let i = 0; i < 7; i++) {
     const dk = daysAgo(i);
-    weekFeeds += (logs.feed || []).filter((e) => e.date === dk).length;
+    weekFeeds += (logs.feed || []).filter((e) => feedDay(e) === dk).length;
     weekDiapers += (logs.diaper || []).filter((e) => e.date === dk).length;
   }
 
@@ -1376,7 +1393,7 @@ export default function HomeTab({
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>feeds</div>
                   {lastFeedLabel && lastFeedToday?.time && (
                     <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {lastFeedLabel} · {fmtTime(lastFeedToday.time)}
+                      {lastFeedLabel} · {fmtTime(feedTime(lastFeedToday))}
                     </div>
                   )}
                   {feedOzToday > 0 && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1 }}>{fmtVol(feedOzToday, volumeUnit)}</div>}
