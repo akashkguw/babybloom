@@ -174,8 +174,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
             if (pendingFolderId) {
               const bound = await bindSharedFolder(pendingFolderId);
               if (!bound) {
-                toast('Select your partner folder to finish Cloud Sync setup.');
-                return;
+                toast('Could not open folder picker on this device. Continuing with code-based sync setup.');
               }
             }
 
@@ -259,8 +258,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
         const bound = await bindSharedFolder(result.folderId);
         if (!bound) {
           await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
-          toast('Select the shared folder to complete join.');
-          return;
+          toast('Could not open folder picker. Continuing with code-based sync setup.');
         }
       } else {
         await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
