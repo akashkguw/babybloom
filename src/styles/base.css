@@ -275,6 +275,12 @@ button {
   padding-bottom: calc(140px + env(safe-area-inset-bottom, 12px)) !important;
 }
 
+/* Tab bar: keep it pinned to viewport bottom; add safe-area as internal padding */
+.tab-bar-main {
+  padding-bottom: 8px !important;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
 .toast {
   position: fixed;
   top: 60px;
