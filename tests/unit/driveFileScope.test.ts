@@ -340,4 +340,14 @@ describe('CloudSync — manifest file ID in QR flows', () => {
     expect(cloudSyncSrc).toContain('bindSharedFolder');
     expect(cloudSyncSrc).toContain('showFolderPicker');
   });
+
+  it('join and oauth flows do not auto-launch folder picker', () => {
+    const joinStart = cloudSyncSrc.indexOf('const handleJoin');
+    const joinRegion = cloudSyncSrc.slice(joinStart, joinStart + 900);
+    expect(joinRegion).not.toContain('bindSharedFolder(');
+
+    const oauthStart = cloudSyncSrc.indexOf('const onOAuth');
+    const oauthRegion = cloudSyncSrc.slice(oauthStart, oauthStart + 600);
+    expect(oauthRegion).not.toContain('bindSharedFolder(');
+  });
 });

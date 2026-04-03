@@ -166,21 +166,10 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     const onOAuth = () => {
       isAuthenticated().then((authed) => {
         if (authed) {
-          (async () => {
-            setGoogleAuthed(true);
-            setView('main');
-
-            const pendingFolderId = await dg(DB_KEY_SYNC_PENDING_FOLDER_ID) as string | null;
-            if (pendingFolderId) {
-              const bound = await bindSharedFolder(pendingFolderId);
-              if (!bound) {
-                toast('Could not open folder picker on this device. Continuing with code-based sync setup.');
-              }
-            }
-
-            toast('Google Drive connected! Syncing now…');
-            triggerSync('manual').catch(() => {});
-          })();
+          setGoogleAuthed(true);
+          setView('main');
+          toast('Google Drive connected! Syncing now…');
+          triggerSync('manual').catch(() => {});
         }
       });
     };
@@ -253,21 +242,14 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       await storeFamilyKey(result.key);
       await setSharedFolderId(result.folderId);
       await ds(DB_KEY_MANIFEST_FILE_ID, result.manifestFileId);
-
-      if (googleAuthed) {
-        const bound = await bindSharedFolder(result.folderId);
-        if (!bound) {
-          await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
-          toast('Could not open folder picker. Continuing with code-based sync setup.');
-        }
-      } else {
-        await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
-      }
+      // Keep pending folder marker for optional manual re-link,
+      // but do not auto-open Google Picker during join.
+      await ds(DB_KEY_SYNC_PENDING_FOLDER_ID, result.folderId);
 
       await enableSync();
       setSyncEnabled(true);
       if (!googleAuthed) {
-        toast('Key imported! Sign in with Google, then select your partner folder.');
+        toast('Key imported! Sign in with Google.');
         setView('google_auth');
       } else {
         toast('Joined family sync. Tap Sync once on both phones.');
@@ -278,7 +260,7 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
       toast('Failed to join: ' + (err?.message || 'unknown'));
       Sentry.captureException(err, { tags: { action: 'join_sync' } });
     }
-  }, [googleAuthed, bindSharedFolder]);
+  }, [googleAuthed]);
 
   // ── Invite: share folder + generate QR ──
   const handleInvite = useCallback(async () => {
