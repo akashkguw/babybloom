@@ -304,12 +304,16 @@ async function runSyncCycle(reason: string): Promise<void> {
 
   // Check if any partner files changed since last sync
   const changedPartnerFiles = partnerFiles.filter((f) => {
+    // Missing modifiedTime (metadata lookup failed) → force download attempt
+    // so we don't silently skip partner updates under drive.file restrictions.
+    if (!f.modifiedTime) return true;
     const lastKnown = partnerFileTimestamps.get(f.id || f.name);
     return !lastKnown || lastKnown !== f.modifiedTime;
   });
 
   // Download only changed partner state files
   const remoteSnapshots: StateSnapshot[] = [];
+  let partnerReadFailures = 0;
   for (const file of changedPartnerFiles) {
     try {
       // Prefer ID-based download (works with drive.file for shared files)
@@ -335,10 +339,27 @@ async function runSyncCycle(reason: string): Promise<void> {
       remoteSnapshots.push(snapshot);
       partnerFileTimestamps.set(file.id || file.name, file.modifiedTime);
     } catch (err) {
-      if (err instanceof DriveError) throw err; // propagate connectivity errors
+      if (err instanceof DriveError) {
+        // Partner files can be temporarily stale/inaccessible after folder resets
+        // or permission changes. Count and continue; escalate only if nothing
+        // from partners could be read this cycle.
+        if (err.code === 'not_found' || err.code === 'forbidden') {
+          partnerReadFailures++;
+          console.warn(`[Sync] Could not access partner file ${file.name}: ${err.message}`);
+          continue;
+        }
+        throw err; // propagate connectivity/auth errors
+      }
       console.warn(`[Sync] Could not read ${file.name}: ${err}`);
       // Continue with other files — corrupted file is logged and skipped
     }
+  }
+
+  if (partnerFiles.length > 0 && remoteSnapshots.length === 0 && partnerReadFailures > 0) {
+    throw new DriveError(
+      'forbidden',
+      'Partner files are not accessible. Ask your partner to re-share a fresh sync code and tap Sync.',
+    );
   }
 
   // ── Step 3: MERGING ──

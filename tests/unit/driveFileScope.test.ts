@@ -84,6 +84,14 @@ describe('googleDrive — dual scope and manifest-based discovery', () => {
     expect(fnRegion).toContain('device.state_file_id');
   });
 
+  it('listDeviceFilesFromManifest keeps file IDs even when metadata lookup fails', () => {
+    const fnStart = gdriveSrc.indexOf('async function listDeviceFilesFromManifest');
+    const fnRegion = gdriveSrc.slice(fnStart, fnStart + 1100);
+    expect(fnRegion).toContain('device.state_file_id');
+    expect(fnRegion).toContain('metadata lookup fails');
+    expect(fnRegion).toContain('modifiedTime:');
+  });
+
   it('exports downloadFileById function', () => {
     expect(gdriveSrc).toContain('export async function downloadFileById');
   });
@@ -187,6 +195,19 @@ describe('syncEngine — manifest-based file registry', () => {
     const cycleStart = engineSrc.indexOf('async function runSyncCycle');
     const cycleRegion = engineSrc.slice(cycleStart, cycleStart + 4000);
     expect(cycleRegion).toContain('downloadFileById(file.id)');
+  });
+
+  it('runSyncCycle forces download attempts when modifiedTime is missing', () => {
+    const cycleStart = engineSrc.indexOf('async function runSyncCycle');
+    const cycleRegion = engineSrc.slice(cycleStart, cycleStart + 5000);
+    expect(cycleRegion).toContain('if (!f.modifiedTime) return true;');
+  });
+
+  it('runSyncCycle surfaces partner access failures instead of silently going green', () => {
+    const cycleStart = engineSrc.indexOf('async function runSyncCycle');
+    const cycleRegion = engineSrc.slice(cycleStart, cycleStart + 6500);
+    expect(cycleRegion).toContain('partnerReadFailures');
+    expect(cycleRegion).toContain('Partner files are not accessible');
   });
 
   it('ensureManifest returns the manifest for use in sync cycle', () => {

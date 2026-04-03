@@ -607,7 +607,13 @@ export async function listDeviceFilesFromManifest(
         });
       }
     } catch {
-      // File may have been deleted — skip silently
+      // If metadata lookup fails under drive.file, still return the ID so the
+      // sync engine can attempt direct media download by file ID.
+      results.push({
+        name: `device_${deviceId}_state.enc`,
+        id: device.state_file_id,
+        modifiedTime: '',
+      });
     }
   }
 
