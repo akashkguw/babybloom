@@ -202,6 +202,13 @@ describe('syncEngine — manifest-based file registry', () => {
     // Must pass storedManifestId as 3rd arg to uploadFile so it PATCHes instead of creating
     expect(fnRegion).toContain('uploadFile(MANIFEST_FILE, encrypted, storedManifestId');
   });
+
+  it('disableSync clears manifest file ID to avoid stale links after folder reset', () => {
+    const fnStart = engineSrc.indexOf('export async function disableSync');
+    const fnRegion = engineSrc.slice(fnStart, fnStart + 1000);
+    expect(fnRegion).toContain('DB_KEY_MANIFEST_FILE_ID');
+    expect(fnRegion).toContain('partnerFileTimestamps.clear()');
+  });
 });
 
 // ─── keyManager ───

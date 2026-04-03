@@ -198,7 +198,10 @@ export async function triggerSync(reason: 'manual' | 'timer' | 'open' | 'write' 
     const skipCodes = new Set([
       'not_authenticated',
       'token_revoked',
+      'token_refresh_failed',
       'scope_insufficient',
+      'forbidden',
+      'not_found',
       'offline',
       'rate_limited',
       'timeout',
@@ -555,6 +558,10 @@ export async function disableSync(deleteCloudData = false): Promise<void> {
 
   // Clear the stored shared folder ID
   await clearSharedFolderId();
+  // Clear stale manifest linkage so folder resets/re-setup start clean.
+  await ds(DB_KEY_MANIFEST_FILE_ID, null);
+  // Clear cached partner timestamps from previous family/folder state.
+  partnerFileTimestamps.clear();
 }
 
 /**

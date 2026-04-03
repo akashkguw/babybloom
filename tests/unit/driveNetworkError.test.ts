@@ -39,6 +39,15 @@ describe("syncEngine — 'network' DriveError not reported to Sentry", () => {
     expect(block).toContain("'offline'");
     expect(block).toContain("'timeout'");
   });
+
+  it("skipCodes includes user-action-required sync-link errors", () => {
+    const skipIdx = syncEngineSrc.indexOf('skipCodes');
+    expect(skipIdx).toBeGreaterThan(-1);
+    const block = syncEngineSrc.slice(skipIdx, skipIdx + 600);
+    expect(block).toContain("'not_found'");
+    expect(block).toContain("'forbidden'");
+    expect(block).toContain("'token_refresh_failed'");
+  });
 });
 
 // ── fetchWithTimeout converts network errors to DriveError('network', ...) ───

@@ -984,10 +984,18 @@ export class DriveError extends Error {
         return 'Please sign into Google to enable cloud sync.';
       case 'token_revoked':
         return 'Google Drive access was revoked. Re-enable sync in Settings.';
+      case 'token_refresh_failed':
+        return 'Google sign-in expired. Re-connect Google Drive in Settings → Cloud Sync.';
       case 'scope_insufficient':
         return 'Google Drive permissions need to be updated. Please re-connect Google Drive in Settings → Cloud Sync.';
       case 'storage_full':
         return 'Google Drive is full. Free up space or continue offline.';
+      case 'forbidden':
+        return 'Google Drive denied access. Check folder sharing and the selected Google account.';
+      case 'not_found':
+        return 'Cloud link is outdated. Reconnect partner sync in Settings → Cloud Sync.';
+      case 'rate_limited':
+        return 'Google Drive is busy. Will retry automatically.';
       case 'offline':
         return 'Offline — will sync when connected.';
       case 'network':
