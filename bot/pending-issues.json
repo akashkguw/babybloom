@@ -49,5 +49,19 @@
     "prev_failure": "Triage failed with exit code 1",
     "failure_reason": "Triage failed with exit code 1",
     "notified": true
+  },
+  {
+    "number": 195,
+    "title": "[Deploy Failed] Build failure on 49d4c27",
+    "body": "**Deployment failed** (auto-created by pipeline)\n\n**Commit:** [`49d4c27`](https://github.com/akashkguw/babybloom/commit/49d4c27)\n**Time:** 2026-04-04 15:05 PDT\n**Actions run:** https://github.com/akashkguw/babybloom/actions/runs/23988536535\n\n## Failure Details\n\n**Job:** test (20) \u2014 FAILED\n**Failed step:** Lint\n\n## Recent Commits\n\n```\n49d4c27 fix(ci): install deps before running, use local binaries\n6ee3cee test: fix layout test \u2014 App.tsx uses fixed+inset:0 not height:100dvh\n4b1803b test: update layout test for iOS-safe height pattern\n601e255 chore: update pending-issues with Sentry issues 192-194\nb093b5f test: update .ca padding-bottom threshold to 72px\n```\n\n## Next Steps\n\n1. Check the [failed Actions run](https://github.com/akashkguw/babybloom/actions/runs/23988536535) for full logs\n2. Fix the issue locally and push\n3. Pipeline will auto-close this issue on next successful deploy\n\n---\n_Auto-created by BabyBloom pipeline on deploy failure._",
+    "labels": [
+      "bug",
+      "deploy-failure"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/195",
+    "created_at": "2026-04-04T22:05:07Z",
+    "status": "failed",
+    "failure_reason": "Triage failed with exit code 1",
+    "notified": true
   }
 ]
