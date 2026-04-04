@@ -49,7 +49,7 @@ export default defineConfig({
               ],
             },
             workbox: {
-              cacheId: 'babybloom',
+              cacheId: 'babybloom-v2',
               globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
               navigateFallback: '/babybloom/index.html',
               navigateFallbackAllowlist: [/^(?!\/__)/],
