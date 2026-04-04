@@ -360,13 +360,13 @@ const LogTab: React.FC<LogTabProps> = ({
         date: e.date,
         time: e.time,
       }));
+      // Soft warnings only — never block logging. Old orphaned entries or
+      // out-of-order synced entries should not permanently lock the user out.
       if (entry.type === 'Wake Up' && !canLogSleepType(sleepEntries, 'Wake Up')) {
-        toast('Baby is already awake — log Sleep first');
-        return;
+        toast('Heads up: no active sleep found — duration won\'t be calculated');
       }
       if ((entry.type === 'Nap' || entry.type === 'Night Sleep') && !canLogSleepType(sleepEntries, entry.type)) {
-        toast('Sleep already in progress — log Wake Up first');
-        return;
+        toast('Heads up: previous sleep not ended — log Wake Up for accurate duration');
       }
     }
 

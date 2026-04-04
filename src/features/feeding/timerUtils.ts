@@ -66,7 +66,11 @@ export function entryCompletionTimestampMs(entry: FeedLikeEntry): number {
 }
 
 export function isTimedFeedEntry(entry: FeedLikeEntry): boolean {
-  return typeof entry.notes === 'string' && entry.notes.includes('Timed');
+  // Timer-based entries have mins > 0 (amount = "X min").
+  // Also support explicit 'Timed' note for forward-compat with any future explicit tagging.
+  const hasMins = typeof entry.mins === 'number' && entry.mins > 0;
+  const hasNote = typeof entry.notes === 'string' && entry.notes.includes('Timed');
+  return hasMins || hasNote;
 }
 
 /**

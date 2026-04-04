@@ -270,9 +270,11 @@ button {
   justify-content: space-between;
 }
 
-/* Content area — leaves room for tab bar + FAB + safe area */
+/* Content area — leaves room for tab bar + voice FAB + safe area.
+   72px clears the ~64px tab bar with an 8px buffer; the voice button
+   floats at bottom:100px so it stays above the padded content. */
 .ca {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 /* Tab bar: keep it pinned to viewport bottom; add safe-area as internal padding */

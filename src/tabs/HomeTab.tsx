@@ -799,13 +799,13 @@ export default function HomeTab({
       const isWake = e.type === 'Wake Up';
       const isSleepStart = e.type === 'Nap' || e.type === 'Night Sleep';
 
+      // Soft warnings only — never block logging. Old orphaned entries or
+      // out-of-order synced entries should not permanently lock the user out.
       if (isWake && !canLogSleepType(sleepEntries, 'Wake Up')) {
-        toast('Baby is already awake — log Sleep first');
-        return;
+        toast('Heads up: no active sleep found — duration won\'t be calculated');
       }
       if (isSleepStart && !canLogSleepType(sleepEntries, e.type || '')) {
-        toast('Sleep already in progress — log Wake Up first');
-        return;
+        toast('Heads up: previous sleep not ended — log Wake Up for accurate duration');
       }
     }
 
