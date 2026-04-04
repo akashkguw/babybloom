@@ -56,8 +56,8 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
             justifyContent: 'center',
             gap: 2,
             cursor: 'pointer',
-            minHeight: 48,
-            padding: '4px 8px',
+            minHeight: 44,
+            padding: '2px 8px',
             opacity: active === t.id ? 1 : 0.45,
             transition: 'opacity 0.2s ease, transform 0.1s ease',
           }}
