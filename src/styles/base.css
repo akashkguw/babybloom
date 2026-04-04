@@ -271,18 +271,10 @@ button {
 }
 
 /* Content area — leaves room for tab bar + voice FAB + safe area.
-   72px clears the ~52px button row with buffer; safe-area accounts for
-   home indicator so content never hides under the tab bar. */
+   The tab bar is ~52px buttons + up to 34px safe area (measured via JS).
+   106px = generous clearance so content never hides behind the bar. */
 .ca {
-  padding-bottom: calc(72px + min(env(safe-area-inset-bottom, 0px), 34px)) !important;
-}
-
-/* Tab bar safe-area spacer — dedicated div that only grows for the home
-   indicator. max-height: 34px hard-caps it so Safari browser toolbar
-   inflation (env ≈ 83px in browser mode) never bleeds through. */
-.tab-bar-safe-area {
-  height: env(safe-area-inset-bottom, 0px);
-  max-height: 34px;
+  padding-bottom: 106px !important;
 }
 
 .toast {
