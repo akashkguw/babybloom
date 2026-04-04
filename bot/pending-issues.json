@@ -61,6 +61,7 @@
     "url": "https://github.com/akashkguw/babybloom/issues/195",
     "created_at": "2026-04-04T22:05:07Z",
     "status": "failed",
+    "prev_failure": "Triage failed with exit code 1",
     "failure_reason": "Triage failed with exit code 1",
     "notified": true
   }
