@@ -16,6 +16,7 @@ export default defineConfig({
       ? [
           VitePWA({
             registerType: 'autoUpdate',
+            filename: 'sw-v2.js',
             srcDir: 'src',
             manifest: {
               name: 'BabyBloom',

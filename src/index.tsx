@@ -19,21 +19,28 @@ if (isNative) {
 }
 
 // Service worker registration is handled by vite-plugin-pwa (registerType: 'autoUpdate')
-// Only register service workers on web — native apps don't need them
+// VitePWA now uses sw-v2.js — unregister the old sw.js on existing installs.
+// Only applies to web builds; native apps don't use service workers.
 if (!isNative && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((reg) => {
-      // If a SW is active but not from vite-plugin-pwa, unregister it
-      if (reg.active && reg.active.scriptURL && reg.active.scriptURL.endsWith('/sw.js')) {
+      // Unregister the legacy sw.js; VitePWA now registers sw-v2.js instead.
+      // This forces iOS to re-register the SW with the new filename, which
+      // guarantees existing installs pick up the latest assets.
+      const url = reg.active?.scriptURL ?? reg.installing?.scriptURL ?? '';
+      if (url.endsWith('/sw.js')) {
         reg.unregister();
       }
     });
   });
-  // Also clear old v1 caches
+  // Clear caches from the old cacheId ('babybloom'). The new cacheId is
+  // 'babybloom-v2', so only delete caches matching the OLD precache pattern.
   if ('caches' in window) {
     caches.keys().then((names) => {
       names.forEach((name) => {
-        if (name.startsWith('babybloom-v')) {
+        // Old Workbox caches: 'babybloom-precache-*' and 'babybloom-runtime'
+        // Do NOT delete 'babybloom-v2-*' — that's the current live cache.
+        if (name.startsWith('babybloom-precache') || name === 'babybloom-runtime') {
           caches.delete(name);
         }
       });
