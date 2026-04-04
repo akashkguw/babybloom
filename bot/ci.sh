@@ -24,6 +24,10 @@ if ! command -v node &>/dev/null; then
 fi
 echo "🔧 node $(node --version)  ·  npm $(npm --version 2>/dev/null)"
 
+# ─── Ensure node_modules are up to date ───────────────────────
+echo "📦 Installing dependencies…"
+npm ci --prefer-offline 2>&1 || npm install 2>&1
+
 # ─── Cleanup on exit ──────────────────────────────────────────
 cleanup() {
   [ -n "$PREVIEW_PID" ] && kill "$PREVIEW_PID" 2>/dev/null && wait "$PREVIEW_PID" 2>/dev/null
@@ -40,7 +44,7 @@ stage_fail() { echo "└─ ❌ $1 FAILED";  RESULTS+=("fail:$1"); FAILED=1; }
 # ══════════════════════════════════════════════════════════════
 echo ""
 echo "┌─ Unit Tests (vitest)"
-if npx vitest run --reporter=verbose 2>&1; then
+if ./node_modules/.bin/vitest run --reporter=verbose 2>&1; then
   stage_pass "Unit Tests"
 else
   stage_fail "Unit Tests"
@@ -55,7 +59,7 @@ TS_OK=true
 BUILD_OK=true
 
 echo "  Checking types…"
-if npx tsc --noEmit 2>&1; then
+if ./node_modules/.bin/tsc --noEmit 2>&1; then
   echo "  Types OK"
 else
   echo "  TypeScript errors found"
@@ -64,7 +68,7 @@ else
 fi
 
 echo "  Building…"
-if npx vite build 2>&1; then
+if ./node_modules/.bin/vite build 2>&1; then
   echo "  Build size: $(du -sh dist/ 2>/dev/null | cut -f1)"
   BUILD_OK=true
 else
@@ -93,11 +97,11 @@ if ! $BUILD_OK; then
 else
 
   # Kill anything on our port
-  lsof -ti:$PREVIEW_PORT | xargs kill -9 2>/dev/null || true
+  lsof -ti:$PREVIEW_PORT 2>/dev/null | xargs kill -9 2>/dev/null || fuser -k ${PREVIEW_PORT}/tcp 2>/dev/null || true
   sleep 0.5
 
   # Start preview server
-  npx vite preview --port $PREVIEW_PORT --strictPort &>/tmp/babybloom-preview.log &
+  ./node_modules/.bin/vite preview --port $PREVIEW_PORT --strictPort &>/tmp/babybloom-preview.log &
   PREVIEW_PID=$!
   echo "  Preview server PID $PREVIEW_PID"
 
