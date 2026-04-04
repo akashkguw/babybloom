@@ -22,10 +22,12 @@ const appTsx = readSrc('App.tsx');
 // ─── base.css layout ───
 
 describe('base.css — vertical scroll fix', () => {
-  it('html,body,#root use height (not min-height) for viewport lock', () => {
-    // Must have height: 100vh or 100dvh, NOT min-height
-    expect(baseCss).toMatch(/html[\s\S]*?height:\s*100v?h/);
-    expect(baseCss).toMatch(/height:\s*100dvh/);
+  it('html,body,#root fill the viewport (height: 100% + min-height: 100dvh)', () => {
+    // iOS-safe pattern: height: 100% so the element fills its parent, combined
+    // with min-height: 100dvh so it never collapses below the viewport.
+    // This replaced the previous height: 100vh / height: 100dvh dual-declaration.
+    expect(baseCss).toMatch(/html[\s\S]*?height:\s*100%/);
+    expect(baseCss).toMatch(/min-height:\s*100dvh/);
   });
 
   it('html,body,#root have overflow: hidden', () => {
