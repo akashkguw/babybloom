@@ -87,8 +87,10 @@ describe('App.tsx — container layout', () => {
     expect(appTsx).toMatch(/overflow:\s*'hidden'/);
   });
 
-  it('main container uses 100dvh height', () => {
-    expect(appTsx).toContain("height: '100dvh'");
+  it('main container uses position:fixed + inset:0 for full-viewport lock', () => {
+    // Replaced height: 100dvh with position:fixed + inset:0 for iOS-safe full-screen coverage
+    expect(appTsx).toContain("position: 'fixed'");
+    expect(appTsx).toContain('inset: 0');
   });
 });
 
