@@ -271,16 +271,18 @@ button {
 }
 
 /* Content area — leaves room for tab bar + voice FAB + safe area.
-   72px clears the ~64px tab bar with an 8px buffer; the voice button
-   floats at bottom:100px so it stays above the padded content. */
+   72px clears the ~52px button row with buffer; safe-area accounts for
+   home indicator so content never hides under the tab bar. */
 .ca {
-  padding-bottom: calc(72px + clamp(0px, env(safe-area-inset-bottom, 0px), 34px)) !important;
+  padding-bottom: calc(72px + min(env(safe-area-inset-bottom, 0px), 34px)) !important;
 }
 
-/* Tab bar: keep it pinned to viewport bottom; add safe-area as internal padding */
-.tab-bar-main {
-  padding-top: 4px !important;
-  padding-bottom: clamp(0px, env(safe-area-inset-bottom, 0px), 34px) !important;
+/* Tab bar safe-area spacer — dedicated div that only grows for the home
+   indicator. max-height: 34px hard-caps it so Safari browser toolbar
+   inflation (env ≈ 83px in browser mode) never bleeds through. */
+.tab-bar-safe-area {
+  height: env(safe-area-inset-bottom, 0px);
+  max-height: 34px;
 }
 
 .toast {

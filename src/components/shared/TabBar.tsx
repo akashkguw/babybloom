@@ -38,46 +38,51 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
         WebkitBackdropFilter: 'blur(20px)',
         borderTop: `1px solid ${C.b}`,
         display: 'flex',
-        justifyContent: 'space-around',
-        padding: '8px 0',
+        flexDirection: 'column',
         zIndex: 100,
       }}
     >
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => set(t.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-            cursor: 'pointer',
-            minHeight: 44,
-            padding: '2px 8px',
-            opacity: active === t.id ? 1 : 0.45,
-            transition: 'opacity 0.2s ease, transform 0.1s ease',
-          }}
-        >
-          <Icon
-            n={t.icon}
-            s={22}
-            c={active === t.id ? C.p : C.tl}
-          />
-          <span
+      {/* Button row — no bottom padding; safe area handled by spacer below */}
+      <div style={{ display: 'flex', justifyContent: 'space-around', padding: '4px 0' }}>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => set(t.id)}
             style={{
-              fontSize: 10,
-              fontWeight: active === t.id ? 700 : 500,
-              color: active === t.id ? C.p : C.tl,
+              background: 'none',
+              border: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              cursor: 'pointer',
+              minHeight: 44,
+              padding: '2px 8px',
+              opacity: active === t.id ? 1 : 0.45,
+              transition: 'opacity 0.2s ease, transform 0.1s ease',
             }}
           >
-            {t.l}
-          </span>
-        </button>
-      ))}
+            <Icon
+              n={t.icon}
+              s={22}
+              c={active === t.id ? C.p : C.tl}
+            />
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: active === t.id ? 700 : 500,
+                color: active === t.id ? C.p : C.tl,
+              }}
+            >
+              {t.l}
+            </span>
+          </button>
+        ))}
+      </div>
+      {/* Safe-area spacer — expands to fill home indicator on iPhone (≤34px),
+          zero on all other devices. max-height caps Safari browser inflation. */}
+      <div className="tab-bar-safe-area" />
     </div>
   );
 };
