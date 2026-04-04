@@ -395,26 +395,26 @@ function App() {
       try {
         const fromSession = sessionStorage.getItem('bb_oauth_callback');
         if (fromSession) return fromSession;
-      } catch {}
+      } catch { /* storage unavailable */ }
       try {
         const fromLocal = localStorage.getItem('bb_oauth_callback');
         if (fromLocal) return fromLocal;
-      } catch {}
+      } catch { /* storage unavailable */ }
       try {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
         const fromHash = hashParams.get('bb_oauth_callback');
         if (fromHash) return decodeURIComponent(fromHash);
-      } catch {}
+      } catch { /* storage unavailable */ }
       return null;
     };
     const clearStoredCallback = (): void => {
-      try { sessionStorage.removeItem('bb_oauth_callback'); } catch {}
-      try { localStorage.removeItem('bb_oauth_callback'); } catch {}
+      try { sessionStorage.removeItem('bb_oauth_callback'); } catch { /* storage unavailable */ }
+      try { localStorage.removeItem('bb_oauth_callback'); } catch { /* storage unavailable */ }
       try {
         if (window.location.hash.includes('bb_oauth_callback=')) {
           window.history.replaceState({}, '', window.location.pathname + window.location.search);
         }
-      } catch {}
+      } catch { /* storage unavailable */ }
     };
     const storedCallback = readStoredCallback();
 

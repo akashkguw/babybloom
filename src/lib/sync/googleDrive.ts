@@ -38,21 +38,21 @@ const OAUTH_VERIFIER_KEY = 'bb_oauth_verifier';
 const OAUTH_VERIFIER_BACKUP_KEY = 'bb_oauth_verifier_backup';
 
 function setOAuthVerifier(verifier: string): void {
-  try { sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier); } catch {}
-  try { localStorage.setItem(OAUTH_VERIFIER_BACKUP_KEY, verifier); } catch {}
+  try { sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier); } catch { /* storage unavailable */ }
+  try { localStorage.setItem(OAUTH_VERIFIER_BACKUP_KEY, verifier); } catch { /* storage unavailable */ }
 }
 
 function getOAuthVerifier(): string | null {
   let verifier: string | null = null;
-  try { verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY); } catch {}
+  try { verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY); } catch { /* storage unavailable */ }
   if (verifier) return verifier;
-  try { verifier = localStorage.getItem(OAUTH_VERIFIER_BACKUP_KEY); } catch {}
+  try { verifier = localStorage.getItem(OAUTH_VERIFIER_BACKUP_KEY); } catch { /* storage unavailable */ }
   return verifier;
 }
 
 function clearOAuthVerifier(): void {
-  try { sessionStorage.removeItem(OAUTH_VERIFIER_KEY); } catch {}
-  try { localStorage.removeItem(OAUTH_VERIFIER_BACKUP_KEY); } catch {}
+  try { sessionStorage.removeItem(OAUTH_VERIFIER_KEY); } catch { /* storage unavailable */ }
+  try { localStorage.removeItem(OAUTH_VERIFIER_BACKUP_KEY); } catch { /* storage unavailable */ }
 }
 
 /**
