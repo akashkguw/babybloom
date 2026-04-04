@@ -41,8 +41,8 @@ jobs:
 
       - name: Verify PWA assets
         run: |
-          # Ensure Workbox SW was generated
-          test -f dist/sw.js && echo "✓ sw.js present in dist"
+          # Ensure Workbox SW was generated (VitePWA now uses sw-v2.js)
+          test -f dist/sw-v2.js && echo "✓ sw-v2.js present in dist"
           # Ensure manifest was generated
           test -f dist/manifest.webmanifest && echo "✓ manifest present in dist"
           # Ensure index.html exists for offline fallback

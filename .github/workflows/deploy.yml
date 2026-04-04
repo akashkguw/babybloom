@@ -46,7 +46,7 @@ jobs:
 
       - name: Verify PWA offline support
         run: |
-          test -f dist/sw.js && echo "✓ Service worker generated"
+          test -f dist/sw-v2.js && echo "✓ Service worker generated"
           test -f dist/index.html && echo "✓ Offline fallback present"
 
       - name: Upload Pages artifact

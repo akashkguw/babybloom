@@ -158,7 +158,7 @@ else
     file_check "index.html has root div"  "$DIST/index.html"             'id="root"'
     file_check "JS bundle built"          "$DIST/index.html"             '<script'
     file_check "Manifest built"           "$DIST/manifest.webmanifest"   'BabyBloom'
-    file_check "SW built"                 "$DIST/sw.js"                  'babybloom'
+    file_check "SW built"                 "$DIST/sw-v2.js"               'babybloom'
 
     # Server actually responds
     http_check "Server responds 200"       "$BASE_URL/"
