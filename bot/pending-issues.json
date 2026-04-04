@@ -1,19 +1,53 @@
 [
   {
-    "number": 191,
-    "title": "[Sentry ERROR] DriveError: Network error: Load failed (www.googleapis.com)",
-    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** DriveError: Network error: Load failed (www.googleapis.com)\n**Location:** Mo(babybloom/assets/index-CWxGLerX)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-04-01T08:46:41.350000Z\n**Last seen:** 2026-04-01T08:46:41.350000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7379432376/\n**Sentry ID:** 7379432376\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "number": 192,
+    "title": "[Sentry ERROR] DriveError: File not found: File not found: 1yI9waBTKmaddnkZSSzj_O0Ks7dekYRUx.",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** DriveError: File not found: File not found: 1yI9waBTKmaddnkZSSzj_O0Ks7dekYRUx.\n**Location:** we(babybloom/assets/index-zuS2v_Mq)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-04-03T09:45:06.542000Z\n**Last seen:** 2026-04-03T09:45:06.542000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7384658939/\n**Sentry ID:** 7384658939\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
     "labels": [
       "sentry",
       "bug"
     ],
-    "url": "https://github.com/akashkguw/babybloom/issues/191",
-    "created_at": "2026-04-01T16:15:30Z",
-    "status": "implemented",
+    "url": "https://github.com/akashkguw/babybloom/issues/192",
+    "created_at": "2026-04-03T09:45:39Z",
+    "status": "failed",
     "source": "sentry",
-    "sentry_id": "7379432376",
-    "route": "implementation",
-    "enhanced_description": "What the user reported: A Sentry error captures a DriveError with message 'Network error: Load failed (www.googleapis.com)'. This means a fetch/XHR request to the Google Drive API failed at the network level \u2014 not an auth or API error, but the TCP/HTTP connection itself failed. On iOS/Safari, 'Load failed' is the standard error thrown when a network request is interrupted, the device is offline, or a request times out.\n\nComponent affected: Google Drive sync module (src/ \u2014 likely the drive utility/service file that makes API calls to googleapis.com).\n\nExpected behaviour: When a network request to Google Drive fails due to connectivity issues, the app should catch the error gracefully, show a user-friendly offline/retry message, and NOT surface an unhandled DriveError to Sentry.\n\nCurrent behaviour: The network failure propagates as an unhandled DriveError, which gets captured by Sentry as an error-level event.\n\nEdge cases to handle:\n- Device is fully offline\n- Device has intermittent / poor connectivity\n- Request times out mid-flight\n- Privacy settings or firewall blocks googleapis.com\n- Safari-specific 'Load failed' on backgrounded tabs\n\nAcceptance criteria:\n1. Network failures during Drive API calls are caught and classified as transient (not bugs)\n2. User sees a friendly message (e.g. 'Sync unavailable \u2014 check your connection') rather than a crash\n3. The error is NOT reported to Sentry (or reported at 'warning' level at most)\n4. Sync retries or degrades gracefully to local-only mode\n\nTesting: Add unit test that mocks a network failure (fetch rejection with a TypeError 'Load failed') in the Drive sync code and verifies the error is caught gracefully. Add a regression test ensuring no unhandled promise rejection occurs when the Drive API is unreachable.",
-    "implementation_notes": "WHAT YOU ACTUALLY DID:\n- Files changed:\n  * src/lib/sync/syncEngine.ts: Added 'network' to skipCodes set so network-level DriveErrors are not reported to Sentry (they are transient connectivity issues, not code bugs)\n  * src/lib/sync/googleDrive.ts: (1) Replaced bare fetch() in refreshAccessToken with fetchWithTimeout() so network failures during token refresh are caught and converted to DriveError(network,...) rather than propagating as raw TypeErrors; (2) Added case 'network' to DriveError.userMessage with user-friendly text\n- Tests added:\n  * tests/unit/driveNetworkError.test.ts: Covers 'network' in skipCodes, fetchWithTimeout converts network errors correctly, refreshAccessToken uses fetchWithTimeout (not bare fetch), DriveError.userMessage for 'network'\n- Approach taken:\n  Two root causes were identified and fixed:\n  (1) 'network' DriveErrorCode was missing from skipCodes in triggerSync() - fixed by adding it\n  (2) refreshAccessToken() used bare fetch() without network-error handling, so iOS 'Load failed' TypeErrors would bypass DriveError classification and go to Sentry - fixed by switching to fetchWithTimeout()\n  The fetchWithTimeout function already correctly converts network errors to DriveError('network',...) for all other call sites.\n- Trade-offs: None significant - network errors are definitively transient and user-facing message is already shown via syncStatus.errorMessage in the UI"
+    "sentry_id": "7384658939",
+    "prev_failure": "Triage failed with exit code 1",
+    "failure_reason": "Triage failed with exit code 1",
+    "notified": true
+  },
+  {
+    "number": 193,
+    "title": "[Sentry ERROR] DriveError: Google Drive access denied: The user has not granted the app 292704039059 write access to the child file 1dCN9bTipnSVHRC2cs8Ot3TxGjDVjIlBL, which would be affected by the operation on the parent.",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** DriveError: Google Drive access denied: The user has not granted the app 292704039059 write access to the child file 1dCN9bTipnSVHRC2cs8Ot3TxGjDVjIlBL, which would be affected by the operation on the parent.\n**Location:** ve(babybloom/assets/index-ClWH-FfU)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-04-03T10:54:43.212000Z\n**Last seen:** 2026-04-03T10:54:43.212000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7384755118/\n**Sentry ID:** 7384755118\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "sentry",
+      "bug"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/193",
+    "created_at": "2026-04-03T11:11:48Z",
+    "status": "failed",
+    "source": "sentry",
+    "sentry_id": "7384755118",
+    "prev_failure": "Triage failed with exit code 1",
+    "failure_reason": "Triage failed with exit code 1",
+    "notified": true
+  },
+  {
+    "number": 194,
+    "title": "[Sentry ERROR] DriveError: Google Drive access denied: The user has not granted the app 292704039059 write access to the child file 1AhL1h7wglVhvlaUj9jF0XuJ0EZd_jhHv, which would be affected by the operation on the parent.",
+    "body": "**Sentry Error Report** (auto-created by pipeline)\n\n**Error:** DriveError: Google Drive access denied: The user has not granted the app 292704039059 write access to the child file 1AhL1h7wglVhvlaUj9jF0XuJ0EZd_jhHv, which would be affected by the operation on the parent.\n**Location:** me(babybloom/assets/index-CLQRmnhM)\n**Level:** error\n**Events:** 1 | **Users affected:** 0\n**First seen:** 2026-04-03T11:36:24.592000Z\n**Last seen:** 2026-04-03T11:36:24.592000Z\n**Sentry link:** https://self-6iw.sentry.io/issues/7384819496/\n**Sentry ID:** 7384819496\n\n---\n_This issue was auto-created from a Sentry error report. Fix the root cause and the Sentry issue will be auto-resolved on deploy._",
+    "labels": [
+      "sentry",
+      "bug"
+    ],
+    "url": "https://github.com/akashkguw/babybloom/issues/194",
+    "created_at": "2026-04-03T11:45:08Z",
+    "status": "failed",
+    "source": "sentry",
+    "sentry_id": "7384819496",
+    "prev_failure": "Triage failed with exit code 1",
+    "failure_reason": "Triage failed with exit code 1",
+    "notified": true
   }
 ]
