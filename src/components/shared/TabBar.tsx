@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { C } from '@/lib/constants/colors';
 import Icon from './Icon';
 
@@ -13,6 +13,24 @@ interface TabItem {
   l: string;
 }
 
+/** Measure the real env(safe-area-inset-bottom) once via DOM and cap it.
+ *  This avoids CSS env()/max() issues in Safari iOS standalone PWA mode
+ *  where inline styles and even stylesheet rules can silently fail.
+ *  Falls back to a minimum of 8px so labels never touch the screen edge. */
+function getSafeAreaBottom(cap = 34, min = 8): number {
+  if (typeof document === 'undefined') return min;
+  const el = document.createElement('div');
+  el.style.position = 'fixed';
+  el.style.bottom = '0';
+  el.style.height = 'env(safe-area-inset-bottom, 0px)';
+  el.style.visibility = 'hidden';
+  el.style.pointerEvents = 'none';
+  document.body.appendChild(el);
+  const px = el.getBoundingClientRect().height;
+  document.body.removeChild(el);
+  return Math.max(Math.min(Math.round(px), cap), min);
+}
+
 export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
   const tabs: TabItem[] = [
     { id: 'home', icon: 'home', l: 'Home' },
@@ -23,6 +41,9 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
   ];
 
   const bgFrost = C.bg === '#1A1A2E' ? 'rgba(26,26,46,0.95)' : 'rgba(255,255,255,0.92)';
+
+  // Measure once — the value never changes during the session
+  const safeBottom = useMemo(() => getSafeAreaBottom(34, 8), []);
 
   return (
     <div
@@ -42,7 +63,7 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
         borderTop: `1px solid ${C.b}`,
         display: 'flex',
         justifyContent: 'space-around',
-        paddingTop: 6,
+        padding: `6px 0 ${safeBottom}px`,
         zIndex: 100,
       }}
     >
@@ -86,4 +107,3 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
 };
 
 export default TabBar;
-
