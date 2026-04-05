@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { C } from '@/lib/constants/colors';
 import Icon from './Icon';
 
@@ -13,22 +13,6 @@ interface TabItem {
   l: string;
 }
 
-/** Measure the real env(safe-area-inset-bottom) once and cap it.
- *  This avoids all CSS clamp()/env() parsing issues on iOS Safari. */
-function getSafeAreaBottom(cap = 34): number {
-  if (typeof document === 'undefined') return 0;
-  const el = document.createElement('div');
-  el.style.position = 'fixed';
-  el.style.bottom = '0';
-  el.style.height = 'env(safe-area-inset-bottom, 0px)';
-  el.style.visibility = 'hidden';
-  el.style.pointerEvents = 'none';
-  document.body.appendChild(el);
-  const px = el.getBoundingClientRect().height;
-  document.body.removeChild(el);
-  return Math.min(Math.round(px), cap);
-}
-
 export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
   const tabs: TabItem[] = [
     { id: 'home', icon: 'home', l: 'Home' },
@@ -40,17 +24,17 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
 
   const bgFrost = C.bg === '#1A1A2E' ? 'rgba(26,26,46,0.95)' : 'rgba(255,255,255,0.92)';
 
-  // Measure once — the value never changes during the session
-  const safeBottom = useMemo(() => getSafeAreaBottom(34), []);
-
   return (
     <div
       className="tab-bar-main"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
+        width: '100%',
+        maxWidth: 500,
+        margin: '0 auto',
         background: bgFrost,
         boxShadow: C.bg === '#1A1A2E' ? '0 -8px 20px rgba(0,0,0,0.35)' : '0 -6px 16px rgba(0,0,0,0.08)',
         backdropFilter: 'blur(20px)',
@@ -58,7 +42,8 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
         borderTop: `1px solid ${C.b}`,
         display: 'flex',
         justifyContent: 'space-around',
-        padding: `4px 0 ${safeBottom}px`,
+        paddingTop: 6,
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
         zIndex: 100,
       }}
     >
@@ -102,3 +87,4 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
 };
 
 export default TabBar;
+
