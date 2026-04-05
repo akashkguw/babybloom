@@ -277,6 +277,13 @@ button {
   padding-bottom: 106px !important;
 }
 
+/* Tab bar — safe-area bottom padding for iPhones with home indicator.
+   Must be in CSS, not React inline styles, because Safari silently drops
+   max()/env() when set via element.style. */
+.tab-bar-main {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+}
+
 .toast {
   position: fixed;
   top: 60px;

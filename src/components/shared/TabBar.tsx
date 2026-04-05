@@ -43,7 +43,6 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
         display: 'flex',
         justifyContent: 'space-around',
         paddingTop: 6,
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
         zIndex: 100,
       }}
     >
