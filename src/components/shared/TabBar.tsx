@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { C } from '@/lib/constants/colors';
 import Icon from './Icon';
 
@@ -13,24 +13,6 @@ interface TabItem {
   l: string;
 }
 
-/** Measure the real env(safe-area-inset-bottom) once via DOM and cap it.
- *  This avoids CSS env()/max() issues in Safari iOS standalone PWA mode
- *  where inline styles and even stylesheet rules can silently fail.
- *  Falls back to a minimum of 8px so labels never touch the screen edge. */
-function getSafeAreaBottom(cap = 34, min = 8): number {
-  if (typeof document === 'undefined') return min;
-  const el = document.createElement('div');
-  el.style.position = 'fixed';
-  el.style.bottom = '0';
-  el.style.height = 'env(safe-area-inset-bottom, 0px)';
-  el.style.visibility = 'hidden';
-  el.style.pointerEvents = 'none';
-  document.body.appendChild(el);
-  const px = el.getBoundingClientRect().height;
-  document.body.removeChild(el);
-  return Math.max(Math.min(Math.round(px), cap), min);
-}
-
 export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
   const tabs: TabItem[] = [
     { id: 'home', icon: 'home', l: 'Home' },
@@ -42,8 +24,35 @@ export const TabBar: React.FC<TabBarProps> = ({ active, set }) => {
 
   const bgFrost = C.bg === '#1A1A2E' ? 'rgba(26,26,46,0.95)' : 'rgba(255,255,255,0.92)';
 
-  // Measure once — the value never changes during the session
-  const safeBottom = useMemo(() => getSafeAreaBottom(34, 8), []);
+  const [safeBottom, setSafeBottom] = useState(0);
+  useEffect(() => {
+    // Standalone PWA (Home Screen): viewport-fit:cover is NOT fully
+    // respected — bottom:0 already sits above the home indicator.
+    // Adding env(safe-area-inset-bottom) double-counts the space.
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    if (isStandalone) {
+      // No extra padding needed — OS handles the home indicator gap
+      setSafeBottom(0);
+    } else {
+      // Browser mode: bottom:0 is at the physical screen bottom
+      // (viewport-fit:cover works). Measure the real safe area.
+      try {
+        const el = document.createElement('div');
+        el.style.position = 'fixed';
+        el.style.bottom = '0';
+        el.style.height = 'env(safe-area-inset-bottom, 0px)';
+        el.style.visibility = 'hidden';
+        el.style.pointerEvents = 'none';
+        document.body.appendChild(el);
+        const px = el.getBoundingClientRect().height;
+        document.body.removeChild(el);
+        setSafeBottom(Math.round(px));
+      } catch { /* fallback 0 */ }
+    }
+  }, []);
 
   return (
     <div
