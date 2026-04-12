@@ -270,11 +270,14 @@ button {
   justify-content: space-between;
 }
 
-/* Content area — leaves room for tab bar + voice FAB + safe area.
-   The tab bar is ~52px buttons + up to 34px safe area (measured via JS).
-   106px = generous clearance so content never hides behind the bar. */
+/* Tab bar — extends into bottom safe area */
+.tab-bar {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Content area — leaves room for tab bar + FAB + safe area */
 .ca {
-  padding-bottom: 106px !important;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 .toast {

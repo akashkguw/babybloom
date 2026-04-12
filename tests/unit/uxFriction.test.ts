@@ -22,14 +22,14 @@ const pill = readSrc('components/shared/Pill.tsx');
 // ─── 1. FAB clearance ───
 
 describe('FAB overlap fix — bottom padding', () => {
-  it('.ca padding-bottom clears tab bar + safe area (>= 86px)', () => {
-    // Tab bar: ~52px buttons + up to 34px safe area = 86px minimum.
-    // Safe area is now measured via JS (not env()), so .ca uses a fixed px value
-    // large enough to clear the tab bar on all devices.
-    const match = baseCss.match(/\.ca\s*\{[^}]*padding-bottom:\s*(\d+)px/);
+  it('.ca padding-bottom clears tab bar and voice FAB (>= 72px base)', () => {
+    // Extract the base px value from .ca padding-bottom: calc(Xpx + env(...)).
+    // Tab bar ≈ 56px buttons + 8px; env() handles safe area separately.
+    // 72px minimum clears the tab bar with buffer.
+    const match = baseCss.match(/\.ca\s*\{[^}]*padding-bottom:\s*calc\((\d+)px/);
     expect(match).toBeTruthy();
     const px = parseInt(match![1], 10);
-    expect(px).toBeGreaterThanOrEqual(86);
+    expect(px).toBeGreaterThanOrEqual(72);
   });
 });
 

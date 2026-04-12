@@ -1062,49 +1062,72 @@ export default function HomeTab({
       feedOzToday += x.oz || 0;
     });
 
-  // Last feed info for hero widget
-  const lastFeedToday = (logs.feed || [])
-    .filter((x) => feedDay(x) === td)
+  // Helper: "Yesterday", "Mon", "Apr 7" depending on how old the date is
+  const relDay = (d: string): string => {
+    if (d === td) return '';
+    const yd = new Date(); yd.setDate(yd.getDate() - 1);
+    const yds = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`;
+    if (d === yds) return 'Yesterday';
+    const dt = new Date(d + 'T12:00:00');
+    const diff = Math.floor((Date.now() - dt.getTime()) / 86400000);
+    if (diff < 7) return dt.toLocaleDateString('en-US', { weekday: 'short' });
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Last feed info for hero widget — falls back to most recent from any day
+  const lastFeedEntry = (logs.feed || [])
+    .slice()
     .sort((a, b) => entryEffectiveFeedTimestampMs(b) - entryEffectiveFeedTimestampMs(a))[0];
-  const lastFeedLabel = lastFeedToday
+  const lastFeedIsToday = lastFeedEntry && feedDay(lastFeedEntry) === td;
+  const lastFeedLabel = lastFeedEntry
     ? (() => {
-        const sides = (lastFeedToday as any).sides as string[] | undefined;
+        const sides = (lastFeedEntry as any).sides as string[] | undefined;
         if (sides && sides.length > 1) {
           const map: Record<string, string> = { 'Breast L': 'L', 'Breast R': 'R' };
           return '🤱 ' + sides.map((s) => map[s] || s).join(' → ');
         }
-        return lastFeedToday.type === 'Breast L' ? '🤱 Left'
-          : lastFeedToday.type === 'Breast R' ? '🤱 Right'
-          : lastFeedToday.type === 'Formula' ? '🍼 Formula'
-          : lastFeedToday.type === 'Pumped Milk' ? '🍼 Pumped'
-          : lastFeedToday.type === 'Solids' ? '🥄 Solids'
-          : '🍼 ' + (lastFeedToday.type || '');
+        return lastFeedEntry.type === 'Breast L' ? '🤱 Left'
+          : lastFeedEntry.type === 'Breast R' ? '🤱 Right'
+          : lastFeedEntry.type === 'Formula' ? '🍼 Formula'
+          : lastFeedEntry.type === 'Pumped Milk' ? '🍼 Pumped'
+          : lastFeedEntry.type === 'Solids' ? '🥄 Solids'
+          : '🍼 ' + (lastFeedEntry.type || '');
       })()
     : null;
-
-  // Last diaper info for hero widget
-  const lastDiaperToday = (logs.diaper || []).reduce<LogEntry | undefined>((max, x) => {
-    if (x.date !== td) return max;
-    if (!max) return x;
-    return entryDateTimeMs(x) > entryDateTimeMs(max) ? x : max;
-  }, undefined);
-  const lastDiaperLabel = lastDiaperToday
-    ? lastDiaperToday.type === 'Wet' ? '💧 Pee'
-      : lastDiaperToday.type === 'Dirty' ? '💩 Poop'
-      : lastDiaperToday.type === 'Both' ? '💧💩 Both'
-      : lastDiaperToday.type || ''
+  const lastFeedTimeStr = lastFeedEntry
+    ? (lastFeedIsToday ? '' : relDay(feedDay(lastFeedEntry)) + ' ') + fmtTime(feedTime(lastFeedEntry))
     : null;
 
-  // Last sleep info for hero widget
-  const lastSleepToday = (logs.sleep || []).reduce<LogEntry | undefined>((max, x) => {
-    if (x.date !== td || x.type === 'Wake Up') return max;
+  // Last diaper info for hero widget — falls back to most recent from any day
+  const lastDiaperEntry = (logs.diaper || []).reduce<LogEntry | undefined>((max, x) => {
     if (!max) return x;
     return entryDateTimeMs(x) > entryDateTimeMs(max) ? x : max;
   }, undefined);
-  const lastSleepLabel = lastSleepToday
-    ? lastSleepToday.type === 'Nap' ? '😴 Nap'
-      : lastSleepToday.type === 'Night Sleep' ? '🌙 Night'
-      : lastSleepToday.type || ''
+  const lastDiaperIsToday = lastDiaperEntry && lastDiaperEntry.date === td;
+  const lastDiaperLabel = lastDiaperEntry
+    ? lastDiaperEntry.type === 'Wet' ? '💧 Pee'
+      : lastDiaperEntry.type === 'Dirty' ? '💩 Poop'
+      : lastDiaperEntry.type === 'Both' ? '💧💩 Both'
+      : lastDiaperEntry.type || ''
+    : null;
+  const lastDiaperTimeStr = lastDiaperEntry?.time
+    ? (lastDiaperIsToday ? '' : relDay(lastDiaperEntry.date) + ' ') + fmtTime(lastDiaperEntry.time)
+    : null;
+
+  // Last sleep info for hero widget — falls back to most recent from any day
+  const heroLastSleep = (logs.sleep || []).reduce<LogEntry | undefined>((max, x) => {
+    if (x.type === 'Wake Up') return max;
+    if (!max) return x;
+    return entryDateTimeMs(x) > entryDateTimeMs(max) ? x : max;
+  }, undefined);
+  const lastSleepIsToday = heroLastSleep && heroLastSleep.date === td;
+  const lastSleepLabel = heroLastSleep
+    ? heroLastSleep.type === 'Nap' ? '😴 Nap'
+      : heroLastSleep.type === 'Night Sleep' ? '🌙 Night'
+      : heroLastSleep.type || ''
+    : null;
+  const lastSleepTimeStr = heroLastSleep?.time
+    ? (lastSleepIsToday ? '' : relDay(heroLastSleep.date) + ' ') + fmtTime(heroLastSleep.time)
     : null;
 
   let _feedMinToday = 0;
@@ -1420,9 +1443,9 @@ export default function HomeTab({
                 <>
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{feedCt}</div>
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>feeds</div>
-                  {lastFeedLabel && lastFeedToday?.time && (
+                  {lastFeedLabel && lastFeedTimeStr && (
                     <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {lastFeedLabel} · {fmtTime(feedTime(lastFeedToday))}
+                      {lastFeedLabel} · {lastFeedTimeStr}
                     </div>
                   )}
                   {feedOzToday > 0 && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1 }}>{fmtVol(feedOzToday, volumeUnit)}</div>}
@@ -1435,9 +1458,9 @@ export default function HomeTab({
             }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'white', lineHeight: 1 }}>{diaperCt}</div>
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>diapers</div>
-              {lastDiaperLabel && lastDiaperToday?.time && (
+              {lastDiaperLabel && lastDiaperTimeStr && (
                 <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {lastDiaperLabel} · {fmtTime(lastDiaperToday.time)}
+                  {lastDiaperLabel} · {lastDiaperTimeStr}
                 </div>
               )}
             </div>
@@ -1451,9 +1474,9 @@ export default function HomeTab({
               <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginTop: 2 }}>
                 {isSleeping ? 'sleeping' : 'sleep'}
               </div>
-              {lastSleepLabel && lastSleepToday?.time && (
+              {lastSleepLabel && lastSleepTimeStr && (
                 <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {lastSleepLabel} · {fmtTime(lastSleepToday.time)}
+                  {lastSleepLabel} · {lastSleepTimeStr}
                 </div>
               )}
             </div>
