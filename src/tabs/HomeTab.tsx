@@ -1846,7 +1846,7 @@ export default function HomeTab({
             const without = sorted.filter((q) => !isNurseBtn(q));
             // Snap to start of the row (multiple of 4) so Left sits in col 1, Right in col 2
             const insertAt = Math.min(idxL, idxR);
-            const rowStart = insertAt - (insertAt % 4); // align to row boundary (0, 4, 8…)
+            const rowStart = insertAt - (insertAt % 3); // align to row boundary (0, 3, 6…)
             without.splice(rowStart, 0, itemL, itemR);
             sorted.length = 0;
             sorted.push(...without);
@@ -1863,15 +1863,15 @@ export default function HomeTab({
             else normalItems.push(q);
           }
           // Priority items first, then fill remaining slots with normal items
-          const topItems = [...priorityItems, ...normalItems.slice(0, Math.max(0, 8 - priorityItems.length))];
+          const topItems = [...priorityItems, ...normalItems.slice(0, Math.max(0, 6 - priorityItems.length))];
           // Enforce Nurse Left always before Nurse Right regardless of warning/active state
           const nLIdx = topItems.findIndex((q: any) => (q.sortKey || q.l) === 'Nurse Left');
           const nRIdx = topItems.findIndex((q: any) => (q.sortKey || q.l) === 'Nurse Right');
           if (nLIdx >= 0 && nRIdx >= 0 && nRIdx < nLIdx) {
             [topItems[nLIdx], topItems[nRIdx]] = [topItems[nRIdx], topItems[nLIdx]];
           }
-          const visibleItems = qlExpanded ? qlItems : topItems.slice(0, 8);
-          const hiddenCount = qlItems.length - 8;
+          const visibleItems = qlExpanded ? qlItems : topItems.slice(0, 6);
+          const hiddenCount = qlItems.length - 6;
           const showSeeMore = hiddenCount > 0 && !qlExpanded;
 
           // ─── Expanded inline quantity selector (Formula / Pumped) ───
@@ -2283,7 +2283,7 @@ export default function HomeTab({
                 </div>
               ) : (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                     {visibleItems.map((q: any) => {
                       const warnInfo = quickLogWarnings[q.l] || null;
                       const warn = warnInfo?.level || null;
@@ -2301,7 +2301,7 @@ export default function HomeTab({
                           onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; } longPressTriggered.current = true; const info = qlCategoryInfo[q.l]; if (info) { const warnInfo2 = quickLogWarnings[q.l] || null; const entries = logs[info.cat] || []; const history = entries.filter((e2: any) => info.types.includes(e2.type) || (e2.sides && info.types.some((t: string) => e2.sides.includes(t)))).slice(0, 5); setQlInfoPanel({ label: q.l, emoji: q.e, warn: warnInfo2, cat: info.cat, types: info.types, history, tips: info.tips, settingKey: info.settingKey, timerToggleKey: info.timerToggleKey }); } }}
                           style={{
                             textAlign: 'center',
-                            padding: '8px 2px',
+                            padding: '10px 4px',
                             borderRadius: 12,
                             background: q.switchHint ? C.sl : q.active ? C.al : q.highlight ? C.pul : warnBg || C.bg,
                             border: '1px solid ' + (q.switchHint ? C.s + '55' : q.active ? C.a : q.highlight ? C.pu : warnBorder || C.b),
@@ -2309,8 +2309,8 @@ export default function HomeTab({
                             opacity: q.dis ? 0.35 : 1,
                           }}
                         >
-                          <div style={{ fontSize: 18 }}>{q.e}</div>
-                          <div style={{ fontSize: 9, color: q.switchHint ? C.s : q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 2, fontWeight: 600 }}>
+                          <div style={{ fontSize: 24 }}>{q.e}</div>
+                          <div style={{ fontSize: 10, color: q.switchHint ? C.s : q.active ? C.a : q.highlight ? C.pu : warnText || C.tl, marginTop: 3, fontWeight: 600 }}>
                             {q.l}
                           </div>
                         </div>
