@@ -294,7 +294,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     }
     try {
       setInviteLoading(true);
-      const folderId = await getOrCreateFolder();
+      // Parent A: explicit invite flow — allowed to create the folder.
+      const folderId = await getOrCreateFolder(true);
       await shareFolderWithPartner(partnerEmail.trim());
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
@@ -319,7 +320,8 @@ export default function CloudSync({ onClose }: CloudSyncProps) {
     try {
       const key = await loadFamilyKey();
       if (!key) { toast('Family key not found.'); return; }
-      const folderId = await getOrCreateFolder();
+      // Parent A re-showing their own QR — allowed to create if first time.
+      const folderId = await getOrCreateFolder(true);
       const manifestFileId = await ensureManifestFileId();
       if (!manifestFileId) {
         toast('Could not prepare sync code. Tap Sync once, then try again.');

@@ -343,9 +343,16 @@ export async function clearSharedFolderId(): Promise<void> {
  * use the stored folder ID from the BK2 QR code. This is why the stored ID check
  * comes first and we only fall through to search if we have legacy full drive scope.
  *
+ * **Silent-fork guard**: by default, this function REFUSES to create a new folder
+ * if one isn't already linked. Otherwise Parent B with a cleared IndexedDB would
+ * silently fork into their own orphan folder, and both parents would sync into
+ * parallel universes without any warning (see tests/unit/partnerForkBug.test.ts).
+ * Pass `allowCreate: true` ONLY from explicit Parent-A flows: first-time setup,
+ * `shareFolderWithPartner`, or re-generating the invite QR.
+ *
  * Result is cached in memory for the session.
  */
-export async function getOrCreateFolder(): Promise<string> {
+export async function getOrCreateFolder(allowCreate: boolean = false): Promise<string> {
   // Check in-memory cache first
   if (cachedFolderId) return cachedFolderId;
 
@@ -438,7 +445,17 @@ export async function getOrCreateFolder(): Promise<string> {
     // Ignore search failures and fall back to create path below.
   }
 
-  // No folder found — create a new one (Parent A path).
+  // No folder found — create a new one (Parent A path), BUT only if the
+  // caller has explicitly opted in. Otherwise this is the silent-fork bug:
+  // Parent B with a cleared IndexedDB would fabricate their own orphan
+  // folder and the two parents would sync to different folders forever.
+  if (!allowCreate) {
+    throw new DriveError(
+      'not_found',
+      'No shared sync folder is linked on this device. Ask your partner for a fresh invite code, or start sync from the other parent\'s device.',
+    );
+  }
+
   // This works with drive.file scope because the app is creating the folder.
   const createResp = await driveRequest(
     `${GOOGLE_DRIVE_API}/files`,
@@ -464,7 +481,8 @@ export async function getOrCreateFolder(): Promise<string> {
  */
 export async function shareFolderWithPartner(email: string): Promise<void> {
   const token = await getAccessToken();
-  const folderId = await getOrCreateFolder();
+  // Parent A path — creation is intentional here.
+  const folderId = await getOrCreateFolder(true);
 
   await driveRequest(
     `${GOOGLE_DRIVE_API}/files/${folderId}/permissions`,

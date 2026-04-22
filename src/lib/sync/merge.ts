@@ -165,6 +165,16 @@ export function mergeLogEntries<T extends SyncLogEntry>(
           // Same modified_at but this one has a delete — delete wins for safety
           byId.set(entry.id, { ...entry });
           entrySource.set(entry.id, deviceIdx);
+        } else if (
+          cmpTime(entry.modified_at, existing.modified_at) === 0 &&
+          entry.deleted_at && existing.deleted_at &&
+          entry.deleted_at > existing.deleted_at
+        ) {
+          // Both are tombstones on the same modified_at — take the LATER
+          // deleted_at so the merge is order-independent (Z3-proved, see
+          // tests/formal/lww_sync_proof.py theorem 2b).
+          byId.set(entry.id, { ...entry });
+          entrySource.set(entry.id, deviceIdx);
         }
       }
     }
