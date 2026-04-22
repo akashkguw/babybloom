@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { clampNum, safeNum, LIMITS } from '@/lib/utils/validate';
+import { clampNum, safeNum } from '@/lib/utils/validate';
 import { ozToMl, mlToOz, ML_PER_OZ } from '@/lib/utils/volume';
 import { mergeIntoLastFeed, type Logs, type FeedEntry } from '@/features/feeding/mergeFeedSession';
 import { mergeLogEntries } from '@/lib/sync/merge';
@@ -70,13 +70,25 @@ describe('clampNum (property-based)', () => {
    * type valid values without them being mangled.
    */
   it('in-range values with trimmed decimals pass through', () => {
+    // Representative ranges mirroring the shape of LIMITS entries. We list
+    // them explicitly rather than filtering Object.values(LIMITS) to avoid
+    // the readonly-literal-widening issues that `as const` + filter create
+    // under strict TypeScript.
+    const RANGES: ReadonlyArray<{ min: number; max: number }> = [
+      { min: 0, max: 120 },  // feedMins / tummyMins / pumpMins / massageMins
+      { min: 0, max: 20 },   // feedOz / pumpOz
+      { min: 0, max: 600 },  // feedMl / pumpMl
+      { min: 0, max: 24 },   // sleepHrs
+      { min: 0, max: 59 },   // sleepMins
+      { min: 1, max: 60 },   // weightLbs
+      { min: 10, max: 45 },  // heightIn
+      { min: 90, max: 110 }, // tempF
+      { min: 0, max: 100 },  // medDose
+    ];
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 100 }), // integer input, always fits 1 decimal
-        fc.constantFrom(...Object.values(LIMITS).filter(
-          (l): l is { min: number; max: number } =>
-            typeof l === 'object' && 'min' in l && 'max' in l,
-        )),
+        fc.constantFrom(...RANGES),
         (intVal, range) => {
           fc.pre(intVal >= range.min && intVal <= range.max);
           const out = clampNum(String(intVal), range.min, range.max, 1);
